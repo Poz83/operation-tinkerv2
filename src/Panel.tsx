@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ColoringPage } from './types';
 import { LoadingFX } from './LoadingFX';
 
@@ -18,11 +18,20 @@ interface PanelProps {
 export const Panel: React.FC<PanelProps> = ({ page, isBack, generationPercent = 0, completedPages = 0, totalPages = 0 }) => {
     const [isLoaded, setIsLoaded] = useState(false);
     const [hasError, setHasError] = useState(false);
+    const imgRef = useRef<HTMLImageElement | null>(null);
 
     // Reset loading and error state when the page image source changes
     useEffect(() => {
         setIsLoaded(false);
         setHasError(false);
+    }, [page?.imageUrl]);
+
+    // Handle cached images that are already complete on mount
+    useEffect(() => {
+        const img = imgRef.current;
+        if (img && img.complete && img.naturalWidth > 0) {
+            setIsLoaded(true);
+        }
     }, [page?.imageUrl]);
 
     const handleDownload = (e: React.MouseEvent) => {
@@ -99,11 +108,12 @@ export const Panel: React.FC<PanelProps> = ({ page, isBack, generationPercent = 
                              </div>
 
                             <img 
+                                ref={imgRef}
                                 src={page.imageUrl} 
                                 alt={page.prompt} 
                                 onLoad={() => setIsLoaded(true)}
                                 onError={() => setHasError(true)}
-                                className={`w-full h-full object-contain p-8 transition-all duration-700 ease-out transform ${isLoaded ? 'opacity-100 scale-100 blur-0 hover:scale-105 hover:drop-shadow-xl' : 'opacity-0 scale-95 blur-sm'}`}
+                                className={`w-full h-full object-contain p-8 transition-all duration-700 ease-out transform ${isLoaded ? 'opacity-100 scale-100 blur-0' : 'opacity-0 scale-95 blur-sm'}`}
                             />
                         </>
                     )

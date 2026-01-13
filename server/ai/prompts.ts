@@ -19,7 +19,6 @@ export interface StyleRule {
 export interface ComplexityRule {
   id: string;
   label: string;
-  targetAudience: string;
   objectDensityInstruction: string;
   lineWeightInstruction: string;
   backgroundInstruction: string;
@@ -180,7 +179,6 @@ export const COMPLEXITY_RULES: Record<string, ComplexityRule> = {
   'Very Simple': {
     id: 'level_1',
     label: 'Level 1: Minimalist (Bold)', // WAS: "Toddler"
-    targetAudience: 'Early Childhood',
     objectDensityInstruction: `Generate EXACTLY ONE central object. It must occupy 60-80% of the canvas. NO background elements; pure white void.`,
     lineWeightInstruction: `Use EXTREMELY THICK outlines (3mm-4mm). Min gap: 10mm.`,
     backgroundInstruction: 'White void. No patterns.',
@@ -189,7 +187,6 @@ export const COMPLEXITY_RULES: Record<string, ComplexityRule> = {
   'Simple': {
     id: 'level_2',
     label: 'Level 2: Simple (Clear)', // WAS: "Kids"
-    targetAudience: 'Elementary',
     objectDensityInstruction: `Simple scene, 1-3 primary subjects. Basic background hints only. Clear separation.`,
     lineWeightInstruction: `Bold outlines (2mm) for main subjects. Min gap: 5mm.`,
     backgroundInstruction: `Simple contextual background. No pattern fills.`,
@@ -198,7 +195,6 @@ export const COMPLEXITY_RULES: Record<string, ComplexityRule> = {
   'Moderate': {
     id: 'level_3',
     label: 'Level 3: Moderate (Standard)', // WAS: "Teen"
-    targetAudience: 'Young Adult',
     objectDensityInstruction: `Full scene. Balance detailed focal points with resting space.`,
     lineWeightInstruction: `Standard line weight (0.8mm - 1mm). Min gap: 2mm.`,
     backgroundInstruction: `Complete scene. Background can be stylized.`,
@@ -207,7 +203,6 @@ export const COMPLEXITY_RULES: Record<string, ComplexityRule> = {
   'Intricate': {
     id: 'level_4',
     label: 'Level 4: Intricate (Detailed)', // WAS: "Adult Expert"
-    targetAudience: 'Adult',
     objectDensityInstruction: `High density. "Horror Vacui" style. Every part of canvas offers a coloring opportunity.`,
     lineWeightInstruction: `Fine line work (0.3mm - 0.5mm). Min gap: 1mm.`,
     backgroundInstruction: `Detailed background. Use patterns/flora to occupy negative space.`,
@@ -216,7 +211,6 @@ export const COMPLEXITY_RULES: Record<string, ComplexityRule> = {
   'Extreme Detail': {
     id: 'level_5',
     label: 'Level 5: Masterwork (Micro)', // WAS: "Extreme Detail"
-    targetAudience: 'Master',
     objectDensityInstruction: `Maximum density. Hidden object style. Microscopic details.`,
     lineWeightInstruction: `Micro-fine lines (0.1mm - 0.2mm).`,
     backgroundInstruction: `Fractal density. No white space larger than 1cm.`,

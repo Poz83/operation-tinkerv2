@@ -14,6 +14,12 @@ import { processGeneration } from './server/jobs/process-generation';
 import { brainstormPrompt } from './services/geminiService';
 import { generateColoringBookPDF } from './utils/pdf-generator';
 import { motion } from 'framer-motion';
+import { batchLogStore, isBatchLoggingEnabled } from './logging/batchLog';
+import { dataUrlToBlob } from './logging/utils';
+import { PageGenerationEvent } from './logging/events';
+import { BatchLogPanel } from './BatchLogPanel';
+
+const BATCH_LOGS_ENABLED = isBatchLoggingEnabled();
 
 const App: React.FC = () => {
   const { validateApiKey, showApiKeyDialog, handleApiKeyDialogContinue } = useApiKey();
@@ -38,6 +44,7 @@ const App: React.FC = () => {
   const [currentSheetIndex, setCurrentSheetIndex] = useState(0);
   const [isDarkMode, setIsDarkMode] = useState(true); 
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showBatchLogs, setShowBatchLogs] = useState(false);
 
   // Cancellation
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -92,12 +99,88 @@ const App: React.FC = () => {
     try {
       const sizeConfig = PAGE_SIZES.find(s => s.id === pageSizeId);
       const aspectRatio = sizeConfig?.ratio || '1:1';
+      const audienceLabel = TARGET_AUDIENCES.find(a => a.id === targetAudienceId)?.label || "General";
+
+      const loggingEnabled = BATCH_LOGS_ENABLED;
+      let batchId: string | undefined;
+
+      if (loggingEnabled) {
+        const heroDataUrl = hasHeroRef && heroImage
+          ? `data:${heroImage.mimeType};base64,${heroImage.base64}`
+          : undefined;
+        const estimatedHeroSize = heroImage?.base64 ? Math.ceil((heroImage.base64.length * 3) / 4) : undefined;
+
+        batchId = await batchLogStore.createBatch({
+          projectName,
+          userIdea: userPrompt,
+          pageCount: pageAmount,
+          audience: audienceLabel,
+          style: visualStyle,
+          complexity: complexity,
+          aspectRatio: aspectRatio,
+          includeText: includeText,
+          hasHeroRef: hasHeroRef,
+          heroImageMeta: heroImage
+            ? {
+                mimeType: heroImage.mimeType,
+                size: estimatedHeroSize,
+              }
+            : undefined,
+          heroImageDataUrl: heroDataUrl,
+        });
+      }
+
+      const handlePageEvent = async (event: PageGenerationEvent) => {
+        if (!loggingEnabled || !batchId) return;
+
+        if (event.type === 'start') {
+          await batchLogStore.recordPageStart(batchId, event.pageNumber, {
+            aspectRatio: event.aspectRatio,
+            resolution: event.resolution,
+            width: event.width,
+            height: event.height,
+            fullPrompt: event.fullPrompt,
+            fullNegativePrompt: event.fullNegativePrompt,
+            startedAt: new Date().toISOString(),
+          });
+          return;
+        }
+
+        if (event.type === 'success') {
+          const imageBlob = await dataUrlToBlob(event.imageUrl);
+          await batchLogStore.recordPageResult(batchId, event.pageNumber, {
+            aspectRatio: event.aspectRatio,
+            resolution: event.resolution,
+            width: event.width,
+            height: event.height,
+            fullPrompt: event.fullPrompt,
+            fullNegativePrompt: event.fullNegativePrompt,
+            imageBlob,
+            imageDataUrl: event.imageUrl,
+            startedAt: event.startedAt,
+            finishedAt: event.finishedAt,
+            latencyMs: event.latencyMs,
+            qa: event.qa,
+          });
+          return;
+        }
+
+        if (event.type === 'error') {
+          await batchLogStore.recordPageResult(batchId, event.pageNumber, {
+            error: event.error,
+            startedAt: event.startedAt,
+            finishedAt: event.finishedAt,
+            latencyMs: event.latencyMs,
+          });
+        }
+      };
 
       await processGeneration(
         {
+          batchId,
           userIdea: userPrompt,
           pageCount: pageAmount,
-          audience: TARGET_AUDIENCES.find(a => a.id === targetAudienceId)?.label || "General",
+          audience: audienceLabel,
           style: visualStyle,
           complexity: complexity,
           hasHeroRef: hasHeroRef,
@@ -132,11 +215,26 @@ const App: React.FC = () => {
 
           setPages(newPages);
           totalTasks = newPages.length;
+
+          if (loggingEnabled && batchId) {
+            batchLogStore.savePlan(
+              batchId,
+              finalPlan.map((p) => ({
+                pageNumber: p.pageNumber,
+                planPrompt: p.prompt,
+                requiresText: p.requiresText,
+              }))
+            ).catch((err) => console.error('Logging plan failed', err));
+          }
         },
         // 2. On Page Complete
         (pageNumber, imageUrl) => {
           setPages(prev => prev.map(p => p.pageIndex === pageNumber ? { ...p, imageUrl, isLoading: false } : p));
           updateProgress();
+        },
+        (event) => {
+          // Fire and forget to avoid blocking generation
+          handlePageEvent(event).catch((err) => console.error('Logging failed', err));
         }
       );
 
@@ -370,27 +468,6 @@ const App: React.FC = () => {
 
         {/* Sidebar Footer - Stats & Actions */}
         <div className="p-6 border-t border-white/5 bg-[hsl(var(--background))]/40 backdrop-blur-md">
-            <div className="glass-stat mb-4 border border-white/5 bg-white/5">
-              <div className="flex justify-between items-center mb-1">
-                <span className="label">Pages ready</span>
-                <span className={`trend ${displayProgress < 100 && displayProgress > 0 ? '' : 'text-zinc-500'}`}>
-                  {displayProgress}% complete
-                </span>
-              </div>
-              <div className="flex items-end justify-between">
-                 <span className="value text-2xl text-white">{completedPages}<span className="text-zinc-600 text-lg">/{totalPages || pageAmount}</span></span>
-                 {isGenerating && <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mb-1" />}
-              </div>
-              
-              {/* Progress Bar */}
-              <div className="w-full h-1 bg-white/10 rounded-full mt-3 overflow-hidden">
-                <div 
-                  className="h-full bg-white transition-all duration-300 ease-out"
-                  style={{ width: `${displayProgress}%` }}
-                />
-              </div>
-            </div>
-
             <div className="flex gap-3">
               {(isGenerating || (displayProgress > 0 && displayProgress < 100)) ? (
                 <button 
@@ -471,6 +548,15 @@ const App: React.FC = () => {
                 </div>
               )}
               
+              {BATCH_LOGS_ENABLED && (
+                <button
+                  onClick={() => setShowBatchLogs(true)}
+                  className="px-4 py-2 rounded-xl border border-white/15 bg-white/10 text-white text-sm hover:bg-white/20"
+                >
+                  Batch Logs (dev)
+                </button>
+              )}
+
               {pages.some(p => !p.isLoading) && (
                 <div className="relative">
                    <button
@@ -535,6 +621,13 @@ const App: React.FC = () => {
           )}
         </div>
       </main>
+
+      {BATCH_LOGS_ENABLED && (
+        <BatchLogPanel
+          isOpen={showBatchLogs}
+          onClose={() => setShowBatchLogs(false)}
+        />
+      )}
     </div>
   );
 };

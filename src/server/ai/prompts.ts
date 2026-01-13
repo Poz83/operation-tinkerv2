@@ -19,7 +19,6 @@ export interface StyleRule {
 export interface ComplexityRule {
   id: string;
   label: string;
-  targetAudience: string;
   objectDensityInstruction: string;
   lineWeightInstruction: string;
   backgroundInstruction: string;
@@ -35,10 +34,10 @@ export const STYLE_RULES: Record<string, StyleRule> = {
   'Bold & Easy': {
     id: 'kawaii_bold',
     label: 'Bold & Easy',
-    // UPDATED: High-contrast, thick lines, and massive open areas for dopamine-hit coloring
-    positivePrompt: `bold and easy coloring page, distinct heavy vector outlines, high-contrast line art, simple satisfying hollow shapes, sticker art aesthetic, clean white background, alcohol marker friendly, minimal detail, joyous and clear, happiness-inducing composition, thick uniform line weight.`,
-    negativePrompt: `shading, gradients, greyscale, hatching, cross-hatching, stippling, sharp angles, scary, horror, intricate detail, thin lines, scratchy lines, distorted anatomy, noise, dithering, realism, sketch, rough sketch, texture, fur texture, dirty lines, solid black fills, tiny gaps, microscopic details.`,
-    technicalDirectives: `Render with a simulated stroke width of 4px (Very Bold). Ensure all shapes are convex or simple concave. Maintain a minimum gap size of 5mm (Marker Safe). Enforce strictly closed paths (Watertight).`,
+    // STREAMLINED: Clear priorities - cozy scenes, proper scale, thick borders, clean backgrounds
+    positivePrompt: `bold and easy coloring page, cozy whimsical scene, friendly anthropomorphic animals OR cute cartoon characters, chibi proportions with simple dot eyes, rounded chunky forms, soft curved edges, simplified perspective, thick rounded decorative border frame, heavy vector outlines (4px stroke), high-contrast line art, simple hollow shapes, clean white background in empty areas, alcohol marker friendly, minimal detail, joyous composition, thick uniform line weight. IMPORTANT: Decorative accents (small hearts, stars, flowers) used SPARINGLY as tiny corner flourishes only - NOT filling background space.`,
+    negativePrompt: `shading, gradients, greyscale, hatching, cross-hatching, stippling, sharp angles, scary, horror, intricate detail, thin lines, thin borders, angular borders, scratchy lines, distorted anatomy, noise, dithering, realism, photorealistic, sketch, texture, fur texture, dirty lines, solid black fills, tiny gaps, microscopic details, fine detail, background filled with decorative elements, cluttered background, busy background.`,
+    technicalDirectives: `Stroke width: 4px (Very Bold). All shapes convex or simple concave. Gap size: 5mm minimum (Marker Safe). Closed paths only (Watertight). Thick rounded border frame with 5-8% internal padding.`,
     isFloodFillFriendly: true,
   },
 
@@ -183,7 +182,6 @@ export const COMPLEXITY_RULES: Record<string, ComplexityRule> = {
   'Very Simple': {
     id: 'level_1',
     label: 'Level 1: Minimalist (Bold)', 
-    targetAudience: 'Early Childhood',
     objectDensityInstruction: `Generate EXACTLY ONE central object. It must occupy 60-80% of the canvas. NO background elements; pure white void. Ensure high white-space ratio. No solid black fills.`,
     lineWeightInstruction: `Bold, clear outlines (1.5mm - 2mm). ALL shapes must be hollow.`,
     backgroundInstruction: 'White void. No patterns.',
@@ -192,7 +190,6 @@ export const COMPLEXITY_RULES: Record<string, ComplexityRule> = {
   'Simple': {
     id: 'level_2',
     label: 'Level 2: Simple (Clear)', 
-    targetAudience: 'Elementary',
     objectDensityInstruction: `Simple scene, 1-3 primary subjects. Basic background hints only. Clear separation.`,
     lineWeightInstruction: `Standard Bold outlines (1mm - 1.5mm).`,
     backgroundInstruction: `Simple contextual background. No pattern fills.`,
@@ -200,27 +197,24 @@ export const COMPLEXITY_RULES: Record<string, ComplexityRule> = {
   },
   'Moderate': {
     id: 'level_3',
-    label: 'Level 3: Moderate (Standard)', 
-    targetAudience: 'Young Adult',
-    objectDensityInstruction: `Full scene. Balance detailed focal points with resting space.`,
+    label: 'Level 3: Moderate (Standard)',
+    objectDensityInstruction: `Full scene. Include 4-6 REST AREAS (empty white space OR simple solid shapes - NOT decorative motifs like clouds/flowers). Distribute across composition for breathing space. Avoid wall-to-wall detail.`,
     lineWeightInstruction: `Standard line weight (0.8mm - 1mm). Min gap: 2mm.`,
-    backgroundInstruction: `Complete scene. Background can be stylized.`,
-    negativePrompt: `vast empty spaces, messy sketch, blurry lines.`,
+    backgroundInstruction: `Complete scene with intentional empty regions. Background can be stylized but must include white space.`,
+    negativePrompt: `vast empty spaces, messy sketch, blurry lines, background filled with decorative elements.`,
   },
   'Intricate': {
     id: 'level_4',
-    label: 'Level 4: Intricate (Detailed)', 
-    targetAudience: 'Adult',
-    objectDensityInstruction: `High density. "Horror Vacui" style. Every part of canvas offers a coloring opportunity.`,
-    lineWeightInstruction: `Fine line work (0.3mm - 0.5mm). Min gap: 1mm.`,
-    backgroundInstruction: `Detailed background. Use patterns/flora to occupy negative space.`,
-    negativePrompt: `large empty areas, simple shapes, thick lines, blurry details.`,
+    label: 'Level 4: Intricate (Detailed)',
+    objectDensityInstruction: `High density with objects/patterned regions. Include 2-4 REST AREAS (empty white space or simple anchor shapes - NOT decorative motifs). Balance detail clusters with calm regions.`,
+    lineWeightInstruction: `Fine line work (0.3mm - 0.5mm). Min gap: ~1-1.2mm. Favor medium/large closed regions over microscopic texture.`,
+    backgroundInstruction: `Detailed background with closed colorable regions (no stipple/hatching). Must include some empty white space.`,
+    negativePrompt: `simple shapes, thick lines, blurry details, wall-to-wall decorative motifs.`,
   },
   'Extreme Detail': {
     id: 'level_5',
-    label: 'Level 5: Masterwork (Micro)', 
-    targetAudience: 'Master',
-    objectDensityInstruction: `Maximum density. Hidden object style. Microscopic details.`,
+    label: 'Level 5: Masterwork (Micro)',
+    objectDensityInstruction: `Maximum density permitted. Hidden object style. Microscopic details. Include 1-2 larger simple shapes as visual anchors.`,
     lineWeightInstruction: `Micro-fine lines (0.1mm - 0.2mm).`,
     backgroundInstruction: `Fractal density. No white space larger than 1cm.`,
     negativePrompt: `simple, easy, empty space, thick lines.`,
@@ -243,6 +237,11 @@ STRICT RULES:
 5. NO TEXT OR WATERMARKS (unless explicitly requested).
 6. TOPOLOGY: Ensure paths are closed loops (watertight) for digital flood fill where possible.
 7. COLORABILITY: Do not fill areas with black. All distinct regions must be white to allow user coloring.
+8. EDGE SAFETY: Leave a clear, unmarked margin (about 8-10% of the canvas) on all sides. No objects, bubbles, or lines may touch or cross the border.
+9. HUMAN COLORING FRIENDLY: Use closed, clearly bounded regions sized for coloring by hand; avoid microscopic cells. Most enclosed areas should be comfortably colorable at print size.
+10. NO SHADING TEXTURES: Absolutely forbid stippling, hatching, cross-hatching, halftone, dithering, or dots-for-shading. Do not simulate shading or engraving textures; rely on clean shapes and patterns instead.
+11. AVOID TANGENTS AND MICRO-GAPS: Lines that are meant to be separate must maintain minimum 3-5mm separation at print scale. Never create near-touching lines (tangents) or accidental sliver regions. Ensure unrelated elements have clear visual separation.
+12. SCALE AND PROPORTION: Objects must maintain realistic relative proportions to each other. A phone should not be larger than a lamp. Headphones should not be larger than a bed. Use common sense scale relationships. Anchor the scene with one primary subject at appropriate size, then scale all other objects relative to it.
 `;
 
 export const buildPrompt = (
@@ -269,7 +268,8 @@ export const buildPrompt = (
     cropped, out of frame, cut off,
     distorted hands, bad anatomy, extra fingers, missing limbs, mutated,
     messy, smudge, dirt, noise,
-    double lines, loose sketch, rough draft.
+    double lines, loose sketch, rough draft,
+    hatching, cross-hatching, stippling, halftone, dithering, dots used for shading, engraving texture, etching texture, scratchy shading, scribble shading, texture used as shading, micro-texture, microscopic details, ultra fine noise.
   `;
 
   if (!includeText) {
@@ -283,11 +283,28 @@ export const buildPrompt = (
    [SUBJECT]: ${userSubject}
    [STYLE]: ${style.label} - ${style.positivePrompt}
    [COMPLEXITY]: ${complexity.label} - ${complexity.objectDensityInstruction}
-   [TECHNICAL_SPECS]: 
+   [TECHNICAL_SPECS]:
       - Line Weight: ${complexity.lineWeightInstruction}
       - Rendering: ${style.technicalDirectives}
       - Background: ${complexity.backgroundInstruction}
-      - Topology: ${style.isFloodFillFriendly ? 'Closed Paths (Watertight)' : 'Open/Hatched Paths allowed'}
+      - Topology: Closed Paths (Watertight); no hatching, stippling, or open sketch lines.
+      - Separation: Maintain 3-5mm minimum gap between unrelated elements to prevent tangent confusion and sliver regions. Clearly separate overlapping objects with intentional line intersections.
+      - Edge Safety: Leave an 8-10% blank margin on all sides; no elements may touch or cross the border.
+      - Rest Areas: ${
+        complexityKey === 'Moderate'
+          ? 'Include 4-6 REST AREAS (large empty white regions OR simple solid shapes with minimal internal lines). REST AREAS are NOT decorative motifs - they are calm visual breathing spaces. Distribute across composition.'
+          : complexityKey === 'Intricate'
+          ? 'Include 2-4 REST AREAS (larger simple shapes as visual anchors). REST AREAS = empty space, NOT decorative elements like clouds or flowers. Balance dense detail clusters with calm regions.'
+          : complexityKey === 'Extreme Detail'
+          ? 'Include 1-2 REST AREAS (larger simple shapes as visual anchors amidst maximum density).'
+          : ''
+      }
+      - Borders: ${
+        styleKey === 'Bold & Easy'
+          ? 'Include a thick, rounded decorative border frame. Border thickness must match main outlines. Soft rounded corners. 5-8% internal padding.'
+          : ''
+      }
+      - Scale: All objects must have realistic proportions relative to each other. No oversized accessories. Anchor scene with primary subject, scale everything else appropriately.
    ${typographyInstruction}
    [OUTPUT_FORMAT]: High-resolution line art, 300 DPI, Vector style, Black Ink on White Paper.
   `.trim().replace(/\s+/g, ' ');

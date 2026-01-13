@@ -48,13 +48,22 @@ export class DirectPromptService {
 
       INPUTS:
       - Idea: "${userIdea}"
-      - Audience: ${audience} (determines TONE, not density)
+      - Audience: ${audience} (determines TONE, THEMING, and SUBJECT MATTER - e.g., cute vs. dignified, child-friendly vs. adult themes)
       - Style: ${style}
-      - Complexity: ${complexity} (determines DENSITY)
+      - Complexity: ${complexity} (determines TECHNICAL SPECS: line weight, object density, background detail - these are independent of audience)
       - Pages: ${pageCount}
 
+      IMPORTANT: Audience and Complexity work TOGETHER, not in conflict:
+      - Audience controls WHAT subjects/themes to use and HOW to present them (tone)
+      - Complexity controls HOW MANY elements and HOW THICK the lines are (technical specs)
+      - Example: "Toddlers" audience + "Intricate" complexity = intricate detailed scenes with cute, child-friendly subjects
+      - Example: "Seniors" audience + "Very Simple" complexity = bold, simple shapes with nostalgic, dignified themes
+
       LOGIC MATRIX (COMPOSITION RULES):
-      - COMPOSITION RULE: Ensure all essential details are described as being in the 'center' or 'middle-ground'. Explicitly instruct the AI to leave a 10% empty margin around the edges of the 1024x1024 canvas to prevent cropping during PDF assembly.
+      - COMPOSITION RULE: Ensure all essential details are described as being in the 'center' or 'middle-ground'. Leave a 10% empty margin around edges to prevent cropping during PDF assembly.
+      - REST AREAS: REST AREAS = empty white space OR simple solid shapes with minimal lines. NOT decorative motifs like clouds, flowers, or stars. For Moderate: include 4-6 REST AREAS. For Intricate: include 2-4 REST AREAS. Balance dense clusters with breathing space.
+      - SEPARATION: Ensure 3-5mm separation between unrelated lines to avoid tangents.
+      - SCALE: All objects must have realistic proportions relative to each other. A phone should not be larger than a lamp. Anchor scene with primary subject and scale everything else appropriately.
 
       1. IF Complexity is 'Very Simple' (Level 1):
          - GOAL: "Bold and Easy" / Instant Gratification.
@@ -71,18 +80,20 @@ export class DirectPromptService {
 
       3. IF Complexity is 'Moderate' (Level 3):
          - GOAL: "Engagement".
-         - COMPOSITION: Standard scene with foreground/midground.
-         - BACKGROUND: Stylized but present.
+         - COMPOSITION: Standard scene with foreground/midground plus 4-6 REST AREAS. REST AREAS = empty white space or simple solid shapes, NOT decorative motifs like clouds/flowers/stars. Maintain 3-5mm separation.
+         - BACKGROUND: Stylized but present; avoid wall-to-wall micro texture. Keep some areas intentionally empty.
 
       4. IF Complexity is 'Intricate'/'Extreme':
          - GOAL: "Mastery" / "Horror Vacui".
-         - COMPOSITION: Edge-to-edge detail. Hidden objects.
-         - PROMPT TRICK: "An immersive, highly detailed [Subject] with hidden patterns in the textures."
+         - COMPOSITION: High detail with patterns/objects AND 2-4 REST AREAS (empty white space or simple anchor shapes). Maintain clear separation between elements.
+         - PROMPT TRICK: "An immersive, highly detailed [Subject] with 2-4 calm empty regions for coloring comfort."
 
-      AUDIENCE TUNING:
-      - IF Audience is 'Toddlers': Keep subjects cute, round, and friendly. 
+      AUDIENCE TUNING (TONE & THEMING ONLY - does NOT override complexity technical specs):
+      - IF Audience is 'Toddlers': Keep subjects cute, round, and friendly. Use child-appropriate themes.
       - IF Audience is 'Seniors': Prioritize NOSTALGIA and DIGNITY. Use themes like 'Vintage Objects', 'Nature', 'Travel'. Avoid 'childish' cartoons.
-      - IF Audience is 'Adults': Subjects can be architectural, abstract, or realistic.
+      - IF Audience is 'Adults': Subjects can be architectural, abstract, or realistic. Allow mature themes.
+      - IF Audience is 'S.E.N.' (Sensory Friendly): Use calming, predictable subjects. Avoid over-stimulating themes.
+      - Note: The Complexity setting still controls line weight, density, and technical details regardless of audience choice.
 
       GUIDELINES:
       1. ${textControlInstruction}
