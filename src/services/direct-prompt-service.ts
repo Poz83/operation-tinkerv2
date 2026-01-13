@@ -41,19 +41,20 @@ export class DirectPromptService {
       TASK: Create a coherent book plan based on the User's Idea.
 
       RESEARCH-BACKED DESIGN PHILOSOPHY:
-      1. THE MANDALA EFFECT: For 'Very Simple' or 'Simple' complexity, the goal is ANXIETY REDUCTION. Use repetitive, symmetrical, or 'bounded' elements. Avoid chaotic or random scattering.
+      1. THE MANDALA EFFECT: For 'Very Simple' or 'Simple' complexity, the goal is ANXIETY REDUCTION. Use repetitive, symmetrical, or 'bounded' elements. Avoid chaotic scattering.
       2. FUNCTIONAL REALISM: Objects must make physical sense. A bicycle must have pedals. A clock must have numbers or hands. Avoid "AI Dream Logic" (e.g., stairs leading nowhere).
-      3. VISUAL QUIET: Neurodivergent users need 'Visual Quiet'. Avoid 'noisy' textures. Every line must serve a purpose.
+      3. VISUAL QUIET: Neurodivergent users need 'Visual Quiet'. Avoid 'noisy' textures or random scribbles. Every line must serve a purpose.
       4. THE COZY FACTOR: For 'Bold & Easy' styles, prioritize 'Nostalgia' and 'Safety'. Use soft, rounded terminology in prompts.
 
       INPUTS:
       - Idea: "${userIdea}"
-      - Audience: ${audience} (determines TONE, not complexity)
+      - Audience: ${audience} (determines TONE, not density)
       - Style: ${style}
       - Complexity: ${complexity} (determines DENSITY)
       - Pages: ${pageCount}
 
       LOGIC MATRIX (COMPOSITION RULES):
+      - COMPOSITION RULE: Ensure all essential details are described as being in the 'center' or 'middle-ground'. Explicitly instruct the AI to leave a 10% empty margin around the edges of the 1024x1024 canvas to prevent cropping during PDF assembly.
 
       1. IF Complexity is 'Very Simple' (Level 1):
          - GOAL: "Bold and Easy" / Instant Gratification.
@@ -79,9 +80,8 @@ export class DirectPromptService {
          - PROMPT TRICK: "An immersive, highly detailed [Subject] with hidden patterns in the textures."
 
       AUDIENCE TUNING:
-      - The 'Audience' setting controls the *Tone* (Cute vs Serious), but 'Complexity' controls the *Density*.
-      - IF Audience is 'Toddlers': Keep subjects cute, round, and friendly. Recognition is key (e.g. "A Truck", not "A Vehicle").
-      - IF Audience is 'Seniors': Prioritize NOSTALGIA and DIGNITY. Use themes like 'Vintage Objects', 'Nature', 'Travel'. Avoid 'childish' cartoons. Ensure distinct separation of elements for visibility.
+      - IF Audience is 'Toddlers': Keep subjects cute, round, and friendly. 
+      - IF Audience is 'Seniors': Prioritize NOSTALGIA and DIGNITY. Use themes like 'Vintage Objects', 'Nature', 'Travel'. Avoid 'childish' cartoons.
       - IF Audience is 'Adults': Subjects can be architectural, abstract, or realistic.
 
       GUIDELINES:
@@ -94,7 +94,6 @@ export class DirectPromptService {
 
       3. NARRATIVE VARIATION: 
          - Don't just list objects. Give them a 'moment'. 
-         - Bad: "A cat." 
          - Good: "A chubby cat sleeping inside a cardboard box." (Nostalgia/Cozy).
 
       4. OUTPUT: Return a JSON array of ${pageCount} items.
@@ -143,13 +142,11 @@ export class DirectPromptService {
 
   async brainstormPrompt(rawPrompt: string): Promise<string> {
     const systemInstruction = `
-      You are a Prompt Engineer specialized in 'Bold and Easy' coloring books.
-      TRANSFORM the user's idea into a 'Cozy', 'Nostalgic', or 'Clear' concept.
-      
-      RULES:
-      1. If the idea is complex (e.g. "Cyberpunk City"), Simplify it to a focal point (e.g. "A futuristic vending machine").
-      2. Focus on NOUNS (objects) over ADJECTIVES (moods).
-      3. Keep it under 40 words.
+      You are a Prompt Engineer specialized in generative AI for coloring books. 
+      Take the user's simple idea and expand it into a descriptive coloring book scene. 
+      Add details about setting, mood, and specific elements to draw. 
+      Keep it under 40 words.
+      Focus on visual elements that translate well to black and white line art.
     `;
 
     try {

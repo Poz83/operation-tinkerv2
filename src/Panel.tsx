@@ -10,9 +10,12 @@ import { LoadingFX } from './LoadingFX';
 interface PanelProps {
     page?: ColoringPage;
     isBack: boolean;
+    generationPercent?: number;
+    completedPages?: number;
+    totalPages?: number;
 }
 
-export const Panel: React.FC<PanelProps> = ({ page, isBack }) => {
+export const Panel: React.FC<PanelProps> = ({ page, isBack, generationPercent = 0, completedPages = 0, totalPages = 0 }) => {
     const [isLoaded, setIsLoaded] = useState(false);
     const [hasError, setHasError] = useState(false);
 
@@ -51,7 +54,12 @@ export const Panel: React.FC<PanelProps> = ({ page, isBack }) => {
     return (
         <div className="w-full h-full bg-white relative overflow-hidden flex items-center justify-center group">
             {page.isLoading ? (
-                <LoadingFX />
+                <LoadingFX 
+                    label={`Generating page ${page.pageIndex}`}
+                    subLabel={`${Math.min(completedPages, totalPages)}/${totalPages || '?'} ready`}
+                    progress={generationPercent}
+                    accent="blue"
+                />
             ) : (
                 page.imageUrl && (
                     hasError ? (

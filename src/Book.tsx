@@ -19,6 +19,9 @@ export const Book: React.FC<BookProps> = ({ pages, currentSheetIndex, onSheetCli
     // Determine aspect ratio from pageSizeId
     const sizeConfig = PAGE_SIZES.find(s => s.id === pageSizeId) || PAGE_SIZES[0];
     const aspectRatio = sizeConfig.width / sizeConfig.height;
+    const totalPages = pages.length;
+    const completedPages = pages.filter(p => !p.isLoading).length;
+    const percentComplete = totalPages ? Math.round((completedPages / totalPages) * 100) : 0;
 
     const scrollRef = useRef<HTMLDivElement>(null);
     const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -130,7 +133,13 @@ export const Book: React.FC<BookProps> = ({ pages, currentSheetIndex, onSheetCli
                      {/* Content Wrapper with Keyed Animation */}
                      <div key={activePage.id} className={`w-full h-full ${slideClass}`}>
                         <ErrorBoundary>
-                            <Panel page={activePage} isBack={false} />
+                            <Panel 
+                                page={activePage} 
+                                isBack={false} 
+                                generationPercent={percentComplete}
+                                completedPages={completedPages}
+                                totalPages={totalPages}
+                            />
                         </ErrorBoundary>
                      </div>
 
@@ -167,9 +176,7 @@ export const Book: React.FC<BookProps> = ({ pages, currentSheetIndex, onSheetCli
                                 >
                                     <div className="absolute inset-0 bg-white">
                                         {page.isLoading ? (
-                                            <div className="w-full h-full bg-[#2c2c2e] flex items-center justify-center">
-                                                <div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
-                                            </div>
+                                            <div className="w-full h-full shimmer-tile bg-[#1c1c1d] border border-white/10" />
                                         ) : (
                                             <img 
                                                 src={page.imageUrl} 

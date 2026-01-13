@@ -31,14 +31,14 @@ export interface ComplexityRule {
 // ============================================================================
 
 export const STYLE_RULES: Record<string, StyleRule> = {
-  // --- 1. Bold & Easy (Market Leader) ---
+  // --- 1. Bold & Easy (Flagship Marker-Safe Style) ---
   'Bold & Easy': {
     id: 'kawaii_bold',
     label: 'Bold & Easy',
-    // UPDATED: Focused on "Alcohol Marker" physics (thick lines, big spaces) and "Dopamine"
-    positivePrompt: `bold and easy coloring page, distinct vector outlines, high-contrast line art, simple satisfying shapes, sticker art aesthetic, clean white background, alcohol marker friendly, minimal detail, joyous and clear, happiness-inducing composition, thick unvaried line weight.`,
-    negativePrompt: `shading, gradients, greyscale, hatching, cross-hatching, stippling, sharp angles, scary, horror, intricate detail, thin lines, scratchy lines, distorted anatomy, noise, dithering, realism, sketch, rough sketch, texture, fur texture, dirty lines, solid black fills, tiny gaps.`,
-    technicalDirectives: `Render with a simulated stroke width of 4px (Very Bold). Ensure all shapes are convex or simple concave. Maintain a minimum gap size of 5mm (Marker Safe). Enforce closed paths (Watertight).`,
+    // UPDATED: High-contrast, thick lines, and massive open areas for dopamine-hit coloring
+    positivePrompt: `bold and easy coloring page, distinct heavy vector outlines, high-contrast line art, simple satisfying hollow shapes, sticker art aesthetic, clean white background, alcohol marker friendly, minimal detail, joyous and clear, happiness-inducing composition, thick uniform line weight.`,
+    negativePrompt: `shading, gradients, greyscale, hatching, cross-hatching, stippling, sharp angles, scary, horror, intricate detail, thin lines, scratchy lines, distorted anatomy, noise, dithering, realism, sketch, rough sketch, texture, fur texture, dirty lines, solid black fills, tiny gaps, microscopic details.`,
+    technicalDirectives: `Render with a simulated stroke width of 4px (Very Bold). Ensure all shapes are convex or simple concave. Maintain a minimum gap size of 5mm (Marker Safe). Enforce strictly closed paths (Watertight).`,
     isFloodFillFriendly: true,
   },
 

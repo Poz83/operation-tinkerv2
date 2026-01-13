@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import JSZip from 'jszip';
 import { PAGE_SIZES, VISUAL_STYLES, TARGET_AUDIENCES, COMPLEXITY_LEVELS, ColoringPage } from './types';
 import { Setup } from './Setup';
@@ -13,6 +13,7 @@ import { ApiKeyDialog } from './ApiKeyDialog';
 import { processGeneration } from './server/jobs/process-generation';
 import { brainstormPrompt } from './services/geminiService';
 import { generateColoringBookPDF } from './utils/pdf-generator';
+import { motion } from 'framer-motion';
 
 const App: React.FC = () => {
   const { validateApiKey, showApiKeyDialog, handleApiKeyDialogContinue } = useApiKey();
@@ -288,6 +289,15 @@ const App: React.FC = () => {
     setIsEnhancing(false);
   };
 
+  const { completedPages, totalPages, derivedProgress } = useMemo(() => {
+    const total = pages.length || pageAmount;
+    const completed = pages.filter(p => !p.isLoading).length;
+    const percent = total ? Math.round((completed / total) * 100) : 0;
+    return { completedPages: completed, totalPages: total, derivedProgress: percent };
+  }, [pages, pageAmount]);
+
+  const displayProgress = isGenerating ? Math.max(progress, derivedProgress) : derivedProgress;
+
   return (
     <div className="dark h-screen w-screen overflow-hidden bg-[hsl(var(--background))] text-white selection:bg-white/30 font-sans flex">
       <div className="aurora-veil" />
@@ -363,12 +373,12 @@ const App: React.FC = () => {
             <div className="glass-stat mb-4 border border-white/5 bg-white/5">
               <div className="flex justify-between items-center mb-1">
                 <span className="label">Pages ready</span>
-                <span className={`trend ${progress < 100 && progress > 0 ? '' : 'text-zinc-500'}`}>
-                  {progress}% complete
+                <span className={`trend ${displayProgress < 100 && displayProgress > 0 ? '' : 'text-zinc-500'}`}>
+                  {displayProgress}% complete
                 </span>
               </div>
               <div className="flex items-end justify-between">
-                 <span className="value text-2xl text-white">{pages.filter(p => !p.isLoading).length}<span className="text-zinc-600 text-lg">/{pageAmount}</span></span>
+                 <span className="value text-2xl text-white">{completedPages}<span className="text-zinc-600 text-lg">/{totalPages || pageAmount}</span></span>
                  {isGenerating && <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mb-1" />}
               </div>
               
@@ -376,13 +386,13 @@ const App: React.FC = () => {
               <div className="w-full h-1 bg-white/10 rounded-full mt-3 overflow-hidden">
                 <div 
                   className="h-full bg-white transition-all duration-300 ease-out"
-                  style={{ width: `${progress}%` }}
+                  style={{ width: `${displayProgress}%` }}
                 />
               </div>
             </div>
 
             <div className="flex gap-3">
-              {(isGenerating || (progress > 0 && progress < 100)) ? (
+              {(isGenerating || (displayProgress > 0 && displayProgress < 100)) ? (
                 <button 
                   onClick={handleCancel} 
                   className="w-full py-3 rounded-xl border border-white/20 bg-white/5 text-white hover:bg-white/10 font-medium transition-all"
@@ -407,11 +417,59 @@ const App: React.FC = () => {
         
         {/* Workspace Top Bar */}
         <div className="absolute top-6 right-6 z-50 flex gap-4 pointer-events-none">
-           <div className="pointer-events-auto flex gap-3">
-              <div className="glass-pill border-white/10 bg-[hsl(var(--card))]/80">
-                  <span className={`dot ${isGenerating ? 'bg-white animate-pulse' : 'bg-zinc-500'}`} />
-                  {isGenerating ? 'Generating...' : 'Ready'}
-              </div>
+           <div className="pointer-events-auto flex gap-3 items-center">
+              {(isGenerating || displayProgress > 0) ? (
+                <div className="flex items-center gap-3 bg-[hsl(var(--card))]/85 border border-white/10 rounded-2xl px-3 py-2 shadow-lg backdrop-blur">
+                  <div className="relative w-10 h-10">
+                    <svg className="w-10 h-10" viewBox="0 0 100 100" aria-hidden>
+                      <circle
+                        cx="50"
+                        cy="50"
+                        r="42"
+                        fill="none"
+                        stroke="rgba(255,255,255,0.08)"
+                        strokeWidth="4"
+                        strokeDasharray={2 * Math.PI * 42}
+                      />
+                      <motion.circle
+                        cx="50"
+                        cy="50"
+                        r="42"
+                        fill="none"
+                        stroke="#a5b4ff"
+                        strokeWidth="4"
+                        strokeLinecap="round"
+                        strokeDasharray={2 * Math.PI * 42}
+                        initial={{ strokeDashoffset: 2 * Math.PI * 42 }}
+                        animate={{ strokeDashoffset: (1 - displayProgress / 100) * (2 * Math.PI * 42) }}
+                        transition={{ duration: 0.6, ease: 'easeInOut' }}
+                      />
+                    </svg>
+                    <div className="absolute inset-0 grid place-items-center text-[11px] font-semibold text-white">{displayProgress}%</div>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs font-semibold text-white leading-tight">
+                      {isGenerating ? 'Generating' : 'Processing'}
+                    </span>
+                    <span className="text-[11px] text-white/60 leading-tight">
+                      {completedPages}/{totalPages || pageAmount} pages ready
+                    </span>
+                  </div>
+                  {isGenerating && (
+                    <button 
+                      onClick={handleCancel} 
+                      className="text-[11px] font-semibold text-white/80 hover:text-white transition-colors px-2 py-1 rounded-lg border border-white/15 bg-white/5"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="glass-pill border-white/10 bg-[hsl(var(--card))]/80">
+                  <span className="dot bg-zinc-500" />
+                  Ready
+                </div>
+              )}
               
               {pages.some(p => !p.isLoading) && (
                 <div className="relative">

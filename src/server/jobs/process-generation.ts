@@ -7,6 +7,9 @@ import { DirectPromptService, BookPlanItem } from '../../services/direct-prompt-
 import { generateWithGemini } from '../ai/gemini-client';
 import { buildPrompt } from '../ai/prompts';
 
+// Simple utility to pause between generations (anti-hallucination cool-down)
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 export interface ProcessGenerationParams {
   userIdea: string;
   pageCount: number;
@@ -66,6 +69,26 @@ export const processGeneration = async (
   for (const item of plan) {
     if (params.signal?.aborted) throw new Error('Aborted');
 
+    // HYBRID RESOLUTION: Determine base size (1K vs 2K) from complexity
+    const isHighDetail = ['Moderate', 'Intricate', 'Extreme Detail'].includes(
+      item.complexityDescription
+    );
+    const baseSize = isHighDetail ? 2048 : 1024;
+
+    // DYNAMIC DIMENSIONS: Adjust width/height from aspect ratio
+    let finalWidth = baseSize;
+    let finalHeight = baseSize;
+    if (params.aspectRatio === '3:4') {
+      finalHeight = Math.round(baseSize * (4 / 3));
+    }
+
+    // PACING: Adaptive cool-down (longer for high detail)
+    const coolDown = isHighDetail ? 8000 : 4000;
+    if (item.pageNumber > 1) {
+      await sleep(coolDown);
+      if (params.signal?.aborted) throw new Error('Aborted');
+    }
+
     const { fullPrompt, fullNegativePrompt } = buildPrompt(
       item.prompt,
       params.style,
@@ -73,14 +96,15 @@ export const processGeneration = async (
       item.requiresText
     );
 
-    // Combine positive and negative prompts for the model
-    const finalPrompt = `${fullPrompt}\n\nNEGATIVE PROMPT: ${fullNegativePrompt}`;
-
+    // Trigger generation (per-page) after cool-down
     const result = await generateWithGemini({
-      prompt: finalPrompt,
+      prompt: fullPrompt,
+      negativePrompt: fullNegativePrompt,
       aspectRatio: params.aspectRatio,
-      resolution: '1K',
-      referenceImage: (params.hasHeroRef && params.heroImage) ? params.heroImage : undefined,
+      resolution: isHighDetail ? '2K' : '1K',
+      width: finalWidth,
+      height: finalHeight,
+      referenceImage: params.hasHeroRef && params.heroImage ? params.heroImage : undefined,
       signal: params.signal
     });
 

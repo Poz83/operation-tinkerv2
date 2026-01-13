@@ -10,9 +10,12 @@ export const GEMINI_IMAGE_MODEL = 'gemini-3-pro-image-preview';
 
 interface GenerateImageOptions {
   prompt: string;
+  negativePrompt?: string;
   referenceImage?: { base64: string; mimeType: string };
   aspectRatio: string;
   resolution?: '1K' | '2K'; // Default to '1K'
+  width?: number;
+  height?: number;
   signal?: AbortSignal;
 }
 
@@ -27,7 +30,19 @@ export interface GenerateImageResult {
  * the Gemini 3 Pro Image model in @google/genai SDK v1.27.0 utilizes 'imageSize' and 'aspectRatio' enums.
  * We ensure the passed configuration maps strictly to these supported values.
  */
-const getSmartDimensionConfig = (aspectRatio: string, resolution: '1K' | '2K' = '1K') => {
+const getSmartDimensionConfig = (
+  aspectRatio: string,
+  resolution: '1K' | '2K' | undefined,
+  width?: number,
+  height?: number
+) => {
+  // Derive imageSize from explicit resolution first; otherwise infer from dimensions.
+  if (!resolution) {
+    const maxDim = Math.max(width ?? 0, height ?? 0);
+    // Keep 1K for ~1024-based sizes (even with 3:4 at ~1365 height); use 2K when clearly larger.
+    resolution = maxDim >= 1536 ? '2K' : '1K';
+  }
+
   return {
     imageSize: resolution,
     aspectRatio: aspectRatio,
@@ -44,8 +59,12 @@ export const generateWithGemini = async (options: GenerateImageOptions): Promise
     // Always initialize with the current API key from environment
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
+    const promptText = options.negativePrompt
+      ? `${options.prompt}\n\nNEGATIVE PROMPT: ${options.negativePrompt}`
+      : options.prompt;
+
     const parts: Part[] = [
-      { text: options.prompt }
+      { text: promptText }
     ];
 
     if (options.referenceImage) {
@@ -57,7 +76,12 @@ export const generateWithGemini = async (options: GenerateImageOptions): Promise
       });
     }
 
-    const imageConfig = getSmartDimensionConfig(options.aspectRatio, options.resolution);
+    const imageConfig = getSmartDimensionConfig(
+      options.aspectRatio,
+      options.resolution,
+      options.width,
+      options.height
+    );
 
     const response = await ai.models.generateContent({
       model: GEMINI_IMAGE_MODEL,
