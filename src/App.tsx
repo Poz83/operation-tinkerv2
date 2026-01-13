@@ -262,54 +262,63 @@ const App: React.FC = () => {
     }
   };
 
+  const handleClear = () => {
+    // Cancel any ongoing generation
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    // Reset all form fields to defaults
+    setProjectName("My Coloring Book");
+    setPageAmount(5);
+    setPageSizeId(PAGE_SIZES[0].id);
+    setVisualStyle(VISUAL_STYLES[0].id);
+    setComplexity(COMPLEXITY_LEVELS[1]); // Default to 'Simple'
+    setTargetAudienceId(TARGET_AUDIENCES[0].id);
+    setUserPrompt("");
+    setHasHeroRef(false);
+    setHeroImage(null);
+    setIncludeText(false);
+    
+    // Clear generated pages and reset progress
+    setPages([]);
+    setProgress(0);
+    setCurrentSheetIndex(0);
+    setIsGenerating(false);
+    setIsEnhancing(false);
+  };
+
   return (
-    <div className="dark h-screen w-screen overflow-hidden bg-[#05060a] text-white selection:bg-indigo-500/30 font-sans relative">
+    <div className="dark h-screen w-screen overflow-hidden bg-[hsl(var(--background))] text-white selection:bg-white/30 font-sans flex">
       <div className="aurora-veil" />
       {showApiKeyDialog && <ApiKeyDialog onContinue={handleApiKeyDialogContinue} />}
 
-      {/* Floating top nav */}
-      <header className="glass-navbar">
-        <div className="nav-inner">
-          <div className="nav-brand">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 shadow-lg shadow-indigo-900/40 grid place-items-center text-sm font-bold">
+      {/* Sidebar - Fixed Left Panel */}
+      <div className="w-[400px] flex-shrink-0 h-full flex flex-col border-r border-white/5 bg-[hsl(var(--secondary))]/90 backdrop-blur-xl z-20 shadow-2xl">
+        
+        {/* Sidebar Header */}
+        <div className="h-18 px-6 py-5 border-b border-white/5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-zinc-100 shadow-lg grid place-items-center text-xs font-bold text-black border border-white/10">
               AI
             </div>
             <div>
-              <div className="text-sm uppercase tracking-[0.18em] text-zinc-400">Studio</div>
-              <div className="text-base font-semibold">Coloring Book Lab</div>
+              <div className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-bold">Studio</div>
+              <div className="text-sm font-semibold text-zinc-100">Coloring Book Lab</div>
             </div>
           </div>
-          <div className="nav-links">
-            <span className="glass-pill">
-              <span className="dot" />
-              {isGenerating ? 'Generating' : 'Idle'}
-            </span>
-            <button
-              className="btn-ghost"
+          <button
+              className="p-2 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-white/5 transition-colors"
               onClick={() => setIsDarkMode(!isDarkMode)}
+              title={isDarkMode ? 'Lights On' : 'Lights Off'}
             >
-              {isDarkMode ? 'Lights On' : 'Lights Off'}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
             </button>
-          </div>
         </div>
-      </header>
 
-      <main className="relative h-[calc(100vh-72px)] px-6 py-6 flex items-center justify-center">
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-25 pointer-events-none" />
-
-        <div className="relative w-full max-w-7xl grid grid-cols-1 lg:grid-cols-[360px,1fr] gap-6">
-          
-          {/* Floating control panel */}
-          <div className="glass-card h-[calc(100vh-120px)] overflow-hidden flex flex-col border border-white/10">
-            <div className="card-header">
-              <div className="card-title">Project Controls</div>
-              <div className="glass-chip is-success">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 6 9 17l-5-5"/></svg>
-                Synced
-              </div>
-            </div>
-            <div className="card-body flex-1 overflow-y-auto no-scrollbar pr-1">
-              <Setup 
+        {/* Setup Form - Scrollable Area */}
+        <div className="flex-1 overflow-y-auto no-scrollbar relative">
+           <Setup 
                 projectName={projectName}
                 setProjectName={setProjectName}
                 pageAmount={pageAmount}
@@ -343,83 +352,129 @@ const App: React.FC = () => {
                 setIncludeText={setIncludeText}
                 onSaveProject={handleSaveProject}
                 onLoadProject={handleLoadProject}
+                onClear={handleClear}
+                // Hide header/footer in Setup component since we handle it here
+                embeddedMode={true}
               />
-            </div>
-            <hr className="glass-divider" />
-            <div className="card-footer justify-between">
-              <div className="glass-stat">
+        </div>
+
+        {/* Sidebar Footer - Stats & Actions */}
+        <div className="p-6 border-t border-white/5 bg-[hsl(var(--background))]/40 backdrop-blur-md">
+            <div className="glass-stat mb-4 border border-white/5 bg-white/5">
+              <div className="flex justify-between items-center mb-1">
                 <span className="label">Pages ready</span>
-                <span className="value">{pages.filter(p => !p.isLoading).length}/{pageAmount}</span>
-                <span className={`trend ${progress < 100 ? '' : 'is-down'}`}>
+                <span className={`trend ${progress < 100 && progress > 0 ? '' : 'text-zinc-500'}`}>
                   {progress}% complete
                 </span>
               </div>
-              <div className="glass-chip is-danger cursor-pointer" onClick={handleCancel}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-                Cancel
+              <div className="flex items-end justify-between">
+                 <span className="value text-2xl text-white">{pages.filter(p => !p.isLoading).length}<span className="text-zinc-600 text-lg">/{pageAmount}</span></span>
+                 {isGenerating && <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mb-1" />}
+              </div>
+              
+              {/* Progress Bar */}
+              <div className="w-full h-1 bg-white/10 rounded-full mt-3 overflow-hidden">
+                <div 
+                  className="h-full bg-white transition-all duration-300 ease-out"
+                  style={{ width: `${progress}%` }}
+                />
               </div>
             </div>
-          </div>
 
-          {/* Floating workspace panel */}
-          <div className="glass-card relative h-[calc(100vh-120px)] overflow-hidden flex flex-col border border-white/10">
-            <div className="card-header justify-between">
-              <div>
-                <div className="glass-pill mb-2">
-                  <span className="dot" />
-                  Workspace
-                </div>
-                <div className="card-title">Preview & Exports</div>
-                <div className="card-subtitle">Your book pages float above the aurora grid.</div>
-              </div>
-              {pages.some(p => !p.isLoading) && (
-                <button
-                  onClick={() => setShowExportMenu(!showExportMenu)}
-                  className="btn-primary w-auto px-4 py-2 text-sm"
+            <div className="flex gap-3">
+              {(isGenerating || (progress > 0 && progress < 100)) ? (
+                <button 
+                  onClick={handleCancel} 
+                  className="w-full py-3 rounded-xl border border-white/20 bg-white/5 text-white hover:bg-white/10 font-medium transition-all"
                 >
-                  Export
+                  Cancel Generation
+                </button>
+              ) : (
+                <button 
+                  onClick={handleGenerate}
+                  disabled={!userPrompt}
+                  className="btn-primary w-full py-3 text-base shadow-lg"
+                >
+                  Generate Book
                 </button>
               )}
             </div>
+        </div>
+      </div>
 
-            <div className="relative flex-1 flex items-center justify-center overflow-hidden rounded-xl bg-black/30 border border-white/5">
-              <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none" />
+      {/* Main Workspace - Flexible Area */}
+      <main className="flex-1 h-full relative flex flex-col bg-transparent overflow-hidden">
+        
+        {/* Workspace Top Bar */}
+        <div className="absolute top-6 right-6 z-50 flex gap-4 pointer-events-none">
+           <div className="pointer-events-auto flex gap-3">
+              <div className="glass-pill border-white/10 bg-[hsl(var(--card))]/80">
+                  <span className={`dot ${isGenerating ? 'bg-white animate-pulse' : 'bg-zinc-500'}`} />
+                  {isGenerating ? 'Generating...' : 'Ready'}
+              </div>
+              
+              {pages.some(p => !p.isLoading) && (
+                <div className="relative">
+                   <button
+                    onClick={() => setShowExportMenu(!showExportMenu)}
+                    className="btn-primary w-auto px-5 py-2 text-sm shadow-none border-white/10 bg-white/10 hover:bg-white/20 text-white"
+                  >
+                    Export
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="ml-1"><path d="M6 9l6 6 6-6"/></svg>
+                  </button>
 
-              {pages.length === 0 ? (
-                <div className="text-center text-zinc-500 transition-colors p-8 animate-in fade-in duration-700 flex flex-col items-center">
-                  <div className="w-24 h-24 bg-white/5 rounded-3xl flex items-center justify-center mb-6 ring-1 ring-white/10 shadow-2xl">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-400"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-                  </div>
-                  <h2 className="text-xl font-medium text-zinc-200 mb-2">Floating workspace ready</h2>
-                  <p className="text-sm text-zinc-500 max-w-md">Configure your book settings on the left and click Generate to see pages materialize here.</p>
+                  {showExportMenu && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setShowExportMenu(false)} />
+                      <div className="absolute top-full right-0 mt-2 z-50 w-56 bg-[hsl(var(--popover))] border border-white/10 rounded-xl shadow-2xl p-1.5 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150">
+                        <button onClick={() => {downloadPDF(); setShowExportMenu(false);}} className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-white/5 text-sm text-zinc-200 flex items-center gap-3 transition-colors">
+                            <span className="w-8 h-8 rounded-md bg-white/10 text-white grid place-items-center border border-white/20"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg></span>
+                            <div>
+                              <div className="font-medium">PDF Document</div>
+                              <div className="text-[10px] text-zinc-500">Printable format</div>
+                            </div>
+                        </button>
+                        <button onClick={() => {downloadZIP(); setShowExportMenu(false);}} className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-white/5 text-sm text-zinc-200 flex items-center gap-3 transition-colors">
+                            <span className="w-8 h-8 rounded-md bg-white/10 text-white grid place-items-center border border-white/20"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path></svg></span>
+                             <div>
+                              <div className="font-medium">Image ZIP</div>
+                              <div className="text-[10px] text-zinc-500">High-res PNGs</div>
+                            </div>
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
-              ) : (
-                <Book 
-                    pages={pages}
-                    currentSheetIndex={currentSheetIndex}
-                    onSheetClick={(idx) => setCurrentSheetIndex(idx)}
-                    pageSizeId={pageSizeId}
-                />
               )}
+           </div>
+        </div>
 
-              {/* Export menu */}
-              {pages.some(p => !p.isLoading) && showExportMenu && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setShowExportMenu(false)} />
-                  <div className="absolute top-6 right-6 z-50 w-60 bg-[#0f1016]/95 border border-white/10 rounded-2xl shadow-2xl p-2 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150">
-                    <button onClick={() => {downloadPDF(); setShowExportMenu(false);}} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/5 text-sm text-zinc-200 flex items-center gap-3 transition-colors">
-                        <span className="glass-chip is-danger"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>PDF</span>
-                        PDF Document
-                    </button>
-                    <button onClick={() => {downloadZIP(); setShowExportMenu(false);}} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/5 text-sm text-zinc-200 flex items-center gap-3 transition-colors">
-                        <span className="glass-chip"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path></svg>ZIP</span>
-                        Image ZIP
-                    </button>
-                  </div>
-                </>
-              )}
+        {/* Workspace Canvas */}
+        <div className="flex-1 flex items-center justify-center relative overflow-hidden">
+          {/* Background Effects */}
+          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none mix-blend-overlay" />
+          
+          {pages.length === 0 ? (
+            <div className="text-center text-zinc-500 transition-colors p-8 animate-in fade-in duration-700 flex flex-col items-center max-w-md">
+              <div className="w-32 h-32 bg-gradient-to-tr from-white/5 to-transparent rounded-full flex items-center justify-center mb-8 ring-1 ring-white/10 shadow-2xl relative overflow-hidden">
+                <div className="absolute inset-0 bg-white/5 blur-xl"></div>
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="text-white/20 relative z-10"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              </div>
+              <h2 className="text-2xl font-semibold text-white mb-3 tracking-tight">Your Canvas is Empty</h2>
+              <p className="text-base text-zinc-400 leading-relaxed">
+                Configure your coloring book settings in the sidebar panel. 
+                <br />
+                When you're ready, click <span className="text-white font-medium">Generate Book</span> to create your masterpiece.
+              </p>
             </div>
-          </div>
+          ) : (
+            <Book 
+                pages={pages}
+                currentSheetIndex={currentSheetIndex}
+                onSheetClick={(idx) => setCurrentSheetIndex(idx)}
+                pageSizeId={pageSizeId}
+            />
+          )}
         </div>
       </main>
     </div>

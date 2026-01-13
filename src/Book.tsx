@@ -111,14 +111,20 @@ export const Book: React.FC<BookProps> = ({ pages, currentSheetIndex, onSheetCli
         <div className="relative w-full h-full flex flex-col bg-transparent">
             
             {/* Main Canvas Area */}
-            <div className="flex-1 min-h-0 w-full flex items-center justify-center p-8 pb-32">
+            <div className="flex-1 min-h-0 w-full flex items-center justify-center p-12 pb-32">
+                {/* Floating Page Number - moved outside canvas to prevent clipping */}
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 bg-[#1E1E1F]/70 backdrop-blur-md px-4 py-1 rounded-full text-xs font-medium text-white border border-white/10 transition-all pointer-events-none">
+                    {activePage.isCover ? 'Cover' : `Page ${activePage.pageIndex}`}
+                </div>
+                
                 <div 
-                    className="relative bg-white shadow-2xl shadow-black/50 ring-1 ring-white/10 rounded-sm transition-all duration-300 overflow-hidden"
+                    className="relative bg-white shadow-2xl shadow-black/20 ring-1 ring-white/10 rounded-sm transition-all duration-300 overflow-hidden"
                     style={{ 
                         aspectRatio: `${aspectRatio}`,
-                        height: '100%', 
-                        maxHeight: '100%',
-                        maxWidth: '100%' 
+                        width: 'auto',
+                        height: '100%',
+                        maxWidth: '100%',
+                        maxHeight: '100%'
                     }}
                 >
                      {/* Content Wrapper with Keyed Animation */}
@@ -126,11 +132,6 @@ export const Book: React.FC<BookProps> = ({ pages, currentSheetIndex, onSheetCli
                         <ErrorBoundary>
                             <Panel page={activePage} isBack={false} />
                         </ErrorBoundary>
-                     </div>
-                     
-                     {/* Floating Page Number */}
-                     <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-white/10 backdrop-blur-md px-4 py-1 rounded-full text-xs font-medium text-white/80 border border-white/5 transition-all">
-                        {activePage.isCover ? 'Cover' : `Page ${activePage.pageIndex}`}
                      </div>
 
                      {/* Subtle Loading Indicator during Transitions */}
@@ -143,8 +144,8 @@ export const Book: React.FC<BookProps> = ({ pages, currentSheetIndex, onSheetCli
             </div>
 
             {/* Slider Bar */}
-            <div className="absolute bottom-6 left-0 right-0 z-30 flex justify-center items-end px-6 pointer-events-none">
-                <div className="pointer-events-auto bg-[#1c1c1e]/80 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl shadow-black/50 p-2 max-w-2xl w-full mx-auto animate-in slide-in-from-bottom-6 duration-500">
+            <div className="absolute bottom-8 left-0 right-0 z-30 flex justify-center items-end px-6 pointer-events-none">
+                <div className="pointer-events-auto bg-[#1E1E1F]/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl shadow-black/30 p-2 max-w-4xl w-full mx-auto animate-in slide-in-from-bottom-6 duration-500">
                     <div 
                         ref={scrollRef}
                         className="flex items-center gap-3 overflow-x-auto no-scrollbar px-2 snap-x"
@@ -159,7 +160,7 @@ export const Book: React.FC<BookProps> = ({ pages, currentSheetIndex, onSheetCli
                                     className={`
                                         group relative flex-shrink-0 rounded-lg overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] snap-center
                                         ${isActive 
-                                            ? 'w-16 h-20 opacity-100 ring-2 ring-indigo-500 shadow-lg shadow-indigo-500/20 z-10 scale-110' 
+                                            ? 'w-16 h-20 opacity-100 ring-2 ring-white shadow-lg shadow-black/20 z-10 scale-110' 
                                             : 'w-12 h-16 opacity-40 hover:opacity-80 hover:scale-105 hover:w-14 grayscale hover:grayscale-0'
                                         }
                                     `}

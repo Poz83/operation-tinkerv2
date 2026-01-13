@@ -36,7 +36,7 @@ export const STYLE_RULES: Record<string, StyleRule> = {
     id: 'kawaii_bold',
     label: 'Bold & Easy',
     positivePrompt: `kawaii aesthetic, cute rounded vector illustration, thick uniform black outlines, simple geometric shapes, bold line art, mascot style, sticker art, clean white background, minimal detail, joyous expression, rounded corners, soft edges, children's book illustration style, Adobe Illustrator vector, no shading, flat 2D.`,
-    negativePrompt: `shading, gradients, greyscale, hatching, cross-hatching, stippling, sharp angles, scary, horror, intricate detail, thin lines, scratchy lines, distorted anatomy, noise, dithering, realism, sketch, rough sketch, texture, fur texture, dirty lines.`,
+    negativePrompt: `shading, gradients, greyscale, hatching, cross-hatching, stippling, sharp angles, scary, horror, intricate detail, thin lines, scratchy lines, distorted anatomy, noise, dithering, realism, sketch, rough sketch, texture, fur texture, dirty lines, solid black fills.`,
     technicalDirectives: `Render with a simulated stroke width of 4px to 6px (Bold). Ensure all shapes are convex or simple concave. Maintain a minimum gap size of 5mm between lines. Enforce closed paths for all major shapes (Watertight). Add a white offset border around the main subject (Sticker cutline).`,
     isFloodFillFriendly: true,
   },
@@ -46,7 +46,7 @@ export const STYLE_RULES: Record<string, StyleRule> = {
     id: 'kawaii_classic',
     label: 'Kawaii',
     positivePrompt: `Japanese Kawaii mascot style, chibi proportions (1:1 head body), shimmering anime eyes, floating sparkles and bubbles, soft rounded vector shapes, marshmallow aesthetic, extremely cute, innocent expression, thick smooth ink lines.`,
-    negativePrompt: `realistic anatomy, scary, sharp edges, rough sketch, hatching, shading, grime, dirty, serious, aggressive.`,
+    negativePrompt: `realistic anatomy, scary, sharp edges, rough sketch, hatching, shading, grime, dirty, serious, aggressive, solid black eyes.`,
     technicalDirectives: `Use uniform rounded line caps. No sharp points. Eyes must be large and distinct.`,
     isFloodFillFriendly: true,
   },
@@ -86,7 +86,7 @@ export const STYLE_RULES: Record<string, StyleRule> = {
     id: 'mandala_sacred',
     label: 'Mandala',
     positivePrompt: `complex mandala design, radial symmetry, sacred geometry, kaleidoscope pattern, zentangle style, precise vector geometry, mathematical patterns, tessellation, perfectly centered, circular composition, crisp architectural lines, meditative pattern.`,
-    negativePrompt: `asymmetry, organic chaos, broken lines, sketching, shading, grey fill, humans, faces, animals, text, signature, blurry lines.`,
+    negativePrompt: `asymmetry, organic chaos, broken lines, sketching, shading, grey fill, humans, faces, animals, text, signature, blurry lines, solid black fills.`,
     technicalDirectives: `Enforce strict 8-fold or 12-fold radial symmetry. Lines must be mechanically consistent weight. No solid black fills > 5%.`,
     isFloodFillFriendly: true,
   },
@@ -125,9 +125,9 @@ export const STYLE_RULES: Record<string, StyleRule> = {
   'Geometric': {
     id: 'geometric_poly',
     label: 'Geometric',
-    positivePrompt: `low poly vector art, sacred geometry, crystalline structures, straight lines only, sharp angles, polygonal mesh, mathematical aesthetic, abstract facets, digital constructivism.`,
-    negativePrompt: `curves, organic shapes, circles, messy sketch, hand-drawn, soft, blurry, realistic.`,
-    technicalDirectives: `STRICTLY NO CURVES. Use straight ruler lines only. Suggest depth via subdivision of triangles.`,
+    positivePrompt: `low poly vector art, wireframe style, sacred geometry, crystalline structures, straight lines only, sharp angles, polygonal mesh, mathematical aesthetic, abstract facets, digital constructivism, hollow shapes.`,
+    negativePrompt: `curves, organic shapes, circles, messy sketch, hand-drawn, soft, blurry, realistic, solid faces, filled triangles, black polygons.`,
+    technicalDirectives: `STRICTLY NO CURVES. Use straight ruler lines only. Suggest depth via subdivision of triangles. DO NOT FILL FACETS.`,
     isFloodFillFriendly: true,
   },
 
@@ -179,25 +179,25 @@ export const STYLE_RULES: Record<string, StyleRule> = {
 export const COMPLEXITY_RULES: Record<string, ComplexityRule> = {
   'Very Simple': {
     id: 'level_1',
-    label: 'Level 1: Minimalist (Bold)', // WAS: "Toddler"
+    label: 'Level 1: Minimalist (Bold)', 
     targetAudience: 'Early Childhood',
-    objectDensityInstruction: `Generate EXACTLY ONE central object. It must occupy 60-80% of the canvas. NO background elements; pure white void.`,
-    lineWeightInstruction: `Use EXTREMELY THICK outlines (3mm-4mm). Min gap: 10mm.`,
+    objectDensityInstruction: `Generate EXACTLY ONE central object. It must occupy 60-80% of the canvas. NO background elements; pure white void. Ensure high white-space ratio. No solid black fills.`,
+    lineWeightInstruction: `Bold, clear outlines (1.5mm - 2mm). ALL shapes must be hollow.`,
     backgroundInstruction: 'White void. No patterns.',
-    negativePrompt: `background, texture, tiny details, complex patterns, multiple objects, text, hatching.`,
+    negativePrompt: `background, texture, tiny details, complex patterns, multiple objects, text, hatching, solid black fills, filled shapes, heavy shadows, silhouette.`,
   },
   'Simple': {
     id: 'level_2',
-    label: 'Level 2: Simple (Clear)', // WAS: "Kids"
+    label: 'Level 2: Simple (Clear)', 
     targetAudience: 'Elementary',
     objectDensityInstruction: `Simple scene, 1-3 primary subjects. Basic background hints only. Clear separation.`,
-    lineWeightInstruction: `Bold outlines (2mm) for main subjects. Min gap: 5mm.`,
+    lineWeightInstruction: `Standard Bold outlines (1mm - 1.5mm).`,
     backgroundInstruction: `Simple contextual background. No pattern fills.`,
-    negativePrompt: `intricate, hatching, tiny stars, excessive foliage, abstract noise, grayscale shading.`,
+    negativePrompt: `intricate, hatching, tiny stars, excessive foliage, abstract noise, grayscale shading, solid black areas, filled regions.`,
   },
   'Moderate': {
     id: 'level_3',
-    label: 'Level 3: Moderate (Standard)', // WAS: "Teen"
+    label: 'Level 3: Moderate (Standard)', 
     targetAudience: 'Young Adult',
     objectDensityInstruction: `Full scene. Balance detailed focal points with resting space.`,
     lineWeightInstruction: `Standard line weight (0.8mm - 1mm). Min gap: 2mm.`,
@@ -206,7 +206,7 @@ export const COMPLEXITY_RULES: Record<string, ComplexityRule> = {
   },
   'Intricate': {
     id: 'level_4',
-    label: 'Level 4: Intricate (Detailed)', // WAS: "Adult Expert"
+    label: 'Level 4: Intricate (Detailed)', 
     targetAudience: 'Adult',
     objectDensityInstruction: `High density. "Horror Vacui" style. Every part of canvas offers a coloring opportunity.`,
     lineWeightInstruction: `Fine line work (0.3mm - 0.5mm). Min gap: 1mm.`,
@@ -215,7 +215,7 @@ export const COMPLEXITY_RULES: Record<string, ComplexityRule> = {
   },
   'Extreme Detail': {
     id: 'level_5',
-    label: 'Level 5: Masterwork (Micro)', // WAS: "Extreme Detail"
+    label: 'Level 5: Masterwork (Micro)', 
     targetAudience: 'Master',
     objectDensityInstruction: `Maximum density. Hidden object style. Microscopic details.`,
     lineWeightInstruction: `Micro-fine lines (0.1mm - 0.2mm).`,
@@ -239,6 +239,7 @@ STRICT RULES:
 4. RESPECT THE COMPLEXITY LEVEL.
 5. NO TEXT OR WATERMARKS (unless explicitly requested).
 6. TOPOLOGY: Ensure paths are closed loops (watertight) for digital flood fill where possible.
+7. COLORABILITY: Do not fill areas with black. All distinct regions must be white to allow user coloring.
 `;
 
 export const buildPrompt = (

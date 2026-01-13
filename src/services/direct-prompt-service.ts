@@ -40,45 +40,44 @@ export class DirectPromptService {
       ROLE: Creative Director for a professional coloring book series.
       TASK: Create a coherent book plan based on the User's Idea.
 
-      STYLE GUIDE (ANTI-AI LOOK):
-      - AVOID generic descriptions (e.g., 'A dog sitting').
-      - USE ARTISTIC keywords: 'Woodcut style', 'Stippling texture', 'Cross-hatching suggestions', 'Organic ink flow', 'Whimsical storybook illustration'.
-      - COMPOSITION: Avoid 'centered floating objects'. Suggest backgrounds with 'distinct separation' but 'immersive framing'.
-      
-      OBJECT LOGIC & INTEGRITY:
-      - FUNCTIONAL REALISM: If an object has a function (e.g., 'a chair', 'a bicycle', 'a house'), describe its key structural parts (e.g., 'legs', 'wheels', 'roof') to prevent abstract blobs.
-      - INTERACTION: Ensure characters interact logically with their environment (e.g., feet planted on ground, hands gripping objects firmly).
-      - SPECIFICITY: Avoid generic labels. Instead of 'a toy', say 'a teddy bear with stitched seams'. Instead of 'a plant', say 'a potted fern with fronds'.
+      STYLE GUIDE (HUMAN DESIGNER LOGIC):
+      - VISUAL CLARITY: A coloring page is about *shapes*, not just *lines*. Ensure every object described has a clear, closed silhouette.
+      - AVOID CLUTTER: Do not describe "busy" or "chaotic" scenes unless the Complexity is 'Extreme'.
+      - FUNCTIONAL REALISM: If an object has a function (e.g., 'a bicycle'), describe its key structural parts (e.g., 'wheels', 'handlebars') to prevent abstract blobs.
+      - SPECIFICITY: Avoid generic labels. Instead of 'a toy', say 'a teddy bear with stitched seams'. 
 
       INPUTS:
       - Idea: "${userIdea}"
       - Audience: ${audience}
       - Style: ${style}
+      - Complexity: ${complexity}
       - Pages: ${pageCount}
-      - Hero Reference Available: ${hasHeroRef}
 
-      INTUITION RULES:
-      
-      DENSITY CONTROL (Based on Complexity: "${complexity}"):
-      - IF Complexity is 'Very Simple' or 'Simple': 
-          - PROMPT RULE: Keep scenes focused on 1-3 distinct objects. 
-          - BACKGROUND: minimal or empty. 
-          - DETAIL: Describe broad shapes, avoid "intricate", "detailed", or "complex" descriptors.
-      - IF Complexity is 'Intricate' or 'Extreme Detail':
-          - PROMPT RULE: Describe lush, full environments. 
-          - BACKGROUND: detailed and immersive.
-          - DETAIL: Use descriptors like "highly detailed", "rich patterns", "intricate textures".
-      - ELSE (Moderate):
-          - PROMPT RULE: Balanced composition, clear subject with contextual background.
-      
-      AUDIENCE TUNING (Audience: "${audience}"):
-      - IF Audience is 'Toddlers': Subject matter must be cute, safe, and recognizable.
-      - IF Audience is 'Seniors': High contrast, clear sections.
-      - IF Audience is 'Adults': Subject matter can be serious, abstract, or architectural.
+      LOGIC MATRIX (COMPOSITION RULES):
 
-      CHARACTER LOYALTY:
-      - RESPECT THE USER'S SUBJECT: If user says 'Man', draw an ADULT. If user says 'Girl', draw a CHILD. Do not default to 'child characters' just because the Audience is 'Kids'.
-      - AUDIENCE IMPACT: The 'Audience' setting controls the *subject matter tone*, while Complexity controls the *detail level*.
+      1. IF Complexity is 'Very Simple' (Level 1):
+         - COMPOSITION: Single, isolated subject. Centered. 
+         - BACKGROUND: NONE. White void.
+         - DETAIL: Focus on large, distinct shapes. No tiny details.
+         - EXAMPLE: Instead of "A forest full of animals", ask for "A single cute fox sitting."
+
+      2. IF Complexity is 'Simple' (Level 2):
+         - COMPOSITION: Main subject with 1-2 minor props.
+         - BACKGROUND: Minimal hints (e.g., "a simple cloud," "a ground line").
+         - DETAIL: Clear separation between objects.
+
+      3. IF Complexity is 'Moderate' (Level 3):
+         - COMPOSITION: Balanced scene. Subject + Environment.
+         - BACKGROUND: Standard scenic elements but keep it open.
+
+      4. IF Complexity is 'Intricate' or 'Extreme Detail':
+         - COMPOSITION: "Horror Vacui" (Fear of empty space). Lush, full scenes.
+         - BACKGROUND: Fully immersive textures and patterns.
+
+      AUDIENCE TUNING:
+      - The 'Audience' setting controls the *Tone* (Cute vs Serious), but 'Complexity' controls the *Density*.
+      - IF Audience is 'Toddlers': Keep subjects cute, round, and friendly.
+      - IF Audience is 'Adults': Subjects can be architectural, abstract, or realistic.
 
       GUIDELINES:
       1. ${textControlInstruction}
