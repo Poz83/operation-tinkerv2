@@ -31,13 +31,14 @@ export interface ComplexityRule {
 // ============================================================================
 
 export const STYLE_RULES: Record<string, StyleRule> = {
-  // --- 1. Bold & Easy ---
+  // --- 1. Bold & Easy (Market Leader) ---
   'Bold & Easy': {
     id: 'kawaii_bold',
     label: 'Bold & Easy',
-    positivePrompt: `kawaii aesthetic, cute rounded vector illustration, thick uniform black outlines, simple geometric shapes, bold line art, mascot style, sticker art, clean white background, minimal detail, joyous expression, rounded corners, soft edges, children's book illustration style, Adobe Illustrator vector, no shading, flat 2D.`,
-    negativePrompt: `shading, gradients, greyscale, hatching, cross-hatching, stippling, sharp angles, scary, horror, intricate detail, thin lines, scratchy lines, distorted anatomy, noise, dithering, realism, sketch, rough sketch, texture, fur texture, dirty lines, solid black fills.`,
-    technicalDirectives: `Render with a simulated stroke width of 4px to 6px (Bold). Ensure all shapes are convex or simple concave. Maintain a minimum gap size of 5mm between lines. Enforce closed paths for all major shapes (Watertight). Add a white offset border around the main subject (Sticker cutline).`,
+    // UPDATED: Focused on "Alcohol Marker" physics (thick lines, big spaces) and "Dopamine"
+    positivePrompt: `bold and easy coloring page, distinct vector outlines, high-contrast line art, simple satisfying shapes, sticker art aesthetic, clean white background, alcohol marker friendly, minimal detail, joyous and clear, happiness-inducing composition, thick unvaried line weight.`,
+    negativePrompt: `shading, gradients, greyscale, hatching, cross-hatching, stippling, sharp angles, scary, horror, intricate detail, thin lines, scratchy lines, distorted anatomy, noise, dithering, realism, sketch, rough sketch, texture, fur texture, dirty lines, solid black fills, tiny gaps.`,
+    technicalDirectives: `Render with a simulated stroke width of 4px (Very Bold). Ensure all shapes are convex or simple concave. Maintain a minimum gap size of 5mm (Marker Safe). Enforce closed paths (Watertight).`,
     isFloodFillFriendly: true,
   },
 
@@ -111,23 +112,25 @@ export const STYLE_RULES: Record<string, StyleRule> = {
     isFloodFillFriendly: true,
   },
 
-  // --- 9. Cozy ---
+  // --- 9. Cozy (The Nostalgia Factor) ---
   'Cozy': {
     id: 'cozy_hygge',
     label: 'Cozy',
-    positivePrompt: `hygge aesthetic line art, warm and inviting, soft textures, heaped composition (books, blankets, tea), rounded organic shapes, relaxing atmosphere, home comfort, knitwear patterns, steam swirls.`,
-    negativePrompt: `cold, sharp, industrial, scary, aggressive, high energy, dynamic action, empty space.`,
-    technicalDirectives: `Use short curved strokes to suggest soft textures (wool, fur). Perspective should be intimate and close-up.`,
+    // UPDATED: Added "Nostalgia" and "Safe Regression" keywords from research
+    positivePrompt: `hygge aesthetic line art, warm and inviting, nostalgia-inducing, vintage comfort, soft textures, heaped composition (books, blankets, tea), rounded organic shapes, relaxing atmosphere, home comfort, slow living aesthetic, gentle distinct lines.`,
+    negativePrompt: `cold, sharp, industrial, scary, aggressive, high energy, dynamic action, empty space, modern tech, jagged lines.`,
+    technicalDirectives: `Use short curved strokes to suggest soft textures (wool, fur) but keep them sparse to allow coloring. Perspective should be intimate and close-up.`,
     isFloodFillFriendly: true,
   },
 
-  // --- 10. Geometric ---
+  // --- 10. Geometric (Updated for Functional Realism) ---
   'Geometric': {
     id: 'geometric_poly',
     label: 'Geometric',
-    positivePrompt: `low poly vector art, wireframe style, sacred geometry, crystalline structures, straight lines only, sharp angles, polygonal mesh, mathematical aesthetic, abstract facets, digital constructivism, hollow shapes.`,
-    negativePrompt: `curves, organic shapes, circles, messy sketch, hand-drawn, soft, blurry, realistic, solid faces, filled triangles, black polygons.`,
-    technicalDirectives: `STRICTLY NO CURVES. Use straight ruler lines only. Suggest depth via subdivision of triangles. DO NOT FILL FACETS.`,
+    // CHANGED: From "Low Poly" to "Art Deco/Vector"
+    positivePrompt: `clean vector line art, geometric composition, art deco influence, symmetry, distinct shapes, architectural precision, drafting style, technical illustration, blueprint aesthetic (black on white), precise angles.`,
+    negativePrompt: `organic chaos, messy sketch, blurry, hand-drawn, low poly, wireframe, mesh, confusing topology, impossible geometry.`,
+    technicalDirectives: `Use ruler-straight lines for man-made objects. Maintain perfect symmetry where appropriate. Ensure functional parts (gears, wheels) are clearly defined circles, not polygons.`,
     isFloodFillFriendly: true,
   },
 
