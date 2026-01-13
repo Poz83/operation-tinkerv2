@@ -67,7 +67,7 @@ export interface GenerationPageLog {
   requiresText: boolean;
   fullPrompt: string;
   fullNegativePrompt: string;
-  resolution: '1K' | '2K' | string;
+  resolution: '1K' | '2K' | '4K';
   width: number;
   height: number;
   aspectRatio: string;

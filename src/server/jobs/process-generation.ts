@@ -43,7 +43,7 @@ export const processGeneration = async (
     fullNegativePrompt: string;
     startedAt?: string;
     finishedAt?: string;
-    resolution: '1K' | '2K';
+    resolution: '1K' | '2K' | '4K';
     width: number;
     height: number;
   }> = [];
@@ -111,12 +111,30 @@ export const processGeneration = async (
   for (const item of plan) {
     if (params.signal?.aborted) throw new Error('Aborted');
 
-    // HYBRID RESOLUTION: Determine base size (1K vs 2K) from params.complexity (user selection)
-    // Note: Use params.complexity, NOT item.complexityDescription (which is AI-generated text)
-    const isHighDetail = ['Moderate', 'Intricate', 'Extreme Detail'].includes(
-      params.complexity
-    );
-    const baseSize = isHighDetail ? 2048 : 1024;
+    // TIERED RESOLUTION: Map complexity to resolution tier
+    // 1K = Very Simple, Simple | 2K = Moderate | 4K = Intricate, Extreme Detail
+    let targetResolution: '1K' | '2K' | '4K' = '1K';
+    let baseSize = 1024;
+
+    switch (params.complexity) {
+      case 'Very Simple':
+      case 'Simple':
+        targetResolution = '1K';
+        baseSize = 1024;
+        break;
+      case 'Moderate':
+        targetResolution = '2K';
+        baseSize = 2048;
+        break;
+      case 'Intricate':
+      case 'Extreme Detail':
+        targetResolution = '4K';
+        baseSize = 4096;
+        break;
+      default:
+        targetResolution = '1K';
+        baseSize = 1024;
+    }
 
     // DYNAMIC DIMENSIONS: Adjust width/height from aspect ratio
     let finalWidth = baseSize;
@@ -125,10 +143,40 @@ export const processGeneration = async (
       finalHeight = Math.round(baseSize * (4 / 3));
     }
 
-    // PACING: Adaptive cool-down (longer for high detail)
-    const coolDown = isHighDetail ? 8000 : 4000;
+    // PACING: Adaptive cool-down based on resolution tier
+    const coolDown = targetResolution === '4K' ? 12000 :
+                     targetResolution === '2K' ? 8000 : 4000;
     if (item.pageNumber > 1) {
-      await sleep(coolDown);
+      // Fire cooldown start event
+      onPageEvent?.({
+        type: 'cooldown_start',
+        pageNumber: item.pageNumber,
+        cooldownMs: coolDown,
+        batchId: params.batchId || '',
+      });
+
+      // Countdown with periodic updates (every second)
+      const countdownInterval = 1000;
+      for (let remaining = coolDown; remaining > 0; remaining -= countdownInterval) {
+        if (params.signal?.aborted) throw new Error('Aborted');
+
+        onPageEvent?.({
+          type: 'cooldown_progress',
+          pageNumber: item.pageNumber,
+          remainingMs: remaining,
+          batchId: params.batchId || '',
+        });
+
+        await sleep(Math.min(countdownInterval, remaining));
+      }
+
+      // Fire cooldown end event
+      onPageEvent?.({
+        type: 'cooldown_end',
+        pageNumber: item.pageNumber,
+        batchId: params.batchId || '',
+      });
+
       if (params.signal?.aborted) throw new Error('Aborted');
     }
 
@@ -147,7 +195,7 @@ export const processGeneration = async (
       pageNumber: item.pageNumber,
       batchId: params.batchId || '',
       aspectRatio: params.aspectRatio,
-      resolution: isHighDetail ? '2K' : '1K',
+      resolution: targetResolution,
       width: finalWidth,
       height: finalHeight,
       fullPrompt,
@@ -159,7 +207,7 @@ export const processGeneration = async (
       prompt: fullPrompt,
       negativePrompt: fullNegativePrompt,
       aspectRatio: params.aspectRatio,
-      resolution: isHighDetail ? '2K' : '1K',
+      resolution: targetResolution,
       width: finalWidth,
       height: finalHeight,
       referenceImage: params.hasHeroRef && params.heroImage ? params.heroImage : undefined,
@@ -183,6 +231,13 @@ export const processGeneration = async (
       let qa: any = null;
 
       try {
+        // Fire QA start event
+        onPageEvent?.({
+          type: 'qa_start',
+          pageNumber: item.pageNumber,
+          batchId: params.batchId || '',
+        });
+
         qa = await evaluatePublishability({
           dataUrl: result.imageUrl,
           complexity: params.complexity,
@@ -191,6 +246,15 @@ export const processGeneration = async (
         qaScore = qa.score0to100;
         qaHardFail = qa.hardFail;
         qaHardReasons = qa.hardFailReasons;
+
+        // Fire QA complete event
+        onPageEvent?.({
+          type: 'qa_complete',
+          pageNumber: item.pageNumber,
+          score: qaScore,
+          hardFail: qaHardFail,
+          batchId: params.batchId || '',
+        });
       } catch (err) {
         console.warn('QA evaluation failed; proceeding without score', err);
       }
@@ -203,6 +267,14 @@ export const processGeneration = async (
         if (needsRetry) {
           console.log(`Page ${item.pageNumber} hard failed (score: ${qaScore}). Retrying with repair directives...`);
 
+          // Fire retry start event
+          onPageEvent?.({
+            type: 'retry_start',
+            pageNumber: item.pageNumber,
+            reason: 'QA hard fail',
+            batchId: params.batchId || '',
+          });
+
           // Build repair directive
           const repairSuffix = buildRepairSuffix(qaHardReasons);
           const repairPrompt = `${fullPrompt}${repairSuffix}`;
@@ -213,7 +285,7 @@ export const processGeneration = async (
               prompt: repairPrompt,
               negativePrompt: fullNegativePrompt,
               aspectRatio: params.aspectRatio,
-              resolution: isHighDetail ? '2K' : '1K',
+              resolution: targetResolution,
               width: finalWidth,
               height: finalHeight,
               referenceImage: params.hasHeroRef && params.heroImage ? params.heroImage : undefined,
@@ -241,6 +313,14 @@ export const processGeneration = async (
                 totalRetriesDone++;
 
                 console.log(`Retry complete. New score: ${qaScore}, hardFail: ${qaHardFail}`);
+
+                // Fire retry complete event
+                onPageEvent?.({
+                  type: 'retry_complete',
+                  pageNumber: item.pageNumber,
+                  newScore: qaScore,
+                  batchId: params.batchId || '',
+                });
               } catch (err) {
                 console.warn('Retry QA evaluation failed; using retry image anyway', err);
                 currentImageUrl = retryResult.imageUrl;
@@ -267,7 +347,7 @@ export const processGeneration = async (
         fullNegativePrompt,
         startedAt: startedAtIso,
         finishedAt: finishedAtIso,
-        resolution: isHighDetail ? '2K' : '1K',
+        resolution: targetResolution,
         width: finalWidth,
         height: finalHeight,
       });
@@ -288,7 +368,7 @@ export const processGeneration = async (
         batchId: params.batchId || '',
         imageUrl: currentImageUrl,
         aspectRatio: params.aspectRatio,
-        resolution: isHighDetail ? '2K' : '1K',
+        resolution: targetResolution,
         width: finalWidth,
         height: finalHeight,
         fullPrompt: currentFullPrompt,

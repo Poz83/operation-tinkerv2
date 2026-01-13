@@ -13,7 +13,7 @@ interface GenerateImageOptions {
   negativePrompt?: string;
   referenceImage?: { base64: string; mimeType: string };
   aspectRatio: string;
-  resolution?: '1K' | '2K'; // Default to '1K'
+  resolution?: '1K' | '2K' | '4K'; // Tiered: 1K (simple), 2K (moderate), 4K (intricate)
   width?: number;
   height?: number;
   signal?: AbortSignal;
@@ -32,15 +32,17 @@ export interface GenerateImageResult {
  */
 const getSmartDimensionConfig = (
   aspectRatio: string,
-  resolution: '1K' | '2K' | undefined,
+  resolution: '1K' | '2K' | '4K' | undefined,
   width?: number,
   height?: number
 ) => {
   // Derive imageSize from explicit resolution first; otherwise infer from dimensions.
   if (!resolution) {
     const maxDim = Math.max(width ?? 0, height ?? 0);
-    // Keep 1K for ~1024-based sizes (even with 3:4 at ~1365 height); use 2K when clearly larger.
-    resolution = maxDim >= 1536 ? '2K' : '1K';
+    // Tiered resolution inference based on dimensions
+    if (maxDim >= 3000) resolution = '4K';
+    else if (maxDim >= 1536) resolution = '2K';
+    else resolution = '1K';
   }
 
   return {

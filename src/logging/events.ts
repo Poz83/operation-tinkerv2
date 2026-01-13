@@ -30,4 +30,45 @@ export type PageGenerationEvent =
       type: 'error';
       pageNumber: number;
       error: string;
-    } & Pick<GenerationPageLog, 'batchId' | 'startedAt' | 'finishedAt' | 'latencyMs'>);
+    } & Pick<GenerationPageLog, 'batchId' | 'startedAt' | 'finishedAt' | 'latencyMs'>)
+  | {
+      type: 'cooldown_start';
+      pageNumber: number;
+      cooldownMs: number;
+      batchId: string;
+    }
+  | {
+      type: 'cooldown_progress';
+      pageNumber: number;
+      remainingMs: number;
+      batchId: string;
+    }
+  | {
+      type: 'cooldown_end';
+      pageNumber: number;
+      batchId: string;
+    }
+  | {
+      type: 'qa_start';
+      pageNumber: number;
+      batchId: string;
+    }
+  | {
+      type: 'qa_complete';
+      pageNumber: number;
+      score: number;
+      hardFail: boolean;
+      batchId: string;
+    }
+  | {
+      type: 'retry_start';
+      pageNumber: number;
+      reason: string;
+      batchId: string;
+    }
+  | {
+      type: 'retry_complete';
+      pageNumber: number;
+      newScore: number;
+      batchId: string;
+    };

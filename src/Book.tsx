@@ -168,20 +168,43 @@ export const Book: React.FC<BookProps> = ({ pages, currentSheetIndex, onSheetCli
                                     onClick={() => onSheetClick(idx)}
                                     className={`
                                         group relative flex-shrink-0 rounded-lg overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] snap-center
-                                        ${isActive 
-                                            ? 'w-16 h-20 opacity-100 ring-2 ring-white shadow-lg shadow-black/20 z-10 scale-110' 
-                                            : 'w-12 h-16 opacity-40 hover:opacity-80 hover:scale-105 hover:w-14 grayscale hover:grayscale-0'
+                                        ${isActive
+                                            ? 'w-16 h-20 opacity-100 ring-2 ring-purple-500 shadow-lg shadow-purple-500/50 z-10 scale-110'
+                                            : 'w-12 h-16 opacity-40 hover:opacity-80 hover:scale-105 hover:w-14 hover:ring-2 hover:ring-purple-500/30 grayscale hover:grayscale-0'
                                         }
                                     `}
                                 >
                                     <div className="absolute inset-0 bg-white">
                                         {page.isLoading ? (
-                                            <div className="w-full h-full shimmer-tile bg-[#1c1c1d] border border-white/10" />
+                                            <div className="w-full h-full shimmer-tile bg-[#1c1c1d] border border-white/10 relative">
+                                                {page.status && (
+                                                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 p-2">
+                                                        <div className={`px-1.5 py-0.5 rounded-full text-[9px] font-medium transition-all duration-200 ${
+                                                            page.status === 'cooldown' ? 'bg-amber-500 text-white' :
+                                                            page.status === 'generating' ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' :
+                                                            page.status === 'qa_checking' ? 'bg-purple-500 text-white' :
+                                                            page.status === 'retrying' ? 'bg-orange-500 text-white' :
+                                                            'bg-zinc-700 text-zinc-300'
+                                                        }`}>
+                                                            {page.status === 'cooldown' && page.cooldownRemaining ? `⏱ ${page.cooldownRemaining}s` :
+                                                             page.status === 'generating' ? 'Creating...' :
+                                                             page.status === 'qa_checking' ? 'Checking' :
+                                                             page.status === 'retrying' ? 'Fixing...' :
+                                                             'Up next'}
+                                                        </div>
+                                                        {page.statusMessage && isActive && (
+                                                            <div className="text-[8px] text-white/40 text-center line-clamp-2">
+                                                                {page.statusMessage}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
                                         ) : (
-                                            <img 
-                                                src={page.imageUrl} 
-                                                alt={`Thumbnail ${idx}`} 
-                                                className="w-full h-full object-cover" 
+                                            <img
+                                                src={page.imageUrl}
+                                                alt={`Thumbnail ${idx}`}
+                                                className="w-full h-full object-cover"
                                             />
                                         )}
                                     </div>

@@ -33,42 +33,52 @@ export const COMPLEXITY_LEVELS = [
 ];
 
 export const TARGET_AUDIENCES = [
-  { 
-    id: 'toddlers', 
-    label: 'Toddlers (1-3)', 
-    prompt: 'Ultra simple, massive shapes, extra thick lines, no background details, single central subject' 
+  {
+    id: 'toddlers',
+    label: 'Toddlers (1-3)',
+    prompt: 'Ultra simple, massive shapes, extra thick lines, no background details, single central subject'
   },
-  { 
-    id: 'preschool', 
-    label: 'Preschool (3-5)', 
-    prompt: 'Simple scenes, thick lines, large clearly defined areas, cheerful characters' 
+  {
+    id: 'preschool',
+    label: 'Preschool (3-5)',
+    prompt: 'Simple scenes, thick lines, large clearly defined areas, cheerful characters'
   },
-  { 
-    id: 'kids', 
-    label: 'Kids (6-10)', 
-    prompt: 'Standard complexity, fun detailed scenes, medium line weight, storytelling elements' 
+  {
+    id: 'kids',
+    label: 'Kids (6-10)',
+    prompt: 'Standard complexity, fun detailed scenes, medium line weight, storytelling elements'
   },
-  { 
-    id: 'teens', 
-    label: 'Teens', 
-    prompt: 'Moderate complexity, stylish, dynamic poses, standard line weight' 
+  {
+    id: 'teens',
+    label: 'Teens',
+    prompt: 'Moderate complexity, stylish, dynamic poses, standard line weight'
   },
-  { 
-    id: 'adults', 
-    label: 'Adults', 
-    prompt: 'Intricate, fine lines, high detail, complex patterns, mindfulness style' 
+  {
+    id: 'adults',
+    label: 'Adults',
+    prompt: 'Intricate, fine lines, high detail, complex patterns, mindfulness style'
   },
-  { 
-    id: 'seniors', 
-    label: 'Seniors (Large Format)', 
-    prompt: 'High visibility, thick clean lines, distinct sections, avoid tiny details, clear subject matter' 
+  {
+    id: 'seniors',
+    label: 'Seniors (Large Format)',
+    prompt: 'High visibility, thick clean lines, distinct sections, avoid tiny details, clear subject matter'
   },
-  { 
-    id: 'sen', 
-    label: 'S.E.N. (Sensory Friendly)', 
-    prompt: 'Calming composition, clear uncluttered lines, predictable shapes, avoid visual noise' 
+  {
+    id: 'sen',
+    label: 'S.E.N. (Sensory Friendly)',
+    prompt: 'Calming composition, clear uncluttered lines, predictable shapes, avoid visual noise'
   }
 ];
+
+export type PageStatus =
+  | 'queued'         // In queue, not started
+  | 'planning'       // Being included in generation plan
+  | 'cooldown'       // Waiting for cooldown before generation
+  | 'generating'     // API call in progress
+  | 'qa_checking'    // Running QA evaluation
+  | 'retrying'       // Failed QA, retrying
+  | 'complete'       // Successfully generated
+  | 'error';         // Failed
 
 export interface ColoringPage {
   id: string;
@@ -77,4 +87,9 @@ export interface ColoringPage {
   isLoading: boolean;
   pageIndex: number;
   isCover?: boolean;
+  status?: PageStatus;
+  statusMessage?: string;
+  cooldownRemaining?: number;
+  startedAt?: Date;
+  completedAt?: Date;
 }

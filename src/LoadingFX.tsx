@@ -41,6 +41,12 @@ export const LoadingFX: React.FC<LoadingFXProps> = ({
                     viewBox="0 0 100 100"
                     aria-hidden
                 >
+                    <defs>
+                        <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#8B5CF6" />
+                            <stop offset="100%" stopColor="#EC4899" />
+                        </linearGradient>
+                    </defs>
                     <circle
                         cx="50"
                         cy="50"
@@ -57,7 +63,7 @@ export const LoadingFX: React.FC<LoadingFXProps> = ({
                         cy="50"
                         r="38"
                         fill="none"
-                        stroke={accentColor}
+                        stroke="url(#progressGradient)"
                         strokeWidth="2.5"
                         strokeLinecap="round"
                         strokeDasharray={ringStyle.circumference}
@@ -78,32 +84,31 @@ export const LoadingFX: React.FC<LoadingFXProps> = ({
                 {/* Inner pulse */}
                 {!prefersReducedMotion && (
                     <motion.div
-                        className="absolute w-10 h-10 rounded-full border border-white/10"
+                        className="absolute w-10 h-10 rounded-full border border-purple-500/20"
                         animate={{ opacity: [0.6, 0.2, 0.6], scale: [1, 1.08, 1] }}
                         transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
-                        style={{ boxShadow: `0 0 0 1px ${accentColor}22` }}
+                        style={{ boxShadow: '0 0 0 1px rgba(139, 92, 246, 0.13)' }}
                     />
                 )}
 
                 {/* Center dot */}
                 <div
-                    className="relative z-20 w-3 h-3 rounded-full"
+                    className="relative z-20 w-3 h-3 rounded-full bg-gradient-to-br from-purple-500 to-pink-500"
                     style={{
-                        background: accentColor,
-                        boxShadow: `0 0 0 6px ${accentColor}15, 0 0 32px ${accentColor}40`
+                        boxShadow: '0 0 0 6px rgba(139, 92, 246, 0.08), 0 0 32px rgba(139, 92, 246, 0.25)'
                     }}
                 />
             </div>
 
             <div className="mt-4 flex flex-col items-center text-center">
-                <p className="text-sm font-semibold tracking-tight text-white">
+                <p className="text-sm font-semibold tracking-tight bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
                     {label}
                 </p>
                 <p className="text-[11px] text-white/60 mt-1">
                     {subLabel}
                 </p>
                 <div className="mt-3 px-3 py-1 rounded-full text-[10px] font-medium text-white/70 bg-white/5 border border-white/10">
-                    {clampedProgress}% ready
+                    {clampedProgress}% complete!
                 </div>
             </div>
         </div>

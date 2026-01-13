@@ -18,6 +18,9 @@ import { batchLogStore, isBatchLoggingEnabled } from './logging/batchLog';
 import { dataUrlToBlob } from './logging/utils';
 import { PageGenerationEvent } from './logging/events';
 import { BatchLogPanel } from './BatchLogPanel';
+import { Navigation } from './Navigation';
+import { ToastContainer } from './Toast';
+import { useToast } from './hooks/useToast';
 
 const BATCH_LOGS_ENABLED = isBatchLoggingEnabled();
 
@@ -41,10 +44,15 @@ const App: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [activePageNumber, setActivePageNumber] = useState<number | null>(null);
+  const [generationPhase, setGenerationPhase] = useState<'planning' | 'generating' | 'complete'>('planning');
   const [currentSheetIndex, setCurrentSheetIndex] = useState(0);
   const [isDarkMode, setIsDarkMode] = useState(true); 
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showBatchLogs, setShowBatchLogs] = useState(false);
+
+  // Toast notifications
+  const toast = useToast();
 
   // Cancellation
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -131,6 +139,93 @@ const App: React.FC = () => {
       }
 
       const handlePageEvent = async (event: PageGenerationEvent) => {
+        // Update UI state based on event type
+        switch (event.type) {
+          case 'start':
+            setPages(prev => prev.map(p =>
+              p.pageIndex === event.pageNumber - 1
+                ? { ...p, status: 'generating', statusMessage: 'Generating image...', startedAt: new Date() }
+                : p
+            ));
+            setActivePageNumber(event.pageNumber);
+            setGenerationPhase('generating');
+            break;
+
+          case 'success':
+            setPages(prev => prev.map(p =>
+              p.pageIndex === event.pageNumber - 1
+                ? { ...p, status: 'complete', completedAt: new Date() }
+                : p
+            ));
+            break;
+
+          case 'error':
+            setPages(prev => prev.map(p =>
+              p.pageIndex === event.pageNumber - 1
+                ? { ...p, status: 'error', statusMessage: event.error }
+                : p
+            ));
+            break;
+
+          case 'cooldown_start':
+            setPages(prev => prev.map(p =>
+              p.pageIndex === event.pageNumber - 1
+                ? {
+                    ...p,
+                    status: 'cooldown',
+                    statusMessage: `Waiting ${Math.ceil(event.cooldownMs / 1000)}s before next page`,
+                    cooldownRemaining: Math.ceil(event.cooldownMs / 1000)
+                  }
+                : p
+            ));
+            break;
+
+          case 'cooldown_progress':
+            setPages(prev => prev.map(p =>
+              p.pageIndex === event.pageNumber - 1
+                ? {
+                    ...p,
+                    cooldownRemaining: Math.ceil(event.remainingMs / 1000),
+                    statusMessage: `${Math.ceil(event.remainingMs / 1000)}s remaining...`
+                  }
+                : p
+            ));
+            break;
+
+          case 'cooldown_end':
+            // Status will be updated by the next 'start' event
+            break;
+
+          case 'qa_start':
+            setPages(prev => prev.map(p =>
+              p.pageIndex === event.pageNumber - 1
+                ? { ...p, status: 'qa_checking', statusMessage: 'Running quality checks...' }
+                : p
+            ));
+            break;
+
+          case 'qa_complete':
+            // Status updated based on whether retry is needed (handled by retry events)
+            break;
+
+          case 'retry_start':
+            setPages(prev => prev.map(p =>
+              p.pageIndex === event.pageNumber - 1
+                ? { ...p, status: 'retrying', statusMessage: 'Quality issue detected, retrying...' }
+                : p
+            ));
+            break;
+
+          case 'retry_complete':
+            setPages(prev => prev.map(p =>
+              p.pageIndex === event.pageNumber - 1
+                ? { ...p, statusMessage: `Retry complete (score: ${event.newScore})` }
+                : p
+            ));
+            break;
+        }
+
+        // Logging (only if enabled)
         if (!loggingEnabled || !batchId) return;
 
         if (event.type === 'start') {
@@ -205,11 +300,13 @@ const App: React.FC = () => {
           const newPages: ColoringPage[] = [];
 
           finalPlan.forEach((item) => {
-            newPages.push({ 
-              id: `page-${item.pageNumber}`, 
-              prompt: item.prompt, 
-              isLoading: true, 
-              pageIndex: item.pageNumber 
+            newPages.push({
+              id: `page-${item.pageNumber}`,
+              prompt: item.prompt,
+              isLoading: true,
+              pageIndex: item.pageNumber,
+              status: 'queued',
+              statusMessage: 'Queued'
             });
           });
 
@@ -323,14 +420,14 @@ const App: React.FC = () => {
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { heroImage, ...rest } = projectConfig;
           localStorage.setItem('coloring_book_config', JSON.stringify(rest));
-          alert("Project saved, but the reference image was too large to store.");
+          toast.warning("Project saved! (Your image was too big to save with it.)", "⚠️");
       } else {
           localStorage.setItem('coloring_book_config', serialized);
-          alert("Project configuration saved to browser storage.");
+          toast.success("Project saved successfully!", "✅");
       }
     } catch (e) {
       console.error(e);
-      alert("Could not save project. Storage quota exceeded.");
+      toast.error("Out of storage space! Try deleting old projects.", "😅");
     }
   };
 
@@ -338,7 +435,7 @@ const App: React.FC = () => {
     try {
       const saved = localStorage.getItem('coloring_book_config');
       if (!saved) {
-        alert("No saved project found.");
+        toast.info("No saved project found. Start fresh?", "🔍");
         return;
       }
       const config = JSON.parse(saved);
@@ -353,11 +450,11 @@ const App: React.FC = () => {
       if (config.hasHeroRef !== undefined) setHasHeroRef(config.hasHeroRef);
       if (config.heroImage) setHeroImage(config.heroImage);
       if (config.includeText !== undefined) setIncludeText(config.includeText);
-      
-      alert("Project loaded successfully.");
+
+      toast.success("Project loaded!", "🎉");
     } catch (e) {
       console.error(e);
-      alert("Failed to load project configuration.");
+      toast.error("Couldn't load that project. Try another?", "😕");
     }
   };
 
@@ -397,11 +494,16 @@ const App: React.FC = () => {
   const displayProgress = isGenerating ? Math.max(progress, derivedProgress) : derivedProgress;
 
   return (
-    <div className="dark h-screen w-screen overflow-hidden bg-[hsl(var(--background))] text-white selection:bg-white/30 font-sans flex">
+    <div className="dark h-screen w-screen overflow-hidden bg-[hsl(var(--background))] text-white selection:bg-white/30 font-sans flex flex-col">
       <div className="aurora-veil" />
       {showApiKeyDialog && <ApiKeyDialog onContinue={handleApiKeyDialogContinue} />}
 
-      {/* Sidebar - Fixed Left Panel */}
+      {/* Navigation Bar */}
+      <Navigation />
+
+      {/* Main Content Wrapper */}
+      <div className="flex flex-1 pt-16">
+        {/* Sidebar - Fixed Left Panel */}
       <div className="w-[400px] flex-shrink-0 h-full flex flex-col border-r border-white/5 bg-[hsl(var(--secondary))]/90 backdrop-blur-xl z-20 shadow-2xl">
         
         {/* Sidebar Header */}
@@ -426,7 +528,7 @@ const App: React.FC = () => {
 
         {/* Setup Form - Scrollable Area */}
         <div className="flex-1 overflow-y-auto no-scrollbar relative">
-           <Setup 
+           <Setup
                 projectName={projectName}
                 setProjectName={setProjectName}
                 pageAmount={pageAmount}
@@ -461,6 +563,14 @@ const App: React.FC = () => {
                 onSaveProject={handleSaveProject}
                 onLoadProject={handleLoadProject}
                 onClear={handleClear}
+                showToast={(type, message, emoji) => {
+                  switch (type) {
+                    case 'success': toast.success(message, emoji); break;
+                    case 'error': toast.error(message, emoji); break;
+                    case 'warning': toast.warning(message, emoji); break;
+                    case 'info': toast.info(message, emoji); break;
+                  }
+                }}
                 // Hide header/footer in Setup component since we handle it here
                 embeddedMode={true}
               />
@@ -470,19 +580,19 @@ const App: React.FC = () => {
         <div className="p-6 border-t border-white/5 bg-[hsl(var(--background))]/40 backdrop-blur-md">
             <div className="flex gap-3">
               {(isGenerating || (displayProgress > 0 && displayProgress < 100)) ? (
-                <button 
-                  onClick={handleCancel} 
+                <button
+                  onClick={handleCancel}
                   className="w-full py-3 rounded-xl border border-white/20 bg-white/5 text-white hover:bg-white/10 font-medium transition-all"
                 >
-                  Cancel Generation
+                  Stop Creating
                 </button>
               ) : (
-                <button 
+                <button
                   onClick={handleGenerate}
                   disabled={!userPrompt}
                   className="btn-primary w-full py-3 text-base shadow-lg"
                 >
-                  Generate Book
+                  ✨ Create My Book
                 </button>
               )}
             </div>
@@ -525,11 +635,21 @@ const App: React.FC = () => {
                     <div className="absolute inset-0 grid place-items-center text-[11px] font-semibold text-white">{displayProgress}%</div>
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-xs font-semibold text-white leading-tight">
-                      {isGenerating ? 'Generating' : 'Processing'}
-                    </span>
+                    {generationPhase === 'planning' ? (
+                      <span className="text-xs font-semibold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent leading-tight">
+                        🎨 Planning your pages...
+                      </span>
+                    ) : generationPhase === 'generating' && activePageNumber ? (
+                      <span className="text-xs font-semibold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent leading-tight">
+                        ✨ Creating page {activePageNumber}
+                      </span>
+                    ) : (
+                      <span className="text-xs font-semibold text-white leading-tight">
+                        {Math.round(displayProgress)}% complete!
+                      </span>
+                    )}
                     <span className="text-[11px] text-white/60 leading-tight">
-                      {completedPages}/{totalPages || pageAmount} pages ready
+                      {completedPages} of {totalPages || pageAmount} complete
                     </span>
                   </div>
                   {isGenerating && (
@@ -600,15 +720,13 @@ const App: React.FC = () => {
           
           {pages.length === 0 ? (
             <div className="text-center text-zinc-500 transition-colors p-8 animate-in fade-in duration-700 flex flex-col items-center max-w-md">
-              <div className="w-32 h-32 bg-gradient-to-tr from-white/5 to-transparent rounded-full flex items-center justify-center mb-8 ring-1 ring-white/10 shadow-2xl relative overflow-hidden">
-                <div className="absolute inset-0 bg-white/5 blur-xl"></div>
-                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="text-white/20 relative z-10"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-              </div>
-              <h2 className="text-2xl font-semibold text-white mb-3 tracking-tight">Your Canvas is Empty</h2>
-              <p className="text-base text-zinc-400 leading-relaxed">
-                Configure your coloring book settings in the sidebar panel. 
-                <br />
-                When you're ready, click <span className="text-white font-medium">Generate Book</span> to create your masterpiece.
+              <div className="text-7xl animate-bounce mb-6">🎨</div>
+              <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent mb-4">
+                Ready to Create Your Coloring Book?
+              </h2>
+              <p className="text-base text-white/60 leading-relaxed">
+                Configure your book settings on the left and click "Create My Book"
+                to generate professional coloring pages ready for KDP.
               </p>
             </div>
           ) : (
@@ -621,6 +739,11 @@ const App: React.FC = () => {
           )}
         </div>
       </main>
+      </div>
+      {/* End Main Content Wrapper */}
+
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toast.toasts} onRemove={toast.remove} />
 
       {BATCH_LOGS_ENABLED && (
         <BatchLogPanel
