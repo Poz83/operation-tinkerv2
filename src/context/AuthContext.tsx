@@ -35,9 +35,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 .from('users')
                 .select('is_whitelisted, is_admin')
                 .eq('id', userId)
-                .single();
+                .single() as { data: { is_whitelisted: boolean; is_admin: boolean } | null; error: unknown };
 
-            if (error) {
+            if (error || !data) {
                 console.error('Error fetching user details:', error);
                 return null;
             }

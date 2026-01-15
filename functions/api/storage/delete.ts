@@ -8,10 +8,10 @@
  */
 
 interface Env {
-    R2_PROJECTS: R2Bucket;
-    R2_AVATARS: R2Bucket;
-    R2_EXPORTS: R2Bucket;
-    R2_FEEDBACK: R2Bucket;
+    PROJECTS_BUCKET: R2Bucket;
+    AVATARS_BUCKET: R2Bucket;
+    EXPORTS_BUCKET: R2Bucket;
+    FEEDBACK_BUCKET: R2Bucket;
 }
 
 interface DeleteRequest {
@@ -42,10 +42,10 @@ export const onRequestDelete: PagesFunction<Env> = async (context) => {
 
         // Get the appropriate bucket binding
         const bucketMap: Record<string, R2Bucket> = {
-            projects: context.env.R2_PROJECTS,
-            avatars: context.env.R2_AVATARS,
-            exports: context.env.R2_EXPORTS,
-            feedback: context.env.R2_FEEDBACK,
+            projects: context.env.PROJECTS_BUCKET,
+            avatars: context.env.AVATARS_BUCKET,
+            exports: context.env.EXPORTS_BUCKET,
+            feedback: context.env.FEEDBACK_BUCKET,
         };
 
         const r2Bucket = bucketMap[bucket];

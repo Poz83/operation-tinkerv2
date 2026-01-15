@@ -5,10 +5,6 @@
  * Uses R2 bucket bindings for direct access.
  */
 
-interface Env {
-    FEEDBACK_BUCKET: R2Bucket;
-}
-
 export const onRequestGet: PagesFunction<Env> = async (context) => {
     try {
         const { request, env } = context;

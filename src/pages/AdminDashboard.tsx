@@ -63,7 +63,7 @@ export const AdminDashboard: React.FC = () => {
 
     const toggleFeature = async (id: string, currentValue: boolean) => {
         try {
-            const { error } = await supabase.from('feature_flags').update({ enabled: !currentValue } as any).eq('id', id);
+            const { error } = await supabase.from('feature_flags').update({ enabled: !currentValue }).eq('id', id);
             if (!error) {
                 setFeatureFlags(prev => prev.map(f => f.id === id ? { ...f, enabled: !currentValue } : f));
             }
@@ -74,7 +74,7 @@ export const AdminDashboard: React.FC = () => {
 
     const toggleWhitelist = async (userId: string, currentValue: boolean) => {
         try {
-            const { error } = await supabase.from('users').update({ is_whitelisted: !currentValue } as any).eq('id', userId);
+            const { error } = await supabase.from('users').update({ is_whitelisted: !currentValue }).eq('id', userId);
             if (!error) {
                 setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_whitelisted: !currentValue } : u));
             }

@@ -153,7 +153,7 @@ export async function saveProject(project: SavedProject): Promise<SavedProject> 
                 description: project.userPrompt,
                 cover_image_url: project.thumbnail || null,
                 updated_at: new Date().toISOString()
-            } as any)
+            })
             .eq('id', projectId);
 
         if (updateError) {
@@ -170,7 +170,7 @@ export async function saveProject(project: SavedProject): Promise<SavedProject> 
                 audience: project.targetAudienceId,
                 complexity: project.complexity,
                 page_count: project.pageAmount
-            } as any);
+            });
 
         if (dataError) {
             console.error('Error updating coloring studio data:', dataError);
@@ -205,7 +205,7 @@ async function createNewProject(userId: string, project: SavedProject): Promise<
             title: project.projectName || 'Untitled Project',
             description: project.userPrompt,
             cover_image_url: project.thumbnail || null
-        } as any)
+        })
         .select('id, public_id, created_at, updated_at')
         .single();
 
@@ -225,7 +225,7 @@ async function createNewProject(userId: string, project: SavedProject): Promise<
             audience: project.targetAudienceId,
             complexity: project.complexity,
             page_count: project.pageAmount
-        } as any);
+        });
 
     if (dataError) {
         console.error('Error creating coloring studio data:', dataError);
@@ -254,7 +254,7 @@ export async function deleteProject(publicId: string): Promise<void> {
     // Soft delete by setting is_archived = true
     const { error } = await supabase
         .from('projects')
-        .update({ is_archived: true } as any)
+        .update({ is_archived: true })
         .eq('public_id', publicId)
         .eq('user_id', user.id);
 

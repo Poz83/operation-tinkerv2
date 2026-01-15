@@ -5,10 +5,6 @@
  * Binding must be configured in Cloudflare Pages Settings > Functions > R2 bucket bindings
  */
 
-interface Env {
-    FEEDBACK_BUCKET: R2Bucket;
-}
-
 export const onRequestPost: PagesFunction<Env> = async (context) => {
     try {
         const { env, request } = context;
