@@ -121,20 +121,4 @@ export const useAuth = () => {
     return context;
 };
 
-// Backwards compatibility - keep login function signature similar
-// This is a convenience wrapper for components expecting the old API
-export const useAuthCompat = () => {
-    const auth = useAuth();
 
-    return {
-        isAuthenticated: auth.isAuthenticated,
-        userEmail: auth.userEmail,
-        isLoading: auth.isLoading,
-        // login now sends magic link instead of instant auth
-        login: async (email: string): Promise<boolean> => {
-            const result = await auth.sendMagicLink(email);
-            return result.success;
-        },
-        logout: auth.logout
-    };
-};

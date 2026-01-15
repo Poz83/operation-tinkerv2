@@ -1,14 +1,10 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
-*/
-
 import { DirectPromptService, BookPlanItem } from '../../services/direct-prompt-service';
 import { generateWithGemini } from '../ai/gemini-client';
 import { evaluatePublishability, QaHardFailReason } from '../../utils/publishability-qa';
 import { buildPrompt, STYLE_RULES } from '../ai/prompts';
 import { PageGenerationEvent } from '../../logging/events';
 import { TARGET_AUDIENCES, CREATIVE_VARIATION_OPTIONS, CreativeVariation } from '../../types';
+import { getStoredApiKey } from '../../lib/crypto';
 
 // Simple utility to pause between generations (anti-hallucination cool-down)
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -72,7 +68,9 @@ export const processGeneration = async (
   onPageComplete: (pageNumber: number, imageUrl: string) => void,
   onPageEvent?: (event: PageGenerationEvent) => void
 ) => {
-  const directPromptService = new DirectPromptService();
+  // Get user's stored API key (falls back to env var in DirectPromptService)
+  const userApiKey = await getStoredApiKey() ?? undefined;
+  const directPromptService = new DirectPromptService(userApiKey);
   const qaResults: Array<{
     pageNumber: number;
     qaScore: number;

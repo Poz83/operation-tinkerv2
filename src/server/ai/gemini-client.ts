@@ -5,6 +5,7 @@
 
 import { GoogleGenAI, Part } from '@google/genai';
 import { SYSTEM_INSTRUCTION } from './prompts';
+import { getStoredApiKey } from '../../lib/crypto';
 
 export const GEMINI_TEXT_MODEL = 'gemini-3-pro-preview';
 export const GEMINI_IMAGE_MODEL = 'gemini-3-pro-image-preview';
@@ -19,6 +20,7 @@ interface GenerateImageOptions {
   height?: number;
   temperature?: number; // 0.7-1.2 recommended range for coloring pages
   signal?: AbortSignal;
+  apiKey?: string; // Optional: pass directly if available
 }
 
 export interface GenerateImageResult {
@@ -60,8 +62,18 @@ export const generateWithGemini = async (options: GenerateImageOptions): Promise
       throw new Error('Aborted');
     }
 
-    // Always initialize with the current API key from environment
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    // Priority: 1) Passed apiKey, 2) User's stored key, 3) Environment variable
+    let apiKey = options.apiKey;
+    if (!apiKey) {
+      apiKey = await getStoredApiKey() ?? undefined;
+    }
+    if (!apiKey) {
+      apiKey = process.env.API_KEY;
+    }
+    if (!apiKey) {
+      return { imageUrl: null, error: "Configuration Error: Gemini API Key is missing. Please add your API key in Settings." };
+    }
+    const ai = new GoogleGenAI({ apiKey });
 
     const promptText = options.negativePrompt
       ? `${options.prompt}\n\nNEGATIVE PROMPT: ${options.negativePrompt}`

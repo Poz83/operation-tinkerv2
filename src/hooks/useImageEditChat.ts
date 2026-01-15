@@ -13,6 +13,7 @@ export interface ChatMessage {
     timestamp: Date;
     editedImageUrl?: string; // For assistant messages that produced edits
     isError?: boolean;
+    isApplied?: boolean;
 }
 
 interface SelectedImage {
@@ -30,6 +31,7 @@ export interface UseImageEditChatReturn {
     clearChat: () => void;
     setSelectedImage: (imageUrl: string, pageIndex: number) => void;
     clearSelectedImage: () => void;
+    applyEdit: (messageId: string, replace: boolean) => void;
 }
 
 /**
@@ -143,15 +145,12 @@ export function useImageEditChat(
                     role: 'assistant',
                     content: 'Done! I\'ve created an edited version of your image.',
                     timestamp: new Date(),
-                    editedImageUrl: result.imageUrl
+                    editedImageUrl: result.imageUrl,
+                    isApplied: false
                 };
                 setMessages(prev => [...prev, successMessage]);
 
-                // Notify parent component of the edit (as new version)
-                if (onImageEdited) {
-                    onImageEdited(selectedImage.pageIndex, result.imageUrl, true);
-                }
-
+                // Auto-save logic removed to allow user choice
                 // Clear the mask after successful edit
                 setCurrentMask(null);
             }
@@ -177,7 +176,22 @@ export function useImageEditChat(
                 abortControllerRef.current = null;
             }
         }
-    }, [selectedImage, currentMask, onImageEdited]);
+    }, [selectedImage, currentMask]);
+
+    const applyEdit = useCallback((messageId: string, replace: boolean) => {
+        setMessages(prev => {
+            const msg = prev.find(m => m.id === messageId);
+            if (msg && msg.editedImageUrl && !msg.isApplied && selectedImage && onImageEdited) {
+                // Determine if new version (NOT replace)
+                const isNewVersion = !replace;
+                onImageEdited(selectedImage.pageIndex, msg.editedImageUrl, isNewVersion);
+
+                // Mark as applied
+                return prev.map(m => m.id === messageId ? { ...m, isApplied: true } : m);
+            }
+            return prev;
+        });
+    }, [selectedImage, onImageEdited]);
 
     return {
         messages,
@@ -188,6 +202,7 @@ export function useImageEditChat(
         setMask,
         clearChat,
         setSelectedImage,
-        clearSelectedImage
+        clearSelectedImage,
+        applyEdit
     };
 }

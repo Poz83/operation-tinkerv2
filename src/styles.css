@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
   /* Sleek Professional Theme */
   --background: 240 5% 4%;

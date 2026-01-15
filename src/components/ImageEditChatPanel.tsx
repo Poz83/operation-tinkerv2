@@ -17,6 +17,7 @@ interface ImageEditChatPanelProps {
     onSendEdit: (prompt: string) => void;
     onMaskGenerated: (maskDataUrl: string | null) => void;
     onClearChat: () => void;
+    onApplyEdit: (messageId: string, replace: boolean) => void;
 }
 
 /**
@@ -33,6 +34,7 @@ export const ImageEditChatPanel: React.FC<ImageEditChatPanelProps> = ({
     onSendEdit,
     onMaskGenerated,
     onClearChat,
+    onApplyEdit
 }) => {
     const [inputValue, setInputValue] = useState('');
     const [isMaskMode, setIsMaskMode] = useState(false);
@@ -179,7 +181,28 @@ export const ImageEditChatPanel: React.FC<ImageEditChatPanelProps> = ({
                                                 alt="Edited result"
                                                 className="chat-result-image"
                                             />
-                                            <span className="chat-result-label">New version created</span>
+                                            {message.isApplied ? (
+                                                <span className="chat-result-label text-green-400">
+                                                    Saved
+                                                </span>
+                                            ) : (
+                                                <div className="flex gap-2 mt-2">
+                                                    <button
+                                                        onClick={() => onApplyEdit(message.id, true)}
+                                                        className="flex-1 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-xs rounded border border-white/10 transition-colors"
+                                                        title="Replace original image"
+                                                    >
+                                                        Replace
+                                                    </button>
+                                                    <button
+                                                        onClick={() => onApplyEdit(message.id, false)}
+                                                        className="flex-1 py-1.5 bg-blue-600/30 hover:bg-blue-600/50 text-blue-100 text-xs rounded border border-blue-500/30 transition-colors"
+                                                        title="Add as new page"
+                                                    >
+                                                        + New Page
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                     <span className="chat-message-time">

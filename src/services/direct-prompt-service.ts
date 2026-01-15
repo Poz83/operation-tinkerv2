@@ -17,8 +17,20 @@ export interface BookPlanItem {
 export class DirectPromptService {
   private ai: GoogleGenAI;
 
-  constructor() {
-    this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  constructor(apiKey?: string) {
+    const key = apiKey || process.env.API_KEY;
+    if (!key) {
+      console.error("CRITICAL ERROR: API Key is missing in DirectPromptService.");
+      throw new Error("Gemini API Key is not configured. Please check your environment variables or provide an API key.");
+    }
+    this.ai = new GoogleGenAI({ apiKey: key });
+  }
+
+  /**
+   * Create a new instance with a specific API key
+   */
+  static createWithKey(apiKey: string): DirectPromptService {
+    return new DirectPromptService(apiKey);
   }
 
   async generateBookPlan(
@@ -31,10 +43,10 @@ export class DirectPromptService {
     complexity: string,
     signal?: AbortSignal
   ): Promise<BookPlanItem[]> {
-    
-    const textControlInstruction = includeText 
-        ? "TEXT CONTROL: IF `includeText` is TRUE: You MAY include text if the user's idea asks for it (e.g. 'A birthday card'). Set `requiresText` to true for those pages."
-        : "TEXT CONTROL: IF `includeText` is FALSE: You are STRICTLY FORBIDDEN from suggesting text. Set `requiresText` to false for ALL pages. Do not include words in the scene description.";
+
+    const textControlInstruction = includeText
+      ? "TEXT CONTROL: IF `includeText` is TRUE: You MAY include text if the user's idea asks for it (e.g. 'A birthday card'). Set `requiresText` to true for those pages."
+      : "TEXT CONTROL: IF `includeText` is FALSE: You are STRICTLY FORBIDDEN from suggesting text. Set `requiresText` to false for ALL pages. Do not include words in the scene description.";
 
     const systemInstruction = `
       ROLE: Creative Director for a professional coloring book series.

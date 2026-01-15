@@ -15,9 +15,10 @@ interface BookProps {
     pageSizeId: string;
     onImageSelect?: (imageUrl: string, pageIndex: number) => void;
     selectedImageIndex?: number | null;
+    onDeletePage?: (pageIndex: number) => void;
 }
 
-export const Book: React.FC<BookProps> = ({ pages, currentSheetIndex, onSheetClick, pageSizeId, onImageSelect, selectedImageIndex }) => {
+export const Book: React.FC<BookProps> = ({ pages, currentSheetIndex, onSheetClick, pageSizeId, onImageSelect, selectedImageIndex, onDeletePage }) => {
     // Determine aspect ratio from pageSizeId
     const sizeConfig = PAGE_SIZES.find(s => s.id === pageSizeId) || PAGE_SIZES[0];
     const aspectRatio = sizeConfig.width / sizeConfig.height;
@@ -130,7 +131,7 @@ export const Book: React.FC<BookProps> = ({ pages, currentSheetIndex, onSheetCli
                 </div>
 
                 <div
-                    className="relative bg-white shadow-2xl shadow-black/20 ring-1 ring-white/10 rounded-sm transition-all duration-300 overflow-hidden"
+                    className="relative group bg-white shadow-2xl shadow-black/20 ring-1 ring-white/10 rounded-sm transition-all duration-300 overflow-hidden"
                     style={{
                         aspectRatio: `${aspectRatio}`,
                         width: 'auto',
@@ -159,13 +160,33 @@ export const Book: React.FC<BookProps> = ({ pages, currentSheetIndex, onSheetCli
                         </div>
                     )}
 
+                    {/* Delete Button - Top Right */}
+                    {activePage && !activePage.isLoading && onDeletePage && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (window.confirm('Are you sure you want to delete this page?')) {
+                                    onDeletePage(activePage.pageIndex);
+                                }
+                            }}
+                            className="absolute top-4 right-4 z-50 p-2 rounded-full bg-black/40 hover:bg-red-500/80 text-white/70 hover:text-white backdrop-blur-md transition-all duration-200 opacity-0 group-hover:opacity-100 placeholder-opacity-100"
+                            title="Delete Page"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M3 6h18"></path>
+                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                            </svg>
+                        </button>
+                    )}
+
                     {/* Edit Button - appears when image is loaded */}
                     {activePage?.imageUrl && !activePage.isLoading && onImageSelect && (
                         <button
                             onClick={handleEditClick}
                             className={`absolute bottom-4 right-4 z-50 flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${isSelectedForEdit
-                                    ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30'
-                                    : 'bg-white/90 hover:bg-white text-gray-700 hover:text-blue-600 shadow-md border border-gray-200/50 backdrop-blur-md'
+                                ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30'
+                                : 'bg-white/90 hover:bg-white text-gray-700 hover:text-blue-600 shadow-md border border-gray-200/50 backdrop-blur-md'
                                 } animate-in fade-in slide-in-from-bottom-2 duration-300`}
                             title="Edit this image with AI"
                         >

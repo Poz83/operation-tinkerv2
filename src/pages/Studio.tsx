@@ -99,6 +99,21 @@ const App: React.FC = () => {
     setShowEditChat(false);
   }, []);
 
+  const handleDeletePage = useCallback((targetPageIndex: number) => {
+    setPages(currentPages => {
+      const kept = currentPages.filter(p => p.pageIndex !== targetPageIndex);
+      const reindexed = kept.map((p, i) => ({ ...p, pageIndex: i }));
+
+      // Safety check for current index
+      if (currentSheetIndex >= reindexed.length) {
+        setCurrentSheetIndex(Math.max(0, reindexed.length - 1));
+      }
+
+      return reindexed;
+    });
+    toast.success('Page deleted', '🗑️');
+  }, [currentSheetIndex, toast]);
+
   // Cancellation
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -806,16 +821,16 @@ const App: React.FC = () => {
                   to generate professional coloring pages ready for KDP.
                 </p>
               </div>
-            ) : (
-              <Book
-                pages={pages}
-                currentSheetIndex={currentSheetIndex}
-                onSheetClick={(idx) => setCurrentSheetIndex(idx)}
-                pageSizeId={pageSizeId}
-                onImageSelect={handleImageSelect}
-                selectedImageIndex={imageEditChat.selectedImage?.pageIndex ?? null}
-              />
-            )}
+            ) : <Book
+              pages={pages}
+              currentSheetIndex={currentSheetIndex}
+              onSheetClick={setCurrentSheetIndex}
+              pageSizeId={pageSizeId}
+              onImageSelect={handleImageSelect}
+              selectedImageIndex={showEditChat ? imageEditChat.selectedImage?.pageIndex : null}
+              onDeletePage={handleDeletePage}
+            />
+            }
           </div>
         </main>
       </div>
@@ -835,6 +850,7 @@ const App: React.FC = () => {
         onSendEdit={imageEditChat.sendEdit}
         onMaskGenerated={imageEditChat.setMask}
         onClearChat={imageEditChat.clearChat}
+        onApplyEdit={imageEditChat.applyEdit}
       />
 
       {BATCH_LOGS_ENABLED && (
