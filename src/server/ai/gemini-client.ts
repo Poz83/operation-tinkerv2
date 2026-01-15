@@ -68,9 +68,6 @@ export const generateWithGemini = async (options: GenerateImageOptions): Promise
       apiKey = await getStoredApiKey() ?? undefined;
     }
     if (!apiKey) {
-      apiKey = process.env.API_KEY;
-    }
-    if (!apiKey) {
       return { imageUrl: null, error: "Configuration Error: Gemini API Key is missing. Please add your API key in Settings." };
     }
     const ai = new GoogleGenAI({ apiKey });

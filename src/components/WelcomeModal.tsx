@@ -80,6 +80,18 @@ export const WelcomeModal: React.FC = () => {
                         </div>
                     </div>
 
+                    {/* Close Button */}
+                    <button
+                        onClick={() => markSetupComplete()}
+                        className="absolute top-4 right-4 p-2 text-zinc-500 hover:text-white bg-black/20 hover:bg-black/40 rounded-full transition-all"
+                        aria-label="Close"
+                    >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+
                     {/* API Key Section */}
                     <div>
                         <label className="block text-sm font-medium text-white mb-2">
@@ -109,10 +121,10 @@ export const WelcomeModal: React.FC = () => {
                                     }}
                                     placeholder="AIza..."
                                     className={`w-full px-4 py-3 pr-12 rounded-xl bg-white/5 border text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all ${error
-                                            ? 'border-red-500/50'
-                                            : !isValidFormat
-                                                ? 'border-amber-500/50'
-                                                : 'border-white/10 focus:border-purple-500/50'
+                                        ? 'border-red-500/50'
+                                        : !isValidFormat
+                                            ? 'border-amber-500/50'
+                                            : 'border-white/10 focus:border-purple-500/50'
                                         }`}
                                     autoComplete="off"
                                     spellCheck={false}

@@ -24,6 +24,7 @@ interface ApiKeyContextType {
     // Helpers
     getMaskedKey: () => string;
     validateKeyFormat: (key: string) => boolean;
+    skipSetup: () => void;
 }
 
 const ApiKeyContext = createContext<ApiKeyContextType | undefined>(undefined);
@@ -123,6 +124,7 @@ export const ApiKeyProvider: React.FC<ApiKeyProviderProps> = ({ children }) => {
             markSetupComplete,
             getMaskedKey,
             validateKeyFormat,
+            skipSetup: markSetupComplete,
         }}>
             {children}
         </ApiKeyContext.Provider>
