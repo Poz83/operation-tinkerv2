@@ -12,33 +12,75 @@ import { supabase } from '../lib/supabase';
 const AuthCallback: React.FC = () => {
     const navigate = useNavigate();
     const [error, setError] = useState<string | null>(null);
+    const [status, setStatus] = useState<string>('Verifying magic link...');
 
     useEffect(() => {
+        let timeoutId: NodeJS.Timeout;
+
         const handleAuthCallback = async () => {
             try {
-                // Supabase will automatically handle the token exchange
-                const { data, error: authError } = await supabase.auth.getSession();
+                // Check if we have a code in the URL (PKCE flow)
+                const params = new URLSearchParams(window.location.search);
+                const code = params.get('code');
+                const next = params.get('next') || '/dashboard';
 
-                if (authError) {
-                    console.error('Auth callback error:', authError);
-                    setError(authError.message);
+                if (!code) {
+                    // No code, check if we already have a session
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (session) {
+                        navigate(next, { replace: true });
+                    } else {
+                        navigate('/', { replace: true });
+                    }
                     return;
                 }
 
-                if (data.session) {
-                    // Successfully authenticated, redirect to dashboard
-                    navigate('/dashboard', { replace: true });
-                } else {
-                    // No session, redirect to landing
-                    navigate('/', { replace: true });
+                // If code exists, wait for the auth state to change
+                setStatus('Exchanging code for session...');
+
+                // Set a safety timeout
+                timeoutId = setTimeout(() => {
+                    setError('Authentication timed out. Please try sending the magic link again.');
+                }, 10000); // 10 seconds timeout
+
+                // The actual exchange happens automatically by the Supabase client
+                // We just need to wait for the result
+                const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+                    if (event === 'SIGNED_IN' && session) {
+                        clearTimeout(timeoutId);
+                        navigate(next, { replace: true });
+                    } else if (event === 'SIGNED_OUT') {
+                        // Some flows might trigger this initially, ignore unless it persists
+                    }
+                });
+
+                // Also do a manual check just in case the event fired before we subscribed
+                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+                if (sessionError) throw sessionError;
+
+                if (session) {
+                    clearTimeout(timeoutId);
+                    navigate(next, { replace: true });
+                    subscription.unsubscribe();
                 }
+
+                return () => {
+                    clearTimeout(timeoutId);
+                    subscription.unsubscribe();
+                };
+
             } catch (err) {
+                clearTimeout(timeoutId!);
                 console.error('Unexpected error during auth callback:', err);
                 setError('An unexpected error occurred. Please try again.');
             }
         };
 
         handleAuthCallback();
+
+        return () => {
+            if (timeoutId) clearTimeout(timeoutId);
+        };
     }, [navigate]);
 
     if (error) {
@@ -108,7 +150,7 @@ const AuthCallback: React.FC = () => {
                 animation: 'spin 1s linear infinite'
             }} />
             <p style={{ marginTop: '1.5rem', opacity: 0.7 }}>
-                Completing sign in...
+                {status}
             </p>
             <style>{`
                 @keyframes spin {

@@ -104,3 +104,20 @@ export interface ColoringPage {
   startedAt?: Date;
   completedAt?: Date;
 }
+
+export interface SavedProject {
+  id: string;
+  projectName: string;
+  pageAmount: number;
+  pageSizeId: string;
+  visualStyle: string;
+  complexity: string;
+  targetAudienceId: string;
+  userPrompt: string;
+  hasHeroRef: boolean;
+  heroImage: { base64: string; mimeType: string } | null;
+  includeText: boolean;
+  createdAt: number;
+  updatedAt: number;
+  thumbnail?: string; // Optional thumbnail data URL
+}

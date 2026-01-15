@@ -6,6 +6,7 @@ import Studio from './pages/Studio';
 import Settings from './pages/Settings';
 import LandingPage from './pages/LandingPage';
 import AuthCallback from './pages/AuthCallback';
+import Vault from './pages/Vault';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ApiKeyProvider, useApiKeyContext } from './context/apiKeyContext';
 import { WelcomeModal } from './components/WelcomeModal';
@@ -102,7 +103,7 @@ const AppContent: React.FC = () => {
                 } />
                 <Route path="/vault" element={
                     <ProtectedRoute>
-                        <ComingSoon title="Vault" />
+                        <Vault />
                     </ProtectedRoute>
                 } />
                 <Route path="/settings" element={
