@@ -44,6 +44,8 @@ const Tile: React.FC<TileProps> = ({ title, description, icon, to, gradient, del
     </Link>
 );
 
+import { useAuth } from '../context/AuthContext';
+
 const tiles = [
     {
         title: 'Coloring Book Studio',
@@ -103,7 +105,22 @@ const tiles = [
     },
 ];
 
+// ... (keep existing imports)
+
 export const Dashboard: React.FC = () => {
+    const { isAdmin } = useAuth();
+
+    const displayTiles = [...tiles];
+    if (isAdmin) {
+        displayTiles.push({
+            title: 'Admin Dashboard',
+            description: 'System management & feedback',
+            icon: settingsIcon, // Reusing settings icon for admin
+            to: '/admin',
+            gradient: 'gradient-slate',
+        });
+    }
+
     return (
         <div className="dashboard-container">
             <div className="aurora-veil" />
@@ -118,7 +135,7 @@ export const Dashboard: React.FC = () => {
             </header>
 
             <main className="dashboard-grid">
-                {tiles.map((tile, index) => (
+                {displayTiles.map((tile, index) => (
                     <Tile
                         key={tile.title}
                         {...tile}
