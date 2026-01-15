@@ -4,6 +4,7 @@
 */
 
 import { GoogleGenAI, Part } from '@google/genai';
+import { SYSTEM_INSTRUCTION } from './prompts';
 
 export const GEMINI_TEXT_MODEL = 'gemini-3-pro-preview';
 export const GEMINI_IMAGE_MODEL = 'gemini-3-pro-image-preview';
@@ -16,6 +17,7 @@ interface GenerateImageOptions {
   resolution?: '1K' | '2K' | '4K'; // Tiered: 1K (simple), 2K (moderate), 4K (intricate)
   width?: number;
   height?: number;
+  temperature?: number; // 0.7-1.2 recommended range for coloring pages
   signal?: AbortSignal;
 }
 
@@ -55,7 +57,7 @@ export const generateWithGemini = async (options: GenerateImageOptions): Promise
   try {
     // Check if aborted before starting
     if (options.signal?.aborted) {
-        throw new Error('Aborted');
+      throw new Error('Aborted');
     }
 
     // Always initialize with the current API key from environment
@@ -89,7 +91,9 @@ export const generateWithGemini = async (options: GenerateImageOptions): Promise
       model: GEMINI_IMAGE_MODEL,
       contents: { parts },
       config: {
+        systemInstruction: SYSTEM_INSTRUCTION,
         imageConfig: imageConfig,
+        temperature: options.temperature ?? 1.0, // Style-based, defaults to balanced
       },
     });
 
@@ -100,19 +104,19 @@ export const generateWithGemini = async (options: GenerateImageOptions): Promise
       // Construct a valid Data URI for the <img> tag
       return { imageUrl: `data:${mimeType};base64,${base64Data}` };
     }
-    
+
     return { imageUrl: null, error: "No image data returned from API." };
 
   } catch (error: any) {
     // If aborted, rethrow so the caller handles it as a cancellation
     if (error.name === 'AbortError' || error.message === 'Aborted' || options.signal?.aborted) {
-        throw new Error('Aborted');
+      throw new Error('Aborted');
     }
 
     console.error("Gemini API Error:", error);
-    
+
     let message = error instanceof Error ? error.message : "Unknown error";
-    
+
     // Provide friendlier messages for common error codes
     if (message.includes('403')) message = "Access Denied (403): Please check your API Key and billing status.";
     if (message.includes('400')) message = "Bad Request (400): The model refused the prompt or parameters.";

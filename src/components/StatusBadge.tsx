@@ -4,7 +4,7 @@
 */
 
 import React from 'react';
-import { ColoringPage, PageStatus } from './types';
+import { ColoringPage, PageStatus } from '../types';
 
 interface StatusBadgeProps {
   page: ColoringPage;

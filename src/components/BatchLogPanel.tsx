@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { batchLogStore, QA_TAGS } from './logging/batchLog';
-import { exportBatchZip } from './logging/exporter';
-import { GenerationBatch, GenerationPageLog, PageQa, QaTag } from './logging/types';
+import { batchLogStore, QA_TAGS } from '../logging/batchLog';
+import { exportBatchZip } from '../logging/exporter';
+import { GenerationBatch, GenerationPageLog, PageQa, QaTag } from '../logging/types';
 
 interface BatchLogPanelProps {
   isOpen: boolean;
@@ -173,9 +173,8 @@ export const BatchLogPanel: React.FC<BatchLogPanelProps> = ({ isOpen, onClose })
                 <button
                   key={batch.id}
                   onClick={() => setSelectedBatchId(batch.id)}
-                  className={`w-full text-left px-4 py-3 border-b border-white/5 transition-colors ${
-                    batch.id === selectedBatchId ? 'bg-white/10 text-white' : 'text-white/70 hover:bg-white/5'
-                  }`}
+                  className={`w-full text-left px-4 py-3 border-b border-white/5 transition-colors ${batch.id === selectedBatchId ? 'bg-white/10 text-white' : 'text-white/70 hover:bg-white/5'
+                    }`}
                 >
                   <div className="text-sm font-semibold truncate">{batch.projectName}</div>
                   <div className="text-[11px] text-white/50 truncate">{batch.userIdea}</div>
@@ -205,12 +204,11 @@ export const BatchLogPanel: React.FC<BatchLogPanelProps> = ({ isOpen, onClose })
                           <div className="flex items-center gap-2">
                             <div className="font-semibold">Page {page.pageNumber}</div>
                             {page.qa?.score !== undefined && (
-                              <span className={`px-2 py-0.5 rounded text-[11px] font-medium ${
-                                page.qa.score >= 90 ? 'bg-green-500/20 text-green-300 border border-green-500/40' :
-                                page.qa.score >= 75 ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40' :
-                                page.qa.score >= 60 ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/40' :
-                                'bg-red-500/20 text-red-300 border border-red-500/40'
-                              }`}>
+                              <span className={`px-2 py-0.5 rounded text-[11px] font-medium ${page.qa.score >= 90 ? 'bg-green-500/20 text-green-300 border border-green-500/40' :
+                                  page.qa.score >= 75 ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40' :
+                                    page.qa.score >= 60 ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/40' :
+                                      'bg-red-500/20 text-red-300 border border-red-500/40'
+                                }`}>
                                 {page.qa.score}/100
                               </span>
                             )}
@@ -242,11 +240,10 @@ export const BatchLogPanel: React.FC<BatchLogPanelProps> = ({ isOpen, onClose })
                             return (
                               <label
                                 key={tag}
-                                className={`px-2 py-1 rounded-full border text-[11px] cursor-pointer ${
-                                  active
+                                className={`px-2 py-1 rounded-full border text-[11px] cursor-pointer ${active
                                     ? 'bg-white/20 border-white/40 text-white'
                                     : 'bg-white/5 border-white/15 text-white/60'
-                                }`}
+                                  }`}
                               >
                                 <input
                                   type="checkbox"

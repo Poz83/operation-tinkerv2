@@ -1,0 +1,248 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useState, useRef, useEffect } from 'react';
+import { ChatMessage } from '../hooks/useImageEditChat';
+import { PaintbrushMaskCanvas } from './PaintbrushMaskCanvas';
+
+interface ImageEditChatPanelProps {
+    isOpen: boolean;
+    selectedImage: { url: string; pageIndex: number } | null;
+    messages: ChatMessage[];
+    isLoading: boolean;
+    currentMask: string | null;
+    onClose: () => void;
+    onSendEdit: (prompt: string) => void;
+    onMaskGenerated: (maskDataUrl: string | null) => void;
+    onClearChat: () => void;
+}
+
+/**
+ * Slide-out chat panel for AI image editing.
+ * Appears from the right when an image is selected.
+ */
+export const ImageEditChatPanel: React.FC<ImageEditChatPanelProps> = ({
+    isOpen,
+    selectedImage,
+    messages,
+    isLoading,
+    currentMask,
+    onClose,
+    onSendEdit,
+    onMaskGenerated,
+    onClearChat,
+}) => {
+    const [inputValue, setInputValue] = useState('');
+    const [isMaskMode, setIsMaskMode] = useState(false);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLTextAreaElement>(null);
+
+    // Auto-scroll to bottom when new messages arrive
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
+
+    // Focus input when panel opens
+    useEffect(() => {
+        if (isOpen && inputRef.current) {
+            setTimeout(() => inputRef.current?.focus(), 300);
+        }
+    }, [isOpen]);
+
+    // Reset mask mode when image changes
+    useEffect(() => {
+        setIsMaskMode(false);
+    }, [selectedImage?.url]);
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!inputValue.trim() || isLoading) return;
+
+        onSendEdit(inputValue.trim());
+        setInputValue('');
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSubmit(e);
+        }
+    };
+
+    if (!isOpen || !selectedImage) return null;
+
+    return (
+        <>
+            {/* Backdrop */}
+            <div className="image-edit-backdrop" onClick={onClose} />
+
+            {/* Panel */}
+            <div className="image-edit-chat-panel">
+                {/* Header */}
+                <div className="image-edit-chat-header">
+                    <div className="image-edit-chat-header-content">
+                        <div className="image-edit-chat-title">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M12 20h9" />
+                                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                            </svg>
+                            <span>Edit Image</span>
+                        </div>
+                        <span className="image-edit-chat-subtitle">
+                            Page {selectedImage.pageIndex + 1}
+                        </span>
+                    </div>
+                    <div className="image-edit-chat-header-actions">
+                        <button
+                            onClick={() => setIsMaskMode(!isMaskMode)}
+                            className={`image-edit-tool-btn ${isMaskMode ? 'active' : ''}`}
+                            title="Paintbrush tool - mark areas to edit"
+                        >
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M12 19l7-7 3 3-7 7-3-3z" />
+                                <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" />
+                                <path d="M2 2l7.586 7.586" />
+                                <circle cx="11" cy="11" r="2" />
+                            </svg>
+                        </button>
+                        <button onClick={onClose} className="image-edit-close-btn" title="Close">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M18 6L6 18" />
+                                <path d="M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                {/* Preview with mask overlay */}
+                <div className="image-edit-preview-container">
+                    <div className="image-edit-preview">
+                        <img
+                            src={selectedImage.url}
+                            alt={`Page ${selectedImage.pageIndex + 1}`}
+                            className="image-edit-preview-img"
+                        />
+                        <PaintbrushMaskCanvas
+                            imageUrl={selectedImage.url}
+                            isActive={isMaskMode}
+                            onMaskGenerated={onMaskGenerated}
+                        />
+                    </div>
+                    {isMaskMode && (
+                        <div className="image-edit-mask-indicator">
+                            <span className="mask-indicator-dot" />
+                            Mask Mode Active
+                        </div>
+                    )}
+                    {currentMask && !isMaskMode && (
+                        <div className="image-edit-mask-badge">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                                <path d="M22 4L12 14.01l-3-3" />
+                            </svg>
+                            Mask Applied
+                        </div>
+                    )}
+                </div>
+
+                {/* Messages */}
+                <div className="image-edit-messages">
+                    {messages.length === 0 ? (
+                        <div className="image-edit-empty-state">
+                            <div className="image-edit-empty-icon">✨</div>
+                            <p className="image-edit-empty-title">Ready to Edit</p>
+                            <p className="image-edit-empty-text">
+                                Describe what you'd like to change.
+                                {!currentMask && (
+                                    <span className="image-edit-empty-tip">
+                                        <br />Tip: Use the paintbrush to mark specific areas.
+                                    </span>
+                                )}
+                            </p>
+                        </div>
+                    ) : (
+                        <>
+                            {messages.map((message) => (
+                                <div
+                                    key={message.id}
+                                    className={`chat-message ${message.role === 'user' ? 'chat-message-user' : 'chat-message-assistant'} ${message.isError ? 'chat-message-error' : ''}`}
+                                >
+                                    <div className="chat-message-content">
+                                        {message.content}
+                                    </div>
+                                    {message.editedImageUrl && (
+                                        <div className="chat-message-image">
+                                            <img
+                                                src={message.editedImageUrl}
+                                                alt="Edited result"
+                                                className="chat-result-image"
+                                            />
+                                            <span className="chat-result-label">New version created</span>
+                                        </div>
+                                    )}
+                                    <span className="chat-message-time">
+                                        {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                </div>
+                            ))}
+                            <div ref={messagesEndRef} />
+                        </>
+                    )}
+
+                    {isLoading && (
+                        <div className="chat-message chat-message-assistant chat-message-loading">
+                            <div className="chat-loading-dots">
+                                <span /><span /><span />
+                            </div>
+                            <span className="chat-loading-text">Editing image...</span>
+                        </div>
+                    )}
+                </div>
+
+                {/* Input */}
+                <form onSubmit={handleSubmit} className="image-edit-input-container">
+                    <div className="image-edit-input-wrapper">
+                        <textarea
+                            ref={inputRef}
+                            value={inputValue}
+                            onChange={(e) => setInputValue(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            placeholder={currentMask ? "Describe the edit for marked area..." : "Describe what to change..."}
+                            className="image-edit-input"
+                            rows={1}
+                            disabled={isLoading}
+                        />
+                        <button
+                            type="submit"
+                            disabled={!inputValue.trim() || isLoading}
+                            className="image-edit-send-btn"
+                            title="Send edit request"
+                        >
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M22 2L11 13" />
+                                <path d="M22 2l-7 20-4-9-9-4 20-7z" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div className="image-edit-input-footer">
+                        <span className="image-edit-input-hint">
+                            Press Enter to send, Shift+Enter for new line
+                        </span>
+                        {messages.length > 0 && (
+                            <button
+                                type="button"
+                                onClick={onClearChat}
+                                className="image-edit-clear-btn"
+                                disabled={isLoading}
+                            >
+                                Clear Chat
+                            </button>
+                        )}
+                    </div>
+                </form>
+            </div>
+        </>
+    );
+};

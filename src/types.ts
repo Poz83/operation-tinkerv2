@@ -32,6 +32,17 @@ export const COMPLEXITY_LEVELS = [
   'Extreme Detail'
 ];
 
+// Creative Variation controls the AI's temperature setting
+// 'auto' = AI picks based on style/complexity/audience
+// manual options override the AI's choice
+export type CreativeVariation = 'auto' | 'precision' | 'balanced' | 'freedom';
+
+export const CREATIVE_VARIATION_OPTIONS = [
+  { id: 'precision' as const, label: 'Precision', temp: 0.7, description: 'Consistent, predictable outputs' },
+  { id: 'balanced' as const, label: 'Balanced', temp: 0.9, description: 'Good mix of consistency and variety' },
+  { id: 'freedom' as const, label: 'Freedom', temp: 1.2, description: 'More creative, varied outputs' },
+];
+
 export const TARGET_AUDIENCES = [
   {
     id: 'toddlers',

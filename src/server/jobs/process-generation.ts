@@ -6,8 +6,9 @@
 import { DirectPromptService, BookPlanItem } from '../../services/direct-prompt-service';
 import { generateWithGemini } from '../ai/gemini-client';
 import { evaluatePublishability, QaHardFailReason } from '../../utils/publishability-qa';
-import { buildPrompt } from '../ai/prompts';
+import { buildPrompt, STYLE_RULES } from '../ai/prompts';
 import { PageGenerationEvent } from '../../logging/events';
+import { TARGET_AUDIENCES, CREATIVE_VARIATION_OPTIONS, CreativeVariation } from '../../types';
 
 // Simple utility to pause between generations (anti-hallucination cool-down)
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -23,8 +24,47 @@ export interface ProcessGenerationParams {
   heroImage?: { base64: string; mimeType: string } | null;
   aspectRatio: string;
   includeText: boolean;
+  creativeVariation: CreativeVariation; // 'auto' | 'precision' | 'balanced' | 'freedom'
   signal?: AbortSignal;
 }
+
+/**
+ * Compute the final temperature based on style, complexity, audience, and user override.
+ * Returns a value between 0.7 and 1.2.
+ */
+const computeTemperature = (
+  style: string,
+  complexity: string,
+  audience: string,
+  creativeVariation: CreativeVariation
+): number => {
+  // If user manually selected, use their choice
+  if (creativeVariation !== 'auto') {
+    const option = CREATIVE_VARIATION_OPTIONS.find(o => o.id === creativeVariation);
+    return option?.temp ?? 1.0;
+  }
+
+  // Auto: derive from style, with complexity/audience modifiers
+  const styleConfig = STYLE_RULES[style] || STYLE_RULES['default'];
+  let temp = styleConfig.recommendedTemperature ?? 1.0;
+
+  // Complexity modifiers
+  if (complexity === 'Very Simple' || complexity === 'Simple') {
+    temp -= 0.1; // Simpler = more precision needed
+  } else if (complexity === 'Extreme Detail') {
+    temp += 0.1; // More complex = can handle more variation
+  }
+
+  // Audience modifiers
+  if (audience.includes('Toddlers') || audience.includes('Preschool')) {
+    temp -= 0.1; // Kids need consistency
+  } else if (audience.includes('S.E.N.')) {
+    temp -= 0.15; // Sensory-friendly needs predictability
+  }
+
+  // Clamp to safe range
+  return Math.max(0.7, Math.min(1.2, temp));
+};
 
 export const processGeneration = async (
   params: ProcessGenerationParams,
@@ -91,17 +131,17 @@ export const processGeneration = async (
 
   // If AI fails to return a plan, create a default one so generation continues
   if (!plan || plan.length === 0) {
-      // Check again in case it failed due to abort
-      if (params.signal?.aborted) throw new Error('Aborted');
+    // Check again in case it failed due to abort
+    if (params.signal?.aborted) throw new Error('Aborted');
 
-      console.warn("Plan generation failed, using fallback.");
-      plan = Array.from({ length: params.pageCount }).map((_, i) => ({
-          pageNumber: i + 1,
-          prompt: `${params.userIdea} (Scene ${i + 1})`,
-          vectorMode: 'standard',
-          complexityDescription: "Standard coloring book style",
-          requiresText: false
-      }));
+    console.warn("Plan generation failed, using fallback.");
+    plan = Array.from({ length: params.pageCount }).map((_, i) => ({
+      pageNumber: i + 1,
+      prompt: `${params.userIdea} (Scene ${i + 1})`,
+      vectorMode: 'standard',
+      complexityDescription: "Standard coloring book style",
+      requiresText: false
+    }));
   }
 
   // Notify caller of the plan
@@ -143,9 +183,13 @@ export const processGeneration = async (
       finalHeight = Math.round(baseSize * (4 / 3));
     }
 
+    // Get audience-specific prompt guidance for injection
+    const audienceConfig = TARGET_AUDIENCES.find(a => a.label === params.audience);
+    const audiencePrompt = audienceConfig?.prompt || '';
+
     // PACING: Adaptive cool-down based on resolution tier
     const coolDown = targetResolution === '4K' ? 12000 :
-                     targetResolution === '2K' ? 8000 : 4000;
+      targetResolution === '2K' ? 8000 : 4000;
     if (item.pageNumber > 1) {
       // Fire cooldown start event
       onPageEvent?.({
@@ -184,7 +228,16 @@ export const processGeneration = async (
       item.prompt,
       params.style,
       params.complexity,
-      item.requiresText
+      item.requiresText,
+      audiencePrompt
+    );
+
+    // Compute temperature from style/complexity/audience or user override
+    const temperature = computeTemperature(
+      params.style,
+      params.complexity,
+      params.audience,
+      params.creativeVariation
     );
 
     const startedAtIso = new Date().toISOString();
@@ -211,7 +264,8 @@ export const processGeneration = async (
       width: finalWidth,
       height: finalHeight,
       referenceImage: params.hasHeroRef && params.heroImage ? params.heroImage : undefined,
-      signal: params.signal
+      signal: params.signal,
+      temperature: temperature
     });
 
     if (params.signal?.aborted) throw new Error('Aborted');
@@ -229,6 +283,7 @@ export const processGeneration = async (
       let currentImageUrl = result.imageUrl;
       let currentFullPrompt = fullPrompt;
       let qa: any = null;
+      const styleConfig = STYLE_RULES[params.style] || STYLE_RULES['default'];
 
       try {
         // Fire QA start event
@@ -242,6 +297,7 @@ export const processGeneration = async (
           dataUrl: result.imageUrl,
           complexity: params.complexity,
           aspectRatio: params.aspectRatio,
+          allowsTextureShading: styleConfig.allowsTextureShading ?? false,
         });
         qaScore = qa.score0to100;
         qaHardFail = qa.hardFail;
@@ -301,6 +357,7 @@ export const processGeneration = async (
                   dataUrl: retryResult.imageUrl,
                   complexity: params.complexity,
                   aspectRatio: params.aspectRatio,
+                  allowsTextureShading: styleConfig.allowsTextureShading ?? false,
                 });
 
                 // Use retry result

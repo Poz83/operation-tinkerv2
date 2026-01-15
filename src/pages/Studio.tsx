@@ -3,24 +3,30 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 
-import React, { useState, useRef, useMemo } from 'react';
-import JSZip from 'jszip';
-import { PAGE_SIZES, VISUAL_STYLES, TARGET_AUDIENCES, COMPLEXITY_LEVELS, ColoringPage } from './types';
-import { Setup } from './Setup';
-import { Book } from './Book';
-import { useApiKey } from './useApiKey';
-import { ApiKeyDialog } from './ApiKeyDialog';
-import { processGeneration } from './server/jobs/process-generation';
-import { brainstormPrompt } from './services/geminiService';
-import { generateColoringBookPDF } from './utils/pdf-generator';
+import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
+
+import { PAGE_SIZES, VISUAL_STYLES, TARGET_AUDIENCES, COMPLEXITY_LEVELS, ColoringPage, CreativeVariation } from '../types';
+import { Setup } from '../components/Setup';
+import { Book } from '../components/Book';
+import { useApiKey } from '../useApiKey';
+import { ApiKeyDialog } from '../components/ApiKeyDialog';
+import { processGeneration } from '../server/jobs/process-generation';
+import { brainstormPrompt } from '../services/geminiService';
 import { motion } from 'framer-motion';
-import { batchLogStore, isBatchLoggingEnabled } from './logging/batchLog';
-import { dataUrlToBlob } from './logging/utils';
-import { PageGenerationEvent } from './logging/events';
-import { BatchLogPanel } from './BatchLogPanel';
-import { Navigation } from './Navigation';
-import { ToastContainer } from './Toast';
-import { useToast } from './hooks/useToast';
+import { batchLogStore, isBatchLoggingEnabled } from '../logging/batchLog';
+import { dataUrlToBlob } from '../logging/utils';
+import { PageGenerationEvent } from '../logging/events';
+import { Navigation } from '../components/Navigation';
+import { ToastContainer } from '../components/Toast';
+import { useToast } from '../hooks/useToast';
+import { useSettings } from '../context/settingsContext';
+import { ImageEditChatPanel } from '../components/ImageEditChatPanel';
+import { useImageEditChat } from '../hooks/useImageEditChat';
+
+import coloringStudioIcon from '../assets/coloring-studio.png';
+
+// Lazy-load BatchLogPanel (dev feature)
+const BatchLogPanel = React.lazy(() => import('../components/BatchLogPanel'));
 
 const BATCH_LOGS_ENABLED = isBatchLoggingEnabled();
 
@@ -28,8 +34,8 @@ const App: React.FC = () => {
   const { validateApiKey, showApiKeyDialog, handleApiKeyDialogContinue } = useApiKey();
 
   // Toolbar State
-  const [projectName, setProjectName] = useState("My Coloring Book");
-  const [pageAmount, setPageAmount] = useState(5);
+  const [projectName, setProjectName] = useState("");
+  const [pageAmount, setPageAmount] = useState(1);
   const [pageSizeId, setPageSizeId] = useState(PAGE_SIZES[0].id);
   const [visualStyle, setVisualStyle] = useState(VISUAL_STYLES[0].id);
   const [complexity, setComplexity] = useState(COMPLEXITY_LEVELS[1]); // Default to 'Simple'
@@ -38,7 +44,8 @@ const App: React.FC = () => {
   const [hasHeroRef, setHasHeroRef] = useState(false);
   const [heroImage, setHeroImage] = useState<{ base64: string; mimeType: string } | null>(null);
   const [includeText, setIncludeText] = useState(false);
-  
+  const [creativeVariation, setCreativeVariation] = useState<CreativeVariation>('auto');
+
   // App State
   const [pages, setPages] = useState<ColoringPage[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -47,15 +54,89 @@ const App: React.FC = () => {
   const [activePageNumber, setActivePageNumber] = useState<number | null>(null);
   const [generationPhase, setGenerationPhase] = useState<'planning' | 'generating' | 'complete'>('planning');
   const [currentSheetIndex, setCurrentSheetIndex] = useState(0);
-  const [isDarkMode, setIsDarkMode] = useState(true); 
+  const [isDarkMode, setIsDarkMode] = useState(true);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showBatchLogs, setShowBatchLogs] = useState(false);
+  const [showEditChat, setShowEditChat] = useState(false);
 
   // Toast notifications
   const toast = useToast();
 
+  // Settings
+  const { settings } = useSettings();
+
+  // Image Edit Chat Hook
+  const handleImageEdited = useCallback((pageIndex: number, newImageUrl: string, isNewVersion: boolean) => {
+    if (isNewVersion) {
+      // Create a new page with the edited image (inserted after current page)
+      const newPage: ColoringPage = {
+        id: `edited-${Date.now()}`,
+        imageUrl: newImageUrl,
+        prompt: `Edited version of page ${pageIndex + 1}`,
+        isLoading: false,
+        pageIndex: pages.length, // Add at end
+        status: 'complete',
+      };
+      setPages(prev => [...prev, newPage]);
+      toast.success('Edit complete! New version added.', '✨');
+    } else {
+      // Replace the original image
+      setPages(prev => prev.map(p =>
+        p.pageIndex === pageIndex ? { ...p, imageUrl: newImageUrl } : p
+      ));
+    }
+  }, [pages.length, toast]);
+
+  const imageEditChat = useImageEditChat(handleImageEdited);
+
+  // Handle image selection from Book component
+  const handleImageSelect = useCallback((imageUrl: string, pageIndex: number) => {
+    imageEditChat.setSelectedImage(imageUrl, pageIndex);
+    setShowEditChat(true);
+  }, [imageEditChat]);
+
+  const handleCloseEditChat = useCallback(() => {
+    setShowEditChat(false);
+  }, []);
+
   // Cancellation
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Keyboard shortcuts (when enabled in settings)
+  useEffect(() => {
+    if (!settings.enableKeyboardShortcuts) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if user is typing in an input/textarea
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+
+      const isMod = e.metaKey || e.ctrlKey;
+
+      // Cmd/Ctrl + Enter: Generate
+      if (isMod && e.key === 'Enter' && userPrompt && !isGenerating) {
+        e.preventDefault();
+        // Trigger generation - we'll call the ref below
+        document.getElementById('generate-btn')?.click();
+      }
+
+      // Cmd/Ctrl + E: Enhance prompt
+      if (isMod && e.key === 'e' && userPrompt && !isEnhancing) {
+        e.preventDefault();
+        document.getElementById('enhance-btn')?.click();
+      }
+
+      // Cmd/Ctrl + N: Clear/New project
+      if (isMod && e.key === 'n') {
+        e.preventDefault();
+        document.getElementById('clear-btn')?.click();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [settings.enableKeyboardShortcuts, userPrompt, isGenerating, isEnhancing]);
+
 
   const handleEnhancePrompt = async () => {
     const hasKey = await validateApiKey();
@@ -76,7 +157,7 @@ const App: React.FC = () => {
 
   const handleCancel = () => {
     if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
+      abortControllerRef.current.abort();
     }
   };
 
@@ -85,7 +166,7 @@ const App: React.FC = () => {
     if (!hasKey) return;
 
     if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
+      abortControllerRef.current.abort();
     }
     const controller = new AbortController();
     abortControllerRef.current = controller;
@@ -99,9 +180,9 @@ const App: React.FC = () => {
     let totalTasks = 0;
 
     const updateProgress = () => {
-        completedTasks++;
-        const p = Math.round((completedTasks / totalTasks) * 100);
-        setProgress(p);
+      completedTasks++;
+      const p = Math.round((completedTasks / totalTasks) * 100);
+      setProgress(p);
     };
 
     try {
@@ -119,7 +200,7 @@ const App: React.FC = () => {
         const estimatedHeroSize = heroImage?.base64 ? Math.ceil((heroImage.base64.length * 3) / 4) : undefined;
 
         batchId = await batchLogStore.createBatch({
-          projectName,
+          projectName: projectName || 'Untitled Project',
           userIdea: userPrompt,
           pageCount: pageAmount,
           audience: audienceLabel,
@@ -130,9 +211,9 @@ const App: React.FC = () => {
           hasHeroRef: hasHeroRef,
           heroImageMeta: heroImage
             ? {
-                mimeType: heroImage.mimeType,
-                size: estimatedHeroSize,
-              }
+              mimeType: heroImage.mimeType,
+              size: estimatedHeroSize,
+            }
             : undefined,
           heroImageDataUrl: heroDataUrl,
         });
@@ -171,11 +252,11 @@ const App: React.FC = () => {
             setPages(prev => prev.map(p =>
               p.pageIndex === event.pageNumber - 1
                 ? {
-                    ...p,
-                    status: 'cooldown',
-                    statusMessage: `Waiting ${Math.ceil(event.cooldownMs / 1000)}s before next page`,
-                    cooldownRemaining: Math.ceil(event.cooldownMs / 1000)
-                  }
+                  ...p,
+                  status: 'cooldown',
+                  statusMessage: `Waiting ${Math.ceil(event.cooldownMs / 1000)}s before next page`,
+                  cooldownRemaining: Math.ceil(event.cooldownMs / 1000)
+                }
                 : p
             ));
             break;
@@ -184,10 +265,10 @@ const App: React.FC = () => {
             setPages(prev => prev.map(p =>
               p.pageIndex === event.pageNumber - 1
                 ? {
-                    ...p,
-                    cooldownRemaining: Math.ceil(event.remainingMs / 1000),
-                    statusMessage: `${Math.ceil(event.remainingMs / 1000)}s remaining...`
-                  }
+                  ...p,
+                  cooldownRemaining: Math.ceil(event.remainingMs / 1000),
+                  statusMessage: `${Math.ceil(event.remainingMs / 1000)}s remaining...`
+                }
                 : p
             ));
             break;
@@ -282,6 +363,7 @@ const App: React.FC = () => {
           heroImage: (hasHeroRef && heroImage) ? heroImage : undefined,
           aspectRatio: aspectRatio,
           includeText: includeText,
+          creativeVariation: creativeVariation,
           signal: controller.signal
         },
         // 1. On Plan Generated
@@ -289,11 +371,11 @@ const App: React.FC = () => {
           let finalPlan = plan;
           if (!finalPlan || finalPlan.length === 0) {
             finalPlan = Array.from({ length: pageAmount }).map((_, i) => ({
-               pageNumber: i + 1,
-               prompt: `${userPrompt} (Scene ${i + 1})`,
-               vectorMode: 'standard',
-               complexityDescription: "Standard coloring book style",
-               requiresText: false
+              pageNumber: i + 1,
+              prompt: `${userPrompt} (Scene ${i + 1})`,
+              vectorMode: 'standard',
+              complexityDescription: "Standard coloring book style",
+              requiresText: false
             }));
           }
 
@@ -304,7 +386,7 @@ const App: React.FC = () => {
               id: `page-${item.pageNumber}`,
               prompt: item.prompt,
               isLoading: true,
-              pageIndex: item.pageNumber,
+              pageIndex: item.pageNumber - 1,
               status: 'queued',
               statusMessage: 'Queued'
             });
@@ -326,7 +408,7 @@ const App: React.FC = () => {
         },
         // 2. On Page Complete
         (pageNumber, imageUrl) => {
-          setPages(prev => prev.map(p => p.pageIndex === pageNumber ? { ...p, imageUrl, isLoading: false } : p));
+          setPages(prev => prev.map(p => p.pageIndex === pageNumber - 1 ? { ...p, imageUrl, isLoading: false } : p));
           updateProgress();
         },
         (event) => {
@@ -337,9 +419,9 @@ const App: React.FC = () => {
 
     } catch (e: any) {
       if (e.message === 'Aborted') {
-          console.log("Generation cancelled by user.");
+        console.log("Generation cancelled by user.");
       } else {
-          console.error("Workflow failed", e);
+        console.error("Workflow failed", e);
       }
     } finally {
       setIsGenerating(false);
@@ -347,54 +429,60 @@ const App: React.FC = () => {
     }
   };
 
-  const downloadPDF = () => {
+  const downloadPDF = async () => {
+    // Dynamic import - loads jsPDF bundle only when needed
+    const { generateColoringBookPDF } = await import('../utils/pdf-generator');
+
     // Resolve human-readable labels for the receipt
     const styleLabel = VISUAL_STYLES.find(s => s.id === visualStyle)?.label || visualStyle;
     const audienceLabel = TARGET_AUDIENCES.find(a => a.id === targetAudienceId)?.label || targetAudienceId;
 
     // Sanitize the project name to make a safe filename
-    const safeTitle = projectName
-        .slice(0, 30)                // Limit length
-        .replace(/[^a-z0-9]/gi, '_') // Replace non-alphanumeric with _
-        .replace(/_+/g, '_')         // Remove duplicate _
-        .toLowerCase() || 'coloring_book';
+    const safeTitle = (projectName || 'coloring_book')
+      .slice(0, 30)                // Limit length
+      .replace(/[^a-z0-9]/gi, '_') // Replace non-alphanumeric with _
+      .replace(/_+/g, '_')         // Remove duplicate _
+      .toLowerCase();
 
     const filename = `${safeTitle}_${Date.now()}.pdf`;
 
     generateColoringBookPDF(
-        pages, 
-        projectName, 
-        pageSizeId,
-        {
-            style: styleLabel,
-            complexity: complexity,
-            audience: audienceLabel,
-            originalPrompt: userPrompt
-        },
-        filename
+      pages,
+      projectName || 'My Coloring Book',
+      pageSizeId,
+      {
+        style: styleLabel,
+        complexity: complexity,
+        audience: audienceLabel,
+        originalPrompt: userPrompt
+      },
+      filename
     );
   };
 
   const downloadZIP = async () => {
+    // Dynamic import - loads jszip bundle only when needed
+    const JSZip = (await import('jszip')).default;
+
     const zip = new JSZip();
     const finishedPages = pages.filter(p => p.imageUrl);
-    
+
     finishedPages.forEach((page) => {
-       if (page.imageUrl) {
-           const data = page.imageUrl.split(',')[1];
-           const fileName = page.isCover 
-              ? `00_cover.png` 
-              : `${String(page.pageIndex).padStart(2, '0')}_page.png`;
-           
-           zip.file(fileName, data, {base64: true});
-       }
+      if (page.imageUrl) {
+        const data = page.imageUrl.split(',')[1];
+        const fileName = page.isCover
+          ? `00_cover.png`
+          : `${String(page.pageIndex).padStart(2, '0')}_page.png`;
+
+        zip.file(fileName, data, { base64: true });
+      }
     });
-    
-    const content = await zip.generateAsync({type:"blob"});
+
+    const content = await zip.generateAsync({ type: "blob" });
     const url = window.URL.createObjectURL(content);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${projectName.replace(/\s+/g, '-')}_images.zip`;
+    link.download = `${(projectName || 'coloring_book').replace(/\s+/g, '-')}_images.zip`;
     link.click();
     window.URL.revokeObjectURL(url);
   };
@@ -415,15 +503,15 @@ const App: React.FC = () => {
     try {
       const serialized = JSON.stringify(projectConfig);
       // Check for rough size limit (5MB safety margin)
-      if (serialized.length > 4500000) { 
-          // Try saving without image
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const { heroImage, ...rest } = projectConfig;
-          localStorage.setItem('coloring_book_config', JSON.stringify(rest));
-          toast.warning("Project saved! (Your image was too big to save with it.)", "⚠️");
+      if (serialized.length > 4500000) {
+        // Try saving without image
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { heroImage, ...rest } = projectConfig;
+        localStorage.setItem('coloring_book_config', JSON.stringify(rest));
+        toast.warning("Project saved! (Your image was too big to save with it.)", "⚠️");
       } else {
-          localStorage.setItem('coloring_book_config', serialized);
-          toast.success("Project saved successfully!", "✅");
+        localStorage.setItem('coloring_book_config', serialized);
+        toast.success("Project saved successfully!", "✅");
       }
     } catch (e) {
       console.error(e);
@@ -439,7 +527,7 @@ const App: React.FC = () => {
         return;
       }
       const config = JSON.parse(saved);
-      
+
       if (config.projectName) setProjectName(config.projectName);
       if (config.pageAmount) setPageAmount(config.pageAmount);
       if (config.pageSizeId) setPageSizeId(config.pageSizeId);
@@ -463,9 +551,9 @@ const App: React.FC = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
-    
+
     // Reset all form fields to defaults
-    setProjectName("My Coloring Book");
+    setProjectName("");
     setPageAmount(5);
     setPageSizeId(PAGE_SIZES[0].id);
     setVisualStyle(VISUAL_STYLES[0].id);
@@ -475,7 +563,7 @@ const App: React.FC = () => {
     setHasHeroRef(false);
     setHeroImage(null);
     setIncludeText(false);
-    
+
     // Clear generated pages and reset progress
     setPages([]);
     setProgress(0);
@@ -502,83 +590,65 @@ const App: React.FC = () => {
       <Navigation />
 
       {/* Main Content Wrapper */}
-      <div className="flex flex-1 pt-16">
+      <div className="flex flex-1 pt-16 overflow-hidden">
         {/* Sidebar - Fixed Left Panel */}
-      <div className="w-[400px] flex-shrink-0 h-full flex flex-col border-r border-white/5 bg-[hsl(var(--secondary))]/90 backdrop-blur-xl z-20 shadow-2xl">
-        
-        {/* Sidebar Header */}
-        <div className="h-18 px-6 py-5 border-b border-white/5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-zinc-100 shadow-lg grid place-items-center text-xs font-bold text-black border border-white/10">
-              AI
-            </div>
-            <div>
-              <div className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-bold">Studio</div>
-              <div className="text-sm font-semibold text-zinc-100">Coloring Book Lab</div>
-            </div>
+        <div className="w-[400px] flex-shrink-0 flex flex-col glass-sidebar z-20 shadow-2xl overflow-hidden text-zinc-100">
+
+          {/* Setup Form - Scrollable Area */}
+          <div className="flex-1 overflow-y-auto no-scrollbar relative">
+            <Setup
+              projectName={projectName}
+              setProjectName={setProjectName}
+              pageAmount={pageAmount}
+              setPageAmount={setPageAmount}
+              pageSize={pageSizeId}
+              setPageSize={setPageSizeId}
+              visualStyle={visualStyle}
+              setVisualStyle={setVisualStyle}
+              complexity={complexity}
+              setComplexity={setComplexity}
+              targetAudience={targetAudienceId}
+              setTargetAudience={setTargetAudienceId}
+              userPrompt={userPrompt}
+              setUserPrompt={setUserPrompt}
+              hasHeroRef={hasHeroRef}
+              setHasHeroRef={setHasHeroRef}
+              heroImage={heroImage}
+              setHeroImage={setHeroImage}
+              isGenerating={isGenerating}
+              isEnhancing={isEnhancing}
+              onEnhancePrompt={handleEnhancePrompt}
+              progress={progress}
+              onGenerate={handleGenerate}
+              onCancel={handleCancel}
+              onDownloadPDF={downloadPDF}
+              onDownloadZIP={downloadZIP}
+              hasPages={pages.some(p => !p.isLoading)}
+              isDarkMode={isDarkMode}
+              toggleDarkMode={() => setIsDarkMode(!isDarkMode)}
+              includeText={includeText}
+              setIncludeText={setIncludeText}
+              onSaveProject={handleSaveProject}
+              onLoadProject={handleLoadProject}
+              onClear={handleClear}
+              showToast={(type, message, emoji) => {
+                switch (type) {
+                  case 'success': toast.success(message, emoji); break;
+                  case 'error': toast.error(message, emoji); break;
+                  case 'warning': toast.warning(message, emoji); break;
+                  case 'info': toast.info(message, emoji); break;
+                }
+              }}
+              // Hide header/footer in Setup component since we handle it here
+              embeddedMode={true}
+              creativeVariation={creativeVariation}
+              setCreativeVariation={setCreativeVariation}
+            />
           </div>
-          <button
-              className="p-2 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-white/5 transition-colors"
-              onClick={() => setIsDarkMode(!isDarkMode)}
-              title={isDarkMode ? 'Lights On' : 'Lights Off'}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-            </button>
-        </div>
 
-        {/* Setup Form - Scrollable Area */}
-        <div className="flex-1 overflow-y-auto no-scrollbar relative">
-           <Setup
-                projectName={projectName}
-                setProjectName={setProjectName}
-                pageAmount={pageAmount}
-                setPageAmount={setPageAmount}
-                pageSize={pageSizeId}
-                setPageSize={setPageSizeId}
-                visualStyle={visualStyle}
-                setVisualStyle={setVisualStyle}
-                complexity={complexity}
-                setComplexity={setComplexity}
-                targetAudience={targetAudienceId}
-                setTargetAudience={setTargetAudienceId}
-                userPrompt={userPrompt}
-                setUserPrompt={setUserPrompt}
-                hasHeroRef={hasHeroRef}
-                setHasHeroRef={setHasHeroRef}
-                heroImage={heroImage}
-                setHeroImage={setHeroImage}
-                isGenerating={isGenerating}
-                isEnhancing={isEnhancing}
-                onEnhancePrompt={handleEnhancePrompt}
-                progress={progress}
-                onGenerate={handleGenerate}
-                onCancel={handleCancel}
-                onDownloadPDF={downloadPDF}
-                onDownloadZIP={downloadZIP}
-                hasPages={pages.some(p => !p.isLoading)}
-                isDarkMode={isDarkMode}
-                toggleDarkMode={() => setIsDarkMode(!isDarkMode)}
-                includeText={includeText}
-                setIncludeText={setIncludeText}
-                onSaveProject={handleSaveProject}
-                onLoadProject={handleLoadProject}
-                onClear={handleClear}
-                showToast={(type, message, emoji) => {
-                  switch (type) {
-                    case 'success': toast.success(message, emoji); break;
-                    case 'error': toast.error(message, emoji); break;
-                    case 'warning': toast.warning(message, emoji); break;
-                    case 'info': toast.info(message, emoji); break;
-                  }
-                }}
-                // Hide header/footer in Setup component since we handle it here
-                embeddedMode={true}
-              />
-        </div>
-
-        {/* Sidebar Footer - Stats & Actions */}
-        <div className="p-6 border-t border-white/5 bg-[hsl(var(--background))]/40 backdrop-blur-md">
-            <div className="flex gap-3">
+          {/* Sidebar Footer - Stats & Actions */}
+          <div className="flex-shrink-0 p-6 border-t border-white/5 bg-transparent z-10">
+            <div className="flex flex-col gap-3">
               {(isGenerating || (displayProgress > 0 && displayProgress < 100)) ? (
                 <button
                   onClick={handleCancel}
@@ -588,6 +658,7 @@ const App: React.FC = () => {
                 </button>
               ) : (
                 <button
+                  id="generate-btn"
                   onClick={handleGenerate}
                   disabled={!userPrompt}
                   className="btn-primary w-full py-3 text-base shadow-lg"
@@ -595,16 +666,17 @@ const App: React.FC = () => {
                   ✨ Create My Book
                 </button>
               )}
-            </div>
-        </div>
-      </div>
 
-      {/* Main Workspace - Flexible Area */}
-      <main className="flex-1 h-full relative flex flex-col bg-transparent overflow-hidden">
-        
-        {/* Workspace Top Bar */}
-        <div className="absolute top-6 right-6 z-50 flex gap-4 pointer-events-none">
-           <div className="pointer-events-auto flex gap-3 items-center">
+            </div>
+          </div>
+        </div>
+
+        {/* Main Workspace - Flexible Area */}
+        <main className="flex-1 h-full relative flex flex-col bg-transparent overflow-hidden">
+
+          {/* Workspace Top Bar */}
+          <div className="absolute top-6 right-6 z-50 flex gap-4 pointer-events-none">
+            <div className="pointer-events-auto flex gap-3 items-center">
               {(isGenerating || displayProgress > 0) ? (
                 <div className="flex items-center gap-3 bg-[hsl(var(--card))]/85 border border-white/10 rounded-2xl px-3 py-2 shadow-lg backdrop-blur">
                   <div className="relative w-10 h-10">
@@ -653,8 +725,8 @@ const App: React.FC = () => {
                     </span>
                   </div>
                   {isGenerating && (
-                    <button 
-                      onClick={handleCancel} 
+                    <button
+                      onClick={handleCancel}
                       className="text-[11px] font-semibold text-white/80 hover:text-white transition-colors px-2 py-1 rounded-lg border border-white/15 bg-white/5"
                     >
                       Cancel
@@ -667,7 +739,7 @@ const App: React.FC = () => {
                   Ready
                 </div>
               )}
-              
+
               {BATCH_LOGS_ENABLED && (
                 <button
                   onClick={() => setShowBatchLogs(true)}
@@ -679,77 +751,99 @@ const App: React.FC = () => {
 
               {pages.some(p => !p.isLoading) && (
                 <div className="relative">
-                   <button
+                  <button
                     onClick={() => setShowExportMenu(!showExportMenu)}
                     className="btn-primary w-auto px-5 py-2 text-sm shadow-none border-white/10 bg-white/10 hover:bg-white/20 text-white"
                   >
                     Export
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="ml-1"><path d="M6 9l6 6 6-6"/></svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="ml-1"><path d="M6 9l6 6 6-6" /></svg>
                   </button>
 
                   {showExportMenu && (
                     <>
                       <div className="fixed inset-0 z-40" onClick={() => setShowExportMenu(false)} />
                       <div className="absolute top-full right-0 mt-2 z-50 w-56 bg-[hsl(var(--popover))] border border-white/10 rounded-xl shadow-2xl p-1.5 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150">
-                        <button onClick={() => {downloadPDF(); setShowExportMenu(false);}} className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-white/5 text-sm text-zinc-200 flex items-center gap-3 transition-colors">
-                            <span className="w-8 h-8 rounded-md bg-white/10 text-white grid place-items-center border border-white/20"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg></span>
-                            <div>
-                              <div className="font-medium">PDF Document</div>
-                              <div className="text-[10px] text-zinc-500">Printable format</div>
-                            </div>
+                        <button onClick={() => { downloadPDF(); setShowExportMenu(false); }} className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-white/5 text-sm text-zinc-200 flex items-center gap-3 transition-colors">
+                          <span className="w-8 h-8 rounded-md bg-white/10 text-white grid place-items-center border border-white/20"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg></span>
+                          <div>
+                            <div className="font-medium">PDF Document</div>
+                            <div className="text-[10px] text-zinc-500">Printable format</div>
+                          </div>
                         </button>
-                        <button onClick={() => {downloadZIP(); setShowExportMenu(false);}} className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-white/5 text-sm text-zinc-200 flex items-center gap-3 transition-colors">
-                            <span className="w-8 h-8 rounded-md bg-white/10 text-white grid place-items-center border border-white/20"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path></svg></span>
-                             <div>
-                              <div className="font-medium">Image ZIP</div>
-                              <div className="text-[10px] text-zinc-500">High-res PNGs</div>
-                            </div>
+                        <button onClick={() => { downloadZIP(); setShowExportMenu(false); }} className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-white/5 text-sm text-zinc-200 flex items-center gap-3 transition-colors">
+                          <span className="w-8 h-8 rounded-md bg-white/10 text-white grid place-items-center border border-white/20"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path></svg></span>
+                          <div>
+                            <div className="font-medium">Image ZIP</div>
+                            <div className="text-[10px] text-zinc-500">High-res PNGs</div>
+                          </div>
                         </button>
                       </div>
                     </>
                   )}
                 </div>
               )}
-           </div>
-        </div>
-
-        {/* Workspace Canvas */}
-        <div className="flex-1 flex items-center justify-center relative overflow-hidden">
-          {/* Background Effects */}
-          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none mix-blend-overlay" />
-          
-          {pages.length === 0 ? (
-            <div className="text-center text-zinc-500 transition-colors p-8 animate-in fade-in duration-700 flex flex-col items-center max-w-md">
-              <div className="text-7xl animate-bounce mb-6">🎨</div>
-              <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent mb-4">
-                Ready to Create Your Coloring Book?
-              </h2>
-              <p className="text-base text-white/60 leading-relaxed">
-                Configure your book settings on the left and click "Create My Book"
-                to generate professional coloring pages ready for KDP.
-              </p>
             </div>
-          ) : (
-            <Book 
+          </div>
+
+          {/* Workspace Canvas */}
+          <div className="flex-1 flex items-center justify-center relative overflow-hidden">
+            {/* Background Effects */}
+            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none mix-blend-overlay" />
+
+            {pages.length === 0 ? (
+              <div className="glass-panel p-12 rounded-3xl animate-in fade-in zoom-in-95 duration-700 flex flex-col items-center max-w-md text-center border border-white/5 shadow-2xl backdrop-blur-3xl">
+                <div className="relative mb-8 group cursor-default">
+                  <div className="absolute inset-0 bg-white/20 blur-2xl rounded-full opacity-20 group-hover:opacity-40 transition-opacity" />
+                  <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-white/10 to-transparent border border-white/10 flex items-center justify-center relative backdrop-blur-md shadow-inner">
+                    <img src={coloringStudioIcon} className="w-16 h-16 object-contain drop-shadow-2xl transform group-hover:scale-110 transition-transform duration-500" alt="Studio" />
+                  </div>
+                </div>
+                <h2 className="text-3xl font-bold text-gradient-sleek mb-4 tracking-tight">
+                  Ready to Create Your Coloring Book?
+                </h2>
+                <p className="text-base text-white/60 leading-relaxed">
+                  Configure your book settings on the left and click "Create My Book"
+                  to generate professional coloring pages ready for KDP.
+                </p>
+              </div>
+            ) : (
+              <Book
                 pages={pages}
                 currentSheetIndex={currentSheetIndex}
                 onSheetClick={(idx) => setCurrentSheetIndex(idx)}
                 pageSizeId={pageSizeId}
-            />
-          )}
-        </div>
-      </main>
+                onImageSelect={handleImageSelect}
+                selectedImageIndex={imageEditChat.selectedImage?.pageIndex ?? null}
+              />
+            )}
+          </div>
+        </main>
       </div>
       {/* End Main Content Wrapper */}
 
       {/* Toast Notifications */}
       <ToastContainer toasts={toast.toasts} onRemove={toast.remove} />
 
+      {/* Image Edit Chat Panel */}
+      <ImageEditChatPanel
+        isOpen={showEditChat}
+        selectedImage={imageEditChat.selectedImage}
+        messages={imageEditChat.messages}
+        isLoading={imageEditChat.isLoading}
+        currentMask={imageEditChat.currentMask}
+        onClose={handleCloseEditChat}
+        onSendEdit={imageEditChat.sendEdit}
+        onMaskGenerated={imageEditChat.setMask}
+        onClearChat={imageEditChat.clearChat}
+      />
+
       {BATCH_LOGS_ENABLED && (
-        <BatchLogPanel
-          isOpen={showBatchLogs}
-          onClose={() => setShowBatchLogs(false)}
-        />
+        <React.Suspense fallback={<div className="text-white/60 text-sm p-4">Loading logs...</div>}>
+          <BatchLogPanel
+            isOpen={showBatchLogs}
+            onClose={() => setShowBatchLogs(false)}
+          />
+        </React.Suspense>
       )}
     </div>
   );

@@ -39,16 +39,17 @@ export interface EvaluateOptions {
   complexity: string; // e.g., 'Very Simple' | 'Simple' | 'Moderate' | 'Intricate' | 'Extreme Detail'
   aspectRatio: string; // e.g., '1:1' or '3:4'
   maxAnalysisSize?: number; // default 512
+  allowsTextureShading?: boolean; // Botanical, Fantasy styles allow stippling/hatching
 }
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 
 const complexityBands: Record<string, { maxTransitions: number; minRestTiles: number }> = {
-  'Very Simple': { maxTransitions: 35, minRestTiles: 10 },
-  'Simple': { maxTransitions: 60, minRestTiles: 8 },
-  'Moderate': { maxTransitions: 90, minRestTiles: 6 },
-  'Intricate': { maxTransitions: 130, minRestTiles: 4 },
-  'Extreme Detail': { maxTransitions: 170, minRestTiles: 2 },
+  'Very Simple': { maxTransitions: 50, minRestTiles: 10 },
+  'Simple': { maxTransitions: 85, minRestTiles: 8 },
+  'Moderate': { maxTransitions: 125, minRestTiles: 5 },
+  'Intricate': { maxTransitions: 180, minRestTiles: 3 },
+  'Extreme Detail': { maxTransitions: 240, minRestTiles: 2 },
 };
 
 /**
@@ -262,7 +263,9 @@ export const evaluatePublishability = async (opts: EvaluateOptions): Promise<Pub
 
   const bandFail = band > 0.01; // >1% of margin band dirty
   const midFail = mid > (width * height * 0.01); // >1% midtones
-  const speckleFail = speckles > 0.08; // 8% isolated blacks
+  // Texture-allowed styles (Botanical, Fantasy) get a higher speckle threshold
+  const speckleThreshold = opts.allowsTextureShading ? 0.15 : 0.10;
+  const speckleFail = speckles > speckleThreshold;
 
   const banding = complexityBands[opts.complexity] || complexityBands['Moderate'];
   const transFail = transitions > banding.maxTransitions / (width * height * 0.001); // normalized heuristic
@@ -281,53 +284,53 @@ export const evaluatePublishability = async (opts: EvaluateOptions): Promise<Pub
   // Scoring (rubric weights)
   const cleanliness = clamp(
     30 *
-      (1 -
-        clamp(
-          (band ? band * 8 : 0) +
-            (mid / (width * height) * 5) +
-            speckles * 3,
-          0,
-          1.2
-        )),
+    (1 -
+      clamp(
+        (band ? band * 8 : 0) +
+        (mid / (width * height) * 5) +
+        speckles * 3,
+        0,
+        1.2
+      )),
     0,
     30
   );
 
   const colorability = clamp(
     20 *
-      (1 -
-        clamp(
-          (transitions / (banding.maxTransitions / (width * height * 0.001 + 1e-6))) * 0.7 +
-            (lineRisk * 0.6),
-          0,
-          1.2
-        )),
+    (1 -
+      clamp(
+        (transitions / (banding.maxTransitions / (width * height * 0.001 + 1e-6))) * 0.7 +
+        (lineRisk * 0.6),
+        0,
+        1.2
+      )),
     0,
     20
   );
 
   const composition = clamp(
     20 *
-      (1 -
-        clamp(
-          restWarn ? 0.4 : 0,
-          0,
-          1
-        )),
+    (1 -
+      clamp(
+        restWarn ? 0.4 : 0,
+        0,
+        1
+      )),
     0,
     20
   );
 
   const audienceAlignment = clamp(
     15 *
-      (1 -
-        clamp(
-          Math.abs(
-            transitions - banding.maxTransitions / (width * height * 0.001 + 1e-6)
-          ),
-          0,
-          1.5
-        )),
+    (1 -
+      clamp(
+        Math.abs(
+          transitions - banding.maxTransitions / (width * height * 0.001 + 1e-6)
+        ),
+        0,
+        1.5
+      )),
     0,
     15
   );

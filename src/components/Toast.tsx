@@ -4,7 +4,7 @@
 */
 
 import React, { useEffect } from 'react';
-import { ToastType } from './hooks/useToast';
+import { ToastType } from '../hooks/useToast';
 
 interface ToastProps extends ToastType {
   onClose: (id: number) => void;

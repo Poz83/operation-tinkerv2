@@ -23,7 +23,7 @@ interface StoredPageRecord extends GenerationPageLog {
 }
 
 export interface BatchLogStore {
-  createBatch(batch: Omit<GenerationBatch, 'createdAt' | 'schemaVersion'>): Promise<string>;
+  createBatch(batch: Omit<GenerationBatch, 'id' | 'createdAt' | 'schemaVersion'>): Promise<string>;
   savePlan(batchId: string, planItems: Array<Pick<GenerationPageLog, 'pageNumber' | 'planPrompt' | 'requiresText'>>): Promise<void>;
   recordPageStart(batchId: string, pageNumber: number, meta: Partial<GenerationPageLog>): Promise<void>;
   recordPageResult(

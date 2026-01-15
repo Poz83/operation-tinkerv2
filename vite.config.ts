@@ -18,6 +18,21 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
-      }
+      },
+      build: {
+        rollupOptions: {
+          output: {
+            manualChunks: {
+              // Core React libraries
+              'react-vendor': ['react', 'react-dom'],
+              // Animation library
+              'animation': ['framer-motion'],
+              // AI client
+              'gemini': ['@google/genai'],
+            },
+          },
+        },
+        chunkSizeWarningLimit: 600,
+      },
     };
 });
