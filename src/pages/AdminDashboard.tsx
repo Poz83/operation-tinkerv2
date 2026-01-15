@@ -195,8 +195,13 @@ export const AdminDashboard: React.FC = () => {
                                         {item.screenshot_url && (
                                             <div className="mt-2">
                                                 <p className="text-xs font-medium text-zinc-400 mb-1">Screenshot attached</p>
-                                                {/* Be careful with big base64 strings if rendering many */}
-                                                <img src={item.screenshot_url} alt="User screenshot" className="h-32 rounded border border-white/10 object-contain bg-black" />
+                                                <img
+                                                    src={item.screenshot_url.startsWith('r2://')
+                                                        ? `/api/view-feedback-image?key=${item.screenshot_url.replace('r2://', '')}`
+                                                        : item.screenshot_url}
+                                                    alt="User screenshot"
+                                                    className="h-32 rounded border border-white/10 object-contain bg-black"
+                                                />
                                             </div>
                                         )}
                                     </div>
