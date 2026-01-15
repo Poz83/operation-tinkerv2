@@ -66,8 +66,8 @@ export const ApiKeyProvider: React.FC<ApiKeyProviderProps> = ({ children }) => {
         loadApiKey();
     }, []);
 
-    // Determine if this is first login (authenticated but no setup complete)
-    const isFirstLogin = !!user && !setupComplete && !isLoading;
+    // Determine if this is first login (authenticated but no setup complete and no API key)
+    const isFirstLogin = !!user && !setupComplete && !isLoading && !apiKey;
 
     const setApiKey = useCallback(async (key: string): Promise<{ success: boolean; error?: string }> => {
         const trimmedKey = key.trim();

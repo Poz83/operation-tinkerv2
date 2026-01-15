@@ -1,5 +1,13 @@
-import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+/**
+ * View Feedback Image from R2
+ * 
+ * Serves images stored in R2 for the admin dashboard.
+ * Uses R2 bucket bindings for direct access.
+ */
+
+interface Env {
+    FEEDBACK_BUCKET: R2Bucket;
+}
 
 export const onRequestGet: PagesFunction<Env> = async (context) => {
     try {
@@ -11,43 +19,30 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
             return new Response('Missing key parameter', { status: 400 });
         }
 
-        const R2_ACCOUNT_ID = env.CLOUDFLARE_ACCOUNT_ID;
-        const R2_ACCESS_KEY_ID = env.CLOUDFLARE_R2_ACCESS_KEY_ID;
-        const R2_SECRET_ACCESS_KEY = env.CLOUDFLARE_R2_SECRET_ACCESS_KEY;
-        const R2_BUCKET_NAME = env.CLOUDFLARE_R2_BUCKET_FEEDBACK;
-
-        if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY || !R2_BUCKET_NAME) {
-            throw new Error('Missing R2 environment variables');
+        if (!env.FEEDBACK_BUCKET) {
+            throw new Error('FEEDBACK_BUCKET binding not configured. Add it in Cloudflare Pages Settings.');
         }
 
-        const S3 = new S3Client({
-            region: 'auto',
-            endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-            credentials: {
-                accessKeyId: R2_ACCESS_KEY_ID,
-                secretAccessKey: R2_SECRET_ACCESS_KEY,
-            },
-        });
+        // Get the object from R2
+        const object = await env.FEEDBACK_BUCKET.get(key);
 
-        const command = new GetObjectCommand({
-            Bucket: R2_BUCKET_NAME,
-            Key: key,
-        });
+        if (!object) {
+            return new Response('Image not found', { status: 404 });
+        }
 
-        // Generate signed URL for 1 hour
-        const signedUrl = await getSignedUrl(S3, command, { expiresIn: 3600 });
+        // Return the image with proper headers
+        const headers = new Headers();
+        headers.set('Content-Type', object.httpMetadata?.contentType || 'image/png');
+        headers.set('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
+        headers.set('ETag', object.httpEtag);
 
-        // Redirect to the signed URL so the <img> tag loads it directly
-        return Response.redirect(signedUrl, 302);
+        return new Response(object.body, { headers });
 
     } catch (err: any) {
-        return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+        console.error('View feedback image error:', err);
+        return new Response(JSON.stringify({ error: err.message }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+        });
     }
-}
-
-interface Env {
-    CLOUDFLARE_ACCOUNT_ID: string;
-    CLOUDFLARE_R2_ACCESS_KEY_ID: string;
-    CLOUDFLARE_R2_SECRET_ACCESS_KEY: string;
-    CLOUDFLARE_R2_BUCKET_FEEDBACK: string;
-}
+};

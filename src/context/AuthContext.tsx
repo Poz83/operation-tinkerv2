@@ -18,6 +18,7 @@ interface AuthContextType {
     isAdmin: boolean;
     sendMagicLink: (email: string) => Promise<{ success: boolean; error?: string }>;
     logout: () => Promise<void>;
+    debugLogin: () => Promise<void>; // DEV ONLY
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -127,6 +128,38 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     };
 
+    const debugLogin = async () => {
+        if (!import.meta.env.DEV) return;
+
+        const mockUser: User = {
+            id: 'dev-user-id',
+            aud: 'authenticated',
+            role: 'authenticated',
+            email: 'dev@example.com',
+            email_confirmed_at: new Date().toISOString(),
+            phone: '',
+            confirmed_at: new Date().toISOString(),
+            last_sign_in_at: new Date().toISOString(),
+            app_metadata: { provider: 'email' },
+            user_metadata: {},
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        };
+
+        const mockSession: Session = {
+            access_token: 'mock-access-token',
+            refresh_token: 'mock-refresh-token',
+            expires_in: 3600,
+            token_type: 'bearer',
+            user: mockUser,
+        };
+
+        setUser(mockUser);
+        setSession(mockSession);
+        setUserDetails({ isWhitelisted: true, isAdmin: true });
+        setIsLoading(false);
+    };
+
     return (
         <AuthContext.Provider value={{
             isAuthenticated,
@@ -136,7 +169,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             isWhitelisted,
             isAdmin,
             sendMagicLink,
-            logout
+            logout,
+            debugLogin
         }}>
             {children}
         </AuthContext.Provider>

@@ -10,7 +10,7 @@ const LandingPage: React.FC = () => {
     const [email, setEmail] = useState('');
     const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
     const [errorMessage, setErrorMessage] = useState('');
-    const { sendMagicLink, isAuthenticated } = useAuth();
+    const { sendMagicLink, isAuthenticated, debugLogin } = useAuth();
     const navigate = useNavigate();
 
     // If already authenticated, redirect to dashboard
@@ -141,6 +141,18 @@ const LandingPage: React.FC = () => {
                         )}
                     </AnimatePresence>
 
+                    {/* DEV ONLY: Debug Login */}
+                    {import.meta.env.DEV && (
+                        <div className="mt-4 flex justify-center">
+                            <button
+                                onClick={() => debugLogin()}
+                                className="text-xs text-white/30 hover:text-white/50 transition-colors uppercase tracking-widest"
+                            >
+                                [Debug Login]
+                            </button>
+                        </div>
+                    )}
+
                     <div className="mt-8 text-center">
                         <p className="text-white/20 text-xs">
                             © 2026 MyJoe. All rights reserved.
@@ -148,7 +160,7 @@ const LandingPage: React.FC = () => {
                     </div>
                 </motion.div>
             </div>
-        </div>
+        </div >
     );
 };
 

@@ -13,6 +13,7 @@ import { useApiKey } from '../useApiKey';
 import { ApiKeyDialog } from '../components/ApiKeyDialog';
 import { processGeneration } from '../server/jobs/process-generation';
 import { brainstormPrompt } from '../services/geminiService';
+import { saveProject, fetchProject } from '../services/projectsService';
 import { motion } from 'framer-motion';
 import { batchLogStore, isBatchLoggingEnabled } from '../logging/batchLog';
 import { dataUrlToBlob } from '../logging/utils';
@@ -508,10 +509,10 @@ const App: React.FC = () => {
 
 
 
-  const handleSaveProject = () => {
-    // 1. Create project object
+  const handleSaveProject = async () => {
+    // Save to Supabase
     const newProject: SavedProject = {
-      id: currentProjectId || crypto.randomUUID(),
+      id: currentProjectId || '',
       projectName: projectName || 'Untitled Project',
       pageAmount,
       pageSizeId,
@@ -524,54 +525,21 @@ const App: React.FC = () => {
       includeText,
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      // Optionally add a thumbnail from the first generated page if available
       thumbnail: pages.find(p => p.imageUrl)?.imageUrl
     };
 
     try {
-      // 2. Get existing projects
-      const existingJson = localStorage.getItem('myjoe_projects');
-      let projects: SavedProject[] = existingJson ? JSON.parse(existingJson) : [];
+      const savedProject = await saveProject(newProject);
+      setCurrentProjectId(savedProject.id);
 
-      // 3. Update or Add
-      const index = projects.findIndex(p => p.id === newProject.id);
-      if (index >= 0) {
-        projects[index] = { ...newProject, createdAt: projects[index].createdAt, updatedAt: Date.now() };
-      } else {
-        projects.push(newProject);
+      // Update URL to reflect the project ID
+      if (!urlProjectId || urlProjectId !== savedProject.id) {
+        navigate(`/studio/${savedProject.id}`, { replace: true });
       }
-
-      // 4. Save to localStorage
-      // Check for size limit - if too big, try removing large images from the LIST (but maybe keep current in memory)
-      const serialized = JSON.stringify(projects);
-
-      try {
-        localStorage.setItem('myjoe_projects', serialized);
-        setCurrentProjectId(newProject.id);
-        // Update URL to reflect the project ID
-        if (!urlProjectId || urlProjectId !== newProject.id) {
-          navigate(`/studio/${newProject.id}`, { replace: true });
-        }
-        toast.success("Project saved to Vault!", "🔐");
-      } catch (e) {
-        // If quota exceeded, try to save without the hero image/thumbnail for this entry
-        // This is a basic fallback.
-        const strippedProject = { ...newProject, heroImage: null, thumbnail: undefined };
-        if (index >= 0) projects[index] = strippedProject;
-        else projects[projects.length - 1] = strippedProject;
-
-        localStorage.setItem('myjoe_projects', JSON.stringify(projects));
-        setCurrentProjectId(newProject.id);
-        // Update URL to reflect the project ID
-        if (!urlProjectId || urlProjectId !== newProject.id) {
-          navigate(`/studio/${newProject.id}`, { replace: true });
-        }
-        toast.warning("Saved (without images due to space limits)", "⚠️");
-      }
-
-    } catch (e) {
-      console.error(e);
-      toast.error("Failed to save project.", "❌");
+      toast.success("Project saved to Vault!", "🔐");
+    } catch (err) {
+      console.error('Failed to save project:', err);
+      toast.error("Failed to save project. Please try again.", "❌");
     }
   };
 
@@ -594,16 +562,19 @@ const App: React.FC = () => {
   // Load project from URL param on mount
   useEffect(() => {
     if (urlProjectId) {
-      try {
-        const existingJson = localStorage.getItem('myjoe_projects');
-        const projects: SavedProject[] = existingJson ? JSON.parse(existingJson) : [];
-        const project = projects.find(p => p.id === urlProjectId);
-        if (project) {
-          handleLoadProject(project);
+      async function loadProject() {
+        try {
+          const project = await fetchProject(urlProjectId!);
+          if (project) {
+            handleLoadProject(project);
+          } else {
+            console.warn('Project not found:', urlProjectId);
+          }
+        } catch (err) {
+          console.error('Failed to load project:', err);
         }
-      } catch (e) {
-        console.error('Failed to load project from URL:', e);
       }
+      loadProject();
     }
   }, [urlProjectId, handleLoadProject]);
 

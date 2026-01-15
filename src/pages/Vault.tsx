@@ -1,66 +1,44 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Navigation } from '../components/Navigation';
 import { PAGE_SIZES, VISUAL_STYLES, TARGET_AUDIENCES, SavedProject } from '../types';
+import { fetchUserProjects, deleteProject } from '../services/projectsService';
 
 export const Vault: React.FC = () => {
     const [projects, setProjects] = useState<SavedProject[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
 
+    // Fetch projects from Supabase
     useEffect(() => {
-        try {
-            // 1. Load list-based projects
-            const existingJson = localStorage.getItem('myjoe_projects');
-            let loadedProjects: SavedProject[] = existingJson ? JSON.parse(existingJson) : [];
-
-            // 2. Migration Check: Check for old single-project config
-            const legacyConfig = localStorage.getItem('coloring_book_config');
-            if (legacyConfig) {
-                try {
-                    const legacyProject = JSON.parse(legacyConfig);
-                    // Only migrate if we don't already have it (check by name or something simple)
-                    const alreadyMigrated = loadedProjects.some(p => p.createdAt === legacyProject.createdAt);
-
-                    if (!alreadyMigrated) {
-                        const newProject: SavedProject = {
-                            ...legacyProject,
-                            id: crypto.randomUUID(),
-                            createdAt: Date.now(),
-                            updatedAt: Date.now()
-                        };
-                        // Add to list
-                        loadedProjects.push(newProject);
-                        // Save back to list
-                        localStorage.setItem('myjoe_projects', JSON.stringify(loadedProjects));
-                        // Optional: Remove legacy? Maybe keep for safety for now.
-                        // localStorage.removeItem('coloring_book_config');
-                    }
-                } catch (e) {
-                    console.error("Migration failed", e);
-                }
+        async function loadProjects() {
+            try {
+                setIsLoading(true);
+                setError(null);
+                const data = await fetchUserProjects();
+                setProjects(data);
+            } catch (err) {
+                console.error('Failed to load projects:', err);
+                setError('Failed to load projects. Please try again.');
+            } finally {
+                setIsLoading(false);
             }
-
-            // Sort by updatedAt desc
-            loadedProjects.sort((a, b) => b.updatedAt - a.updatedAt);
-            setProjects(loadedProjects);
-
-        } catch (e) {
-            console.error('Failed to load projects:', e);
         }
+        loadProjects();
     }, []);
 
-    const handleDelete = (id: string, e: React.MouseEvent) => {
+    const handleDelete = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation(); // Prevent card click
         if (window.confirm('Are you sure you want to delete this project?')) {
-            const updated = projects.filter(p => p.id !== id);
-            setProjects(updated);
-            localStorage.setItem('myjoe_projects', JSON.stringify(updated));
+            try {
+                await deleteProject(id);
+                setProjects(projects.filter(p => p.id !== id));
+            } catch (err) {
+                console.error('Failed to delete project:', err);
+                alert('Failed to delete project. Please try again.');
+            }
         }
     };
 
@@ -117,7 +95,26 @@ export const Vault: React.FC = () => {
                 </header>
 
                 {/* Content Grid */}
-                {projects.length === 0 ? (
+                {isLoading ? (
+                    <div className="flex flex-col items-center justify-center py-32 text-center">
+                        <div className="w-12 h-12 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mb-4" />
+                        <p className="text-zinc-400">Loading your projects...</p>
+                    </div>
+                ) : error ? (
+                    <div className="flex flex-col items-center justify-center py-32 text-center border-2 border-dashed border-red-500/20 rounded-3xl bg-red-500/5">
+                        <div className="w-24 h-24 rounded-full bg-red-500/10 flex items-center justify-center mb-6 border border-red-500/20">
+                            <span className="text-4xl">⚠️</span>
+                        </div>
+                        <h2 className="text-2xl font-bold text-white mb-2">Something went wrong</h2>
+                        <p className="text-zinc-500 max-w-md mb-8">{error}</p>
+                        <button
+                            onClick={() => window.location.reload()}
+                            className="btn-primary"
+                        >
+                            Try Again
+                        </button>
+                    </div>
+                ) : projects.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-32 text-center border-2 border-dashed border-white/5 rounded-3xl bg-white/5">
                         <div className="w-24 h-24 rounded-full bg-gradient-to-br from-white/5 to-white/10 flex items-center justify-center mb-6 shadow-inner border border-white/5">
                             <span className="text-4xl grayscale opacity-30">📂</span>
