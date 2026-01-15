@@ -4,6 +4,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
+// Import floating assets
+import floatingPage1 from '../assets/coloring_page_floating_1.png';
+import floatingPage2 from '../assets/coloring_page_floating_2_v2.png';
+
 const LandingPage: React.FC = () => {
     const [email, setEmail] = useState('');
     const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -49,8 +53,8 @@ const LandingPage: React.FC = () => {
             {/* Floating Coloring Pages using generated assets */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none select-none">
                 <motion.img
-                    src="/assets/coloring_page_floating_1.png"
-                    className="absolute top-[15%] left-[-150px] w-[280px] h-[280px] object-cover rounded-xl shadow-2xl opacity-20 rotate-[-12deg]"
+                    src={floatingPage1}
+                    className="absolute top-[15%] left-[-150px] w-[280px] h-[280px] object-cover rounded-xl shadow-2xl opacity-30 rotate-[-12deg] mix-blend-screen invert"
                     animate={{
                         x: ['-100%', '120vw'],
                         y: [0, -50],
@@ -64,15 +68,15 @@ const LandingPage: React.FC = () => {
                     }}
                 />
                 <motion.img
-                    src="/assets/coloring_page_floating_2.png"
-                    className="absolute bottom-[20%] right-[-150px] w-[320px] h-[320px] object-cover rounded-xl shadow-2xl opacity-15 rotate-[8deg]"
+                    src={floatingPage2}
+                    className="absolute bottom-[20%] right-[-150px] w-[320px] h-[320px] object-cover rounded-xl shadow-2xl opacity-20 rotate-[8deg] mix-blend-screen invert"
                     animate={{
                         x: ['100%', '-120vw'],
                         y: [0, -80],
                         rotate: [8, -15]
                     }}
                     transition={{
-                        duration: 32,
+                        duration: 42,
                         ease: "linear",
                         repeat: Infinity,
                         delay: 2
