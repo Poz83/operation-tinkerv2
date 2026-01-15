@@ -15,15 +15,33 @@ export interface BookPlanItem {
 }
 
 export class DirectPromptService {
-  private ai: GoogleGenAI;
+
+  private ai: GoogleGenAI | null;
+
+  private ensureInitialized(): void {
+    if (!this.ai) {
+      throw new Error("Gemini API Key is not configured. Please add your key in Settings.");
+    }
+  }
 
   constructor(apiKey?: string) {
-    const key = apiKey || process.env.API_KEY;
+    // Check multiple sources for the key
+    const key = apiKey ||
+      (typeof process !== 'undefined' ? process.env?.API_KEY : undefined) ||
+      (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_GEMINI_API_KEY : undefined);
+
     if (!key) {
-      console.error("CRITICAL ERROR: API Key is missing in DirectPromptService.");
-      throw new Error("Gemini API Key is not configured. Please check your environment variables or provide an API key.");
+      console.warn("DirectPromptService initialized without API Key. Calls will fail if key is not provided later.");
     }
-    this.ai = new GoogleGenAI({ apiKey: key });
+
+    // We initialize GoogleGenAI even with empty key if needed, or handle it.
+    // The SDK might throw if key is missing, so we wrap it.
+    if (key) {
+      this.ai = new GoogleGenAI({ apiKey: key });
+    } else {
+      // @ts-ignore - Handle missing key case by creating a dummy or leaving undefined handling to methods
+      this.ai = null;
+    }
   }
 
   /**
@@ -43,6 +61,7 @@ export class DirectPromptService {
     complexity: string,
     signal?: AbortSignal
   ): Promise<BookPlanItem[]> {
+    this.ensureInitialized();
 
     const textControlInstruction = includeText
       ? "TEXT CONTROL: IF `includeText` is TRUE: You MAY include text if the user's idea asks for it (e.g. 'A birthday card'). Set `requiresText` to true for those pages."
@@ -127,7 +146,7 @@ export class DirectPromptService {
         throw new Error('Aborted');
       }
 
-      const response = await this.ai.models.generateContent({
+      const response = await this.ai!.models.generateContent({
         model: GEMINI_TEXT_MODEL,
         contents: "Generate the book plan now.",
         config: {
@@ -164,6 +183,7 @@ export class DirectPromptService {
   }
 
   async brainstormPrompt(rawPrompt: string): Promise<string> {
+    this.ensureInitialized();
     const systemInstruction = `
       You are a Prompt Engineer specialized in generative AI for coloring books. 
       Take the user's simple idea and expand it into a descriptive coloring book scene. 
@@ -173,7 +193,7 @@ export class DirectPromptService {
     `;
 
     try {
-      const response = await this.ai.models.generateContent({
+      const response = await this.ai!.models.generateContent({
         model: GEMINI_TEXT_MODEL,
         contents: rawPrompt,
         config: {

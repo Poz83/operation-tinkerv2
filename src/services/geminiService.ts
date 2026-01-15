@@ -3,21 +3,21 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 
+import { getStoredApiKey } from '../lib/crypto';
 import { DirectPromptService } from './direct-prompt-service';
-
-// Mocking a backend instance since we are running client-side
-const backendService = new DirectPromptService();
 
 export const brainstormPrompt = async (prompt: string): Promise<string> => {
   try {
-    // In a production environment, this would be:
-    // const response = await fetch('/api/brainstorm', { method: 'POST', body: JSON.stringify({ prompt }) });
-    // const data = await response.json();
-    // return data.enhancedPrompt;
-    
+    // Retrieve BYOK key if available
+    const apiKey = await getStoredApiKey() || undefined;
+
+    // Lazy instantiate service with the specific key
+    const backendService = new DirectPromptService(apiKey);
+
     return await backendService.brainstormPrompt(prompt);
   } catch (error) {
     console.error("Failed to enhance prompt:", error);
+    // Fail gracefully by returning original prompt
     return prompt;
   }
 };
