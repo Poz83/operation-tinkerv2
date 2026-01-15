@@ -4,7 +4,7 @@
 */
 
 import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 
 import { PAGE_SIZES, VISUAL_STYLES, TARGET_AUDIENCES, COMPLEXITY_LEVELS, ColoringPage, CreativeVariation, SavedProject } from '../types';
 import { Setup } from '../components/Setup';
@@ -48,7 +48,8 @@ const App: React.FC = () => {
   const [creativeVariation, setCreativeVariation] = useState<CreativeVariation>('auto');
 
   // App State
-  const location = useLocation();
+  const { projectId: urlProjectId } = useParams<{ projectId?: string }>();
+  const navigate = useNavigate();
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
   const [pages, setPages] = useState<ColoringPage[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -547,6 +548,10 @@ const App: React.FC = () => {
       try {
         localStorage.setItem('myjoe_projects', serialized);
         setCurrentProjectId(newProject.id);
+        // Update URL to reflect the project ID
+        if (!urlProjectId || urlProjectId !== newProject.id) {
+          navigate(`/studio/${newProject.id}`, { replace: true });
+        }
         toast.success("Project saved to Vault!", "🔐");
       } catch (e) {
         // If quota exceeded, try to save without the hero image/thumbnail for this entry
@@ -557,6 +562,10 @@ const App: React.FC = () => {
 
         localStorage.setItem('myjoe_projects', JSON.stringify(projects));
         setCurrentProjectId(newProject.id);
+        // Update URL to reflect the project ID
+        if (!urlProjectId || urlProjectId !== newProject.id) {
+          navigate(`/studio/${newProject.id}`, { replace: true });
+        }
         toast.warning("Saved (without images due to space limits)", "⚠️");
       }
 
@@ -582,15 +591,21 @@ const App: React.FC = () => {
     toast.success(`Loaded "${project.projectName}"`, "📂");
   }, [toast]);
 
-  // Check for project to load from navigation state
+  // Load project from URL param on mount
   useEffect(() => {
-    if (location.state && (location.state as any).project) {
-      const projectToLoad = (location.state as any).project as SavedProject;
-      handleLoadProject(projectToLoad);
-      // Clear state so we don't reload on refresh (optional, but good practice)
-      window.history.replaceState({}, document.title);
+    if (urlProjectId) {
+      try {
+        const existingJson = localStorage.getItem('myjoe_projects');
+        const projects: SavedProject[] = existingJson ? JSON.parse(existingJson) : [];
+        const project = projects.find(p => p.id === urlProjectId);
+        if (project) {
+          handleLoadProject(project);
+        }
+      } catch (e) {
+        console.error('Failed to load project from URL:', e);
+      }
     }
-  }, [location.state, handleLoadProject]);
+  }, [urlProjectId, handleLoadProject]);
 
 
   const handleClear = () => {

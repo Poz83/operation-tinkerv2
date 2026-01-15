@@ -72,7 +72,7 @@ const AppContent: React.FC = () => {
                         <Dashboard />
                     </ProtectedRoute>
                 } />
-                <Route path="/studio" element={
+                <Route path="/studio/:projectId?" element={
                     <ProtectedRoute>
                         <Studio />
                     </ProtectedRoute>

@@ -65,7 +65,7 @@ export const Vault: React.FC = () => {
     };
 
     const handleOpenProject = (project: SavedProject) => {
-        navigate('/studio', { state: { project } });
+        navigate(`/studio/${project.id}`);
     };
 
     const getStyleLabel = (id: string) => VISUAL_STYLES.find(s => s.id === id)?.label || id;
