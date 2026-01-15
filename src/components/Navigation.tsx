@@ -27,30 +27,33 @@ export const Navigation: React.FC = () => {
 
         {/* Center: Nav Links */}
         <div className="hidden md:flex items-center gap-6">
-          <Link to="/studio" className={`nav-link ${isActive('/studio') ? 'active' : ''}`}>Studio</Link>
-          <Link to="/dashboard" className={`nav-link ${isActive('/dashboard') ? 'active' : ''}`}>Dashboard</Link>
-          <a href="#" className="nav-link">Gallery</a>
-          {/* Hide Resources and Help for the dev account */}
-          {userEmail !== 'jamie@myjoe.app' && (
+          {location.pathname.startsWith('/studio/project/') ? (
+            // Studio Editor Navigation
             <>
-              <a href="#" className="nav-link">Resources</a>
-              <a href="#" className="nav-link">Help</a>
+              <Link to="/studio" className="nav-link">Projects</Link>
+              <Link to="/dashboard" className="nav-link">Dashboard</Link>
+              <Link to="/gallery" className={`nav-link ${isActive('/gallery') ? 'active' : ''}`}>Gallery</Link>
+              <Link to="/vault" className={`nav-link ${isActive('/vault') ? 'active' : ''}`}>Vault</Link>
             </>
-          )}
-          {isAdmin && (
-            <Link to="/admin" className={`nav-link ${isActive('/admin') ? 'active' : ''} text-red-500 hover:text-red-400`}>Admin</Link>
+          ) : (
+            // Default Navigation
+            <>
+              <Link to="/studio" className={`nav-link ${isActive('/studio') ? 'active' : ''}`}>Studio</Link>
+              <Link to="/dashboard" className={`nav-link ${isActive('/dashboard') ? 'active' : ''}`}>Dashboard</Link>
+              <Link to="/gallery" className="nav-link">Gallery</Link>
+              {/* Hide Resources and Help for the dev account */}
+              {userEmail !== 'jamie@myjoe.app' && (
+                <>
+                  {/* <a href="#" className="nav-link">Resources</a> */}
+                  <a href="#" className="nav-link">Help</a>
+                </>
+              )}
+            </>
           )}
         </div>
 
         {/* Right: User Menu */}
         <div className="flex items-center gap-3">
-          <button
-            className="icon-button"
-            aria-label="Notifications"
-            title="Notifications"
-          >
-            <span role="img" aria-label="bell">🔔</span>
-          </button>
           <Link
             to="/settings"
             className={`icon-button ${isActive('/settings') ? 'bg-white/10 border-white/20' : ''}`}

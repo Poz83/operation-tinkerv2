@@ -30,7 +30,17 @@ interface FeedbackItem {
     screenshot_url?: string;
 }
 
+import { useAuth } from '../context/AuthContext';
+import { Navigate } from 'react-router-dom';
+
 export const AdminDashboard: React.FC = () => {
+    const { userEmail, isAdmin } = useAuth();
+
+    // Strict Access Control: Only allow Jamie
+    if (!isAdmin || userEmail !== 'jamie@myjoe.app') {
+        return <Navigate to="/dashboard" replace />;
+    }
+
     const [activeTab, setActiveTab] = useState<AdminTab>('overview');
     const [featureFlags, setFeatureFlags] = useState<FeatureFlag[]>([]);
     const [users, setUsers] = useState<UserProfile[]>([]);

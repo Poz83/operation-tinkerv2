@@ -108,10 +108,10 @@ const tiles = [
 // ... (keep existing imports)
 
 export const Dashboard: React.FC = () => {
-    const { isAdmin } = useAuth();
+    const { isAdmin, userEmail } = useAuth();
 
     const displayTiles = [...tiles];
-    if (isAdmin) {
+    if (isAdmin && userEmail === 'jamie@myjoe.app') {
         displayTiles.push({
             title: 'Admin Dashboard',
             description: 'System management & feedback',
@@ -143,10 +143,6 @@ export const Dashboard: React.FC = () => {
                     />
                 ))}
             </main>
-
-            <footer className="dashboard-footer">
-                <p>Powered by Gemini AI</p>
-            </footer>
         </div>
     );
 };

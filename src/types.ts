@@ -120,4 +120,5 @@ export interface SavedProject {
   createdAt: number;
   updatedAt: number;
   thumbnail?: string; // Optional thumbnail data URL
+  pages?: ColoringPage[];
 }

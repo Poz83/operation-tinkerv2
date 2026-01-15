@@ -6,7 +6,8 @@
  */
 
 import { supabase } from '../lib/supabase';
-import type { SavedProject } from '../types';
+import type { SavedProject, ColoringPage } from '../types';
+import { uploadProjectImage, getSignedUrl } from './storageService';
 
 // Type for the joined query result
 interface ProjectWithColoringData {
@@ -24,6 +25,17 @@ interface ProjectWithColoringData {
         complexity: string | null;
         page_count: number | null;
     } | null;
+}
+
+// Type for image record in DB
+interface DbImage {
+    id: string;
+    project_id: string;
+    storage_path: string;
+    type: string;
+    metadata: any;
+    filename: string | null;
+    generation_prompt: string | null;
 }
 
 /**
@@ -73,15 +85,17 @@ export async function fetchUserProjects(): Promise<SavedProject[]> {
         throw error;
     }
 
-    // Map database records to SavedProject format
-    return (data as ProjectWithColoringData[]).map(mapDbToSavedProject);
+    // Map without pages (list view doesn't need full pages)
+    return (data as ProjectWithColoringData[]).map(r => mapDbToSavedProject(r));
 }
 
 /**
  * Fetch a single project by its public ID
+ * Now also fetches and signs image URLs
  */
 export async function fetchProject(publicId: string): Promise<SavedProject | null> {
-    const { data, error } = await supabase
+    // 1. Fetch Project Data
+    const { data: projectData, error } = await supabase
         .from('projects')
         .select(`
             id,
@@ -103,19 +117,55 @@ export async function fetchProject(publicId: string): Promise<SavedProject | nul
         .single();
 
     if (error) {
-        if (error.code === 'PGRST116') {
-            // Not found
-            return null;
-        }
+        if (error.code === 'PGRST116') return null; // Not found
         console.error('Error fetching project:', error);
         throw error;
     }
 
-    return mapDbToSavedProject(data as ProjectWithColoringData);
+    // 2. Fetch Images for this project
+    const { data: imagesData, error: imagesError } = await supabase
+        .from('images')
+        .select('*')
+        .eq('project_id', (projectData as ProjectWithColoringData).id)
+        .eq('type', 'page');
+
+    if (imagesError) {
+        console.error('Error fetching project images:', imagesError);
+        // Fallback: return project without pages
+        return mapDbToSavedProject(projectData as ProjectWithColoringData);
+    }
+
+    // 3. Convert DB Images to ColoringPages & Get Signed URLs
+    const pages: ColoringPage[] = await Promise.all(
+        (imagesData as DbImage[]).map(async (img) => {
+            const signedUrl = await getSignedUrl(img.storage_path);
+
+            return {
+                id: img.id,
+                imageUrl: signedUrl,
+                prompt: img.generation_prompt || '',
+                // Restore metadata
+                pageIndex: img.metadata?.pageIndex ?? 0,
+                status: img.metadata?.status ?? 'complete',
+                isLoading: false,
+                isCover: img.metadata?.isCover ?? false
+            };
+        })
+    );
+
+    // Sort by pageIndex
+    pages.sort((a, b) => (a.pageIndex ?? 0) - (b.pageIndex ?? 0));
+
+    // 4. Combine and return
+    const project = mapDbToSavedProject(projectData as ProjectWithColoringData);
+    project.pages = pages;
+
+    return project;
 }
 
 /**
  * Save a project (create or update)
+ * Handles uploading new images to R2 and saving standard metadata
  */
 export async function saveProject(project: SavedProject): Promise<SavedProject> {
     const { data: { user } } = await supabase.auth.getUser();
@@ -126,7 +176,7 @@ export async function saveProject(project: SavedProject): Promise<SavedProject> 
     // Check if project exists (by ID)
     const isUpdate = !!project.id && !project.id.startsWith('temp-') && project.id.startsWith('CB');
 
-    let projectId: string;
+    let projectId: string; // Internal UUID
     let publicId: string;
 
     if (isUpdate) {
@@ -138,64 +188,65 @@ export async function saveProject(project: SavedProject): Promise<SavedProject> 
             .single();
 
         if (fetchError || !existingProject) {
-            // Project doesn't exist, create new
-            return createNewProject(user.id, project);
+            // Fallback: create new if not found by public ID
+            const newProj = await createNewProjectDbOnly(user.id, project);
+            projectId = newProj.id;
+            publicId = newProj.public_id;
+        } else {
+            projectId = existingProject.id;
+            publicId = existingProject.public_id;
+
+            // Update projects table
+            await supabase
+                .from('projects')
+                .update({
+                    title: project.projectName,
+                    description: project.userPrompt,
+                    cover_image_url: project.thumbnail || null,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', projectId);
+
+            // Update coloring_studio_data
+            await supabase
+                .from('coloring_studio_data')
+                .upsert({
+                    project_id: projectId,
+                    style: project.visualStyle,
+                    audience: project.targetAudienceId,
+                    complexity: project.complexity,
+                    page_count: project.pageAmount
+                });
         }
 
-        projectId = (existingProject as { id: string; public_id: string }).id;
-        publicId = (existingProject as { id: string; public_id: string }).public_id;
-
-        // Update projects table
-        const { error: updateError } = await supabase
-            .from('projects')
-            .update({
-                title: project.projectName,
-                description: project.userPrompt,
-                cover_image_url: project.thumbnail || null,
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', projectId);
-
-        if (updateError) {
-            console.error('Error updating project:', updateError);
-            throw updateError;
-        }
-
-        // Update coloring_studio_data
-        const { error: dataError } = await supabase
-            .from('coloring_studio_data')
-            .upsert({
-                project_id: projectId,
-                style: project.visualStyle,
-                audience: project.targetAudienceId,
-                complexity: project.complexity,
-                page_count: project.pageAmount
-            });
-
-        if (dataError) {
-            console.error('Error updating coloring studio data:', dataError);
-            throw dataError;
-        }
     } else {
         // Create new project
-        return createNewProject(user.id, project);
+        const result = await createNewProjectDbOnly(user.id, project);
+        projectId = result.id;
+        publicId = result.public_id;
+    }
+
+    // Handle Image Uploads & Persistence
+    let updatedPages = project.pages || [];
+    if (updatedPages.length > 0) {
+        updatedPages = await persistProjectImages(projectId, updatedPages);
     }
 
     // Return updated project
     return {
         ...project,
         id: publicId,
+        pages: updatedPages,
         updatedAt: Date.now()
     };
 }
 
 /**
- * Create a new project
+ * Internal helper to create DB records for a new project
  */
-async function createNewProject(userId: string, project: SavedProject): Promise<SavedProject> {
+async function createNewProjectDbOnly(userId: string, project: SavedProject) {
     const publicId = generatePublicId();
 
-    // Insert into projects table
     const { data: newProject, error: insertError } = await supabase
         .from('projects')
         .insert({
@@ -209,37 +260,86 @@ async function createNewProject(userId: string, project: SavedProject): Promise<
         .select('id, public_id, created_at, updated_at')
         .single();
 
-    if (insertError || !newProject) {
-        console.error('Error creating project:', insertError);
-        throw insertError || new Error('Failed to create project');
-    }
+    if (insertError || !newProject) throw insertError || new Error('Failed to create project');
 
-    const projectRecord = newProject as { id: string; public_id: string; created_at: string; updated_at: string };
-
-    // Insert coloring_studio_data
-    const { error: dataError } = await supabase
+    await supabase
         .from('coloring_studio_data')
         .insert({
-            project_id: projectRecord.id,
+            project_id: newProject.id,
             style: project.visualStyle,
             audience: project.targetAudienceId,
             complexity: project.complexity,
             page_count: project.pageAmount
         });
 
-    if (dataError) {
-        console.error('Error creating coloring studio data:', dataError);
-        // Clean up the project if coloring data fails
-        await supabase.from('projects').delete().eq('id', projectRecord.id);
-        throw dataError;
-    }
+    return newProject;
+}
 
-    return {
-        ...project,
-        id: projectRecord.public_id,
-        createdAt: new Date(projectRecord.created_at).getTime(),
-        updatedAt: new Date(projectRecord.updated_at).getTime()
-    };
+/**
+ * Helper to upload images and save to DB
+ * Returns updated pages (e.g. replacing data URL with remote, or keeping as is if error)
+ */
+async function persistProjectImages(projectId: string, pages: ColoringPage[]): Promise<ColoringPage[]> {
+    const updatedPages = [...pages];
+
+    // Process sequentially to be safe with DB or Parallel? Parallel is faster.
+    await Promise.all(updatedPages.map(async (page, index) => {
+        if (!page.imageUrl) return;
+
+        // If it's NOT a data URL, we assume it's already saved.
+        // We skip upload.
+        if (!page.imageUrl.startsWith('data:image/')) {
+            return;
+        }
+
+        // It is a Data URL -> Upload
+        try {
+            const imageUuid = crypto.randomUUID();
+
+            // Upload to R2
+            const result = await uploadProjectImage(projectId, imageUuid, page.imageUrl);
+            const storageKey = result.key;
+
+            // Insert into images table
+            const { error: dbError } = await supabase.from('images').insert({
+                id: imageUuid,
+                project_id: projectId,
+                storage_path: storageKey,
+                type: 'page',
+                mime_type: 'image/png', // Assumption
+                user_id: (await supabase.auth.getUser()).data.user?.id!,
+                generation_prompt: page.prompt,
+                metadata: {
+                    pageIndex: page.pageIndex,
+                    status: page.status,
+                    isCover: page.isCover || false
+                }
+            });
+
+            if (dbError) {
+                console.error('Failed to save image metadata:', dbError);
+                return;
+            }
+
+            // Get a signed URL for specific viewing
+            const signedUrl = await getSignedUrl(storageKey);
+
+            if (signedUrl) {
+                // Update the page object in our return array
+                updatedPages[index] = {
+                    ...page,
+                    id: imageUuid, // Update ID to match DB
+                    imageUrl: signedUrl,
+                    isLoading: false
+                };
+            }
+
+        } catch (err) {
+            console.error('Failed to persist image:', err);
+        }
+    }));
+
+    return updatedPages;
 }
 
 /**
@@ -251,7 +351,6 @@ export async function deleteProject(publicId: string): Promise<void> {
         throw new Error('Not authenticated');
     }
 
-    // Soft delete by setting is_archived = true
     const { error } = await supabase
         .from('projects')
         .update({ is_archived: true })
@@ -279,11 +378,12 @@ function mapDbToSavedProject(record: ProjectWithColoringData): SavedProject {
         complexity: coloringData?.complexity || 'Simple',
         targetAudienceId: coloringData?.audience || 'kids',
         userPrompt: record.description || '',
-        hasHeroRef: false, // Not stored in DB
-        heroImage: null, // Not stored in DB (would be in images table)
-        includeText: false, // Not stored in DB
+        hasHeroRef: false,
+        heroImage: null,
+        includeText: false,
         createdAt: new Date(record.created_at).getTime(),
         updatedAt: new Date(record.updated_at).getTime(),
-        thumbnail: record.cover_image_url || undefined
+        thumbnail: record.cover_image_url || undefined,
+        pages: [] // Default empty, populated in fetchProject
     };
 }

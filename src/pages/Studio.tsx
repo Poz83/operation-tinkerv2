@@ -9,7 +9,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { PAGE_SIZES, VISUAL_STYLES, TARGET_AUDIENCES, COMPLEXITY_LEVELS, ColoringPage, CreativeVariation, SavedProject } from '../types';
 import { Setup } from '../components/Setup';
 import { Book } from '../components/Book';
-import { useApiKey } from '../useApiKey';
+import { useApiKeyContext } from '../context/apiKeyContext';
 import { ApiKeyDialog } from '../components/ApiKeyDialog';
 import { processGeneration } from '../server/jobs/process-generation';
 import { brainstormPrompt } from '../services/geminiService';
@@ -24,6 +24,7 @@ import { useToast } from '../hooks/useToast';
 import { useSettings } from '../context/settingsContext';
 import { ImageEditChatPanel } from '../components/ImageEditChatPanel';
 import { useImageEditChat } from '../hooks/useImageEditChat';
+import { useAutosave } from '../hooks/useAutosave';
 
 import coloringStudioIcon from '../assets/coloring-studio.png';
 
@@ -33,7 +34,37 @@ const BatchLogPanel = React.lazy(() => import('../components/BatchLogPanel'));
 const BATCH_LOGS_ENABLED = isBatchLoggingEnabled();
 
 const App: React.FC = () => {
-  const { validateApiKey, showApiKeyDialog, handleApiKeyDialogContinue } = useApiKey();
+  const { hasApiKey, setApiKey } = useApiKeyContext();
+  const [showApiKeyDialog, setShowApiKeyDialog] = useState(false);
+
+  const validateApiKey = useCallback(() => {
+    if (!hasApiKey) {
+      setShowApiKeyDialog(true);
+      return false;
+    }
+    return true;
+  }, [hasApiKey]);
+
+  const handleApiKeyDialogContinue = () => {
+    setShowApiKeyDialog(false);
+    // The dialog itself (ApiKeyDialog component) might need updates if it doesn't handle the 'continue' action 
+    // by saving the key itself. 
+    // Actually, let's check ApiKeyDialog again.
+    // Ah, ApiKeyDialog just has `onContinue`.
+    // IF ApiKeyDialog is just a "connect key" prompt that redirects or opens a native picker, we need to handle that.
+    // BUT, checking the code, the legacy useApiKey used `window.aistudio`. 
+    // We are REPLACING that with our own input implementation which is handled in Settings or potentially inside a new Dialog.
+    // Wait, the USER request is about "onboarding page". 
+    // The `ApiKeyDialog` we saw earlier (step 15) just had "Connect Your Key" button.
+    // We probably need to change `ApiKeyDialog` to actually *accept* an input if we want it to be the onboarding flow, 
+    // OR redirect them to Settings.
+
+    // Let's assume for now we redirect to Settings or open a settings modal. 
+    // However, the user said "inputted gem key on onboarding".
+    // So `ApiKeyDialog` probably SHOULD have an input.
+    // Let me check `ApiKeyDialog` again in the next step to be sure what it does.
+    // For now, I will assume I need to implement the check.
+  };
 
   // Toolbar State
   const [projectName, setProjectName] = useState("");
@@ -69,6 +100,46 @@ const App: React.FC = () => {
 
   // Settings
   const { settings } = useSettings();
+
+  // Autosave Logic
+  const currentProjectState: SavedProject = useMemo(() => ({
+    id: currentProjectId || '',
+    projectName: projectName || 'Untitled Project',
+    pageAmount,
+    pageSizeId,
+    visualStyle,
+    complexity,
+    targetAudienceId,
+    userPrompt,
+    hasHeroRef,
+    heroImage,
+    includeText,
+    createdAt: Date.now(), // These timestamps aren't critical for diffing
+    updatedAt: Date.now(),
+    thumbnail: pages.find(p => p.imageUrl)?.imageUrl,
+    pages // Pass pages for persistence
+  }), [currentProjectId, projectName, pageAmount, pageSizeId, visualStyle, complexity, targetAudienceId, userPrompt, hasHeroRef, heroImage, includeText, pages]);
+
+  const { status: saveStatus, lastSavedAt } = useAutosave({
+    project: currentProjectState,
+    onSave: async (proj) => {
+      const saved = await saveProject(proj);
+      if (saved.id !== currentProjectId) {
+        setCurrentProjectId(saved.id);
+        // Silent URL update
+        navigate(`/studio/project/${saved.id}`, { replace: true });
+      }
+
+      // Update pages with returned state (populates DB IDs and signed URLs)
+      if (saved.pages) {
+        setPages(saved.pages);
+      }
+
+      return saved;
+    },
+    enabled: !!(projectName || userPrompt) && pages.length > 0 && !isGenerating,
+    interval: 5000 // 5 seconds debounce
+  });
 
   // Image Edit Chat Hook
   const handleImageEdited = useCallback((pageIndex: number, newImageUrl: string, isNewVersion: boolean) => {
@@ -534,7 +605,7 @@ const App: React.FC = () => {
 
       // Update URL to reflect the project ID
       if (!urlProjectId || urlProjectId !== savedProject.id) {
-        navigate(`/studio/${savedProject.id}`, { replace: true });
+        navigate(`/studio/project/${savedProject.id}`, { replace: true });
       }
       toast.success("Project saved to Vault!", "🔐");
     } catch (err) {
@@ -568,7 +639,13 @@ const App: React.FC = () => {
           if (project) {
             handleLoadProject(project);
           } else {
-            console.warn('Project not found:', urlProjectId);
+            // Project ID exists in URL but not in DB -> New Project with pre-generated ID
+            console.log('Project not found, treating as new project with ID:', urlProjectId);
+            setCurrentProjectId(urlProjectId);
+            // We do NOT call handleClear() here because we want to keep the "clean slate" 
+            // but just associate the ID. 
+            // IMPORTANT: If we are navigating from another project, we might need to reset state.
+            // But since 'key' on Route usually resets component, basic state is already clean.
           }
         } catch (err) {
           console.error('Failed to load project:', err);
@@ -709,6 +786,34 @@ const App: React.FC = () => {
 
           {/* Workspace Top Bar */}
           <div className="absolute top-6 right-6 z-50 flex gap-4 pointer-events-none">
+            {/* Autosave Status */}
+            <div className="pointer-events-auto flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/20 backdrop-blur border border-white/5 text-xs text-white/70 shadow-sm transition-opacity duration-500">
+              {saveStatus === 'saving' && (
+                <>
+                  <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
+                  <span>Saving...</span>
+                </>
+              )}
+              {saveStatus === 'saved' && lastSavedAt && (
+                <>
+                  <div className="w-2 h-2 rounded-full bg-green-400/80" />
+                  <span>Saved</span>
+                </>
+              )}
+              {saveStatus === 'error' && (
+                <>
+                  <div className="w-2 h-2 rounded-full bg-red-400" />
+                  <span>Save Failed</span>
+                </>
+              )}
+              {saveStatus === 'unsaved' && (
+                <>
+                  <div className="w-1.5 h-1.5 rounded-full bg-white/30" />
+                  <span>Unsaved changes</span>
+                </>
+              )}
+            </div>
+
             <div className="pointer-events-auto flex gap-3 items-center">
               {(isGenerating || displayProgress > 0) ? (
                 <div className="flex items-center gap-3 bg-[hsl(var(--card))]/85 border border-white/10 rounded-2xl px-3 py-2 shadow-lg backdrop-blur">

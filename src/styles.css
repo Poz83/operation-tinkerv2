@@ -4,11 +4,11 @@
   --color-deep-onyx: #0a0a0b;
   --color-aurora-blue: #60a5fa;
   --color-aurora-purple: #a78bfa;
-  
+
   --animate-pulse-slow: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 
   --font-sans: 'Inter', 'system-ui', 'sans-serif';
-  
+
   --color-gray-750: #2d3748;
   --color-gray-850: #1a202c;
   --color-gray-950: #0B0C10;
@@ -578,6 +578,22 @@ body {
 
 .animate-pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-pulse-slow {
+  animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: .5;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

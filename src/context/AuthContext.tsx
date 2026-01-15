@@ -131,7 +131,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (!import.meta.env.DEV) return;
 
         const mockUser: User = {
-            id: 'dev-user-id',
+            id: '11111111-1111-1111-1111-111111111111', // Valid UUID to preventing 400 errors
             aud: 'authenticated',
             role: 'authenticated',
             email: 'dev@example.com',

@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "pages:dev": "wrangler pages dev --proxy=3000",
     "build": "vite build",
     "preview": "vite preview"
   },

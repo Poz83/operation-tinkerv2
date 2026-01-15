@@ -8,6 +8,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { encryptApiKey, decryptApiKey, maskApiKey, isValidApiKeyFormat } from '../lib/crypto';
 import { useAuth } from './AuthContext';
+import { supabase } from '../lib/supabase';
 
 interface ApiKeyContextType {
     // State
@@ -42,30 +43,81 @@ export const ApiKeyProvider: React.FC<ApiKeyProviderProps> = ({ children }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [setupComplete, setSetupComplete] = useState(false);
 
-    // Load API key from storage on mount
+    // Sync state with Supabase and LocalStorage
     useEffect(() => {
-        const loadApiKey = async () => {
-            try {
+        const syncApiKey = async () => {
+            if (!user) {
+                // Determine offline availability from local storage only
                 const encryptedKey = localStorage.getItem(STORAGE_KEY);
+                if (encryptedKey) {
+                    try {
+                        const decrypted = await decryptApiKey(encryptedKey);
+                        setApiKeyState(decrypted);
+                    } catch (e) {
+                        console.error("Failed to decrypt local key", e);
+                    }
+                }
                 const isSetupDone = localStorage.getItem(SETUP_COMPLETE_KEY) === 'true';
+                setSetupComplete(isSetupDone);
+                setIsLoading(false);
+                return;
+            }
 
+            try {
+                // 1. Try Local Storage first (fastest)
+                const localEncryptedKey = localStorage.getItem(STORAGE_KEY);
+                let currentKey = null;
+
+                if (localEncryptedKey) {
+                    try {
+                        currentKey = await decryptApiKey(localEncryptedKey);
+                        setApiKeyState(currentKey);
+                    } catch (e) {
+                        console.warn('Local key corrupted', e);
+                        localStorage.removeItem(STORAGE_KEY);
+                    }
+                }
+
+                // 2. Check Supabase for cloud backup
+                const { data, error } = await supabase
+                    .from('users')
+                    .select('gemini_api_key')
+                    .eq('id', user.id)
+                    .maybeSingle();
+
+                if (data?.gemini_api_key) {
+                    // Cloud has a key
+                    if (data.gemini_api_key !== localEncryptedKey) {
+                        // Cloud differs from local (or local is missing)
+                        try {
+                            const cloudDecrypted = await decryptApiKey(data.gemini_api_key);
+                            setApiKeyState(cloudDecrypted);
+                            // Sync to local
+                            localStorage.setItem(STORAGE_KEY, data.gemini_api_key);
+                        } catch (e) {
+                            console.error('Failed to decrypt cloud key', e);
+                        }
+                    }
+                } else if (!data?.gemini_api_key && localEncryptedKey) {
+                    // We have local key but not cloud - push to cloud
+                    await supabase
+                        .from('users')
+                        .update({ gemini_api_key: localEncryptedKey })
+                        .eq('id', user.id);
+                }
+
+                const isSetupDone = localStorage.getItem(SETUP_COMPLETE_KEY) === 'true' || !!currentKey || !!data?.gemini_api_key;
                 setSetupComplete(isSetupDone);
 
-                if (encryptedKey) {
-                    const decrypted = await decryptApiKey(encryptedKey);
-                    setApiKeyState(decrypted);
-                }
             } catch (error) {
-                console.error('Failed to load API key:', error);
-                // Clear corrupted data
-                localStorage.removeItem(STORAGE_KEY);
+                console.error('Failed to sync API key:', error);
             } finally {
                 setIsLoading(false);
             }
         };
 
-        loadApiKey();
-    }, []);
+        syncApiKey();
+    }, [user]);
 
     // Determine if this is first login (authenticated but no setup complete and no API key)
     const isFirstLogin = !!user && !setupComplete && !isLoading && !apiKey;
@@ -82,23 +134,48 @@ export const ApiKeyProvider: React.FC<ApiKeyProviderProps> = ({ children }) => {
         }
 
         try {
-            // Encrypt and store
+            // Encrypt and store locally
             const encrypted = await encryptApiKey(trimmedKey);
             localStorage.setItem(STORAGE_KEY, encrypted);
             setApiKeyState(trimmedKey);
+
+            // Mark setup as complete
+            localStorage.setItem(SETUP_COMPLETE_KEY, 'true');
+            setSetupComplete(true);
+
+            // Sync to cloud if logged in
+            if (user) {
+                const { error } = await supabase
+                    .from('users')
+                    .update({ gemini_api_key: encrypted })
+                    .eq('id', user.id);
+
+                if (error) {
+                    console.error("Failed to sync key to cloud", error);
+                    // We don't fail the operation because local worked, but we log it
+                }
+            }
+
             return { success: true };
         } catch (error) {
             console.error('Failed to save API key:', error);
             return { success: false, error: 'Failed to securely store API key' };
         }
-    }, []);
+    }, [user]);
 
-    const clearApiKey = useCallback(() => {
+    const clearApiKey = useCallback(async () => {
         localStorage.removeItem(STORAGE_KEY);
         localStorage.removeItem(SETUP_COMPLETE_KEY);
         setApiKeyState(null);
         setSetupComplete(false);
-    }, []);
+
+        if (user) {
+            await supabase
+                .from('users')
+                .update({ gemini_api_key: null })
+                .eq('id', user.id);
+        }
+    }, [user]);
 
     const markSetupComplete = useCallback(() => {
         localStorage.setItem(SETUP_COMPLETE_KEY, 'true');

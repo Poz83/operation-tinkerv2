@@ -1,0 +1,29 @@
+name = "myjoe"
+compatibility_date = "2024-01-01"
+# pages_build_output_dir = "dist" # Configured via CLI or Console usually, but good for reference
+
+# R2 Bucket Bindings
+[[r2_buckets]]
+binding = "PROJECTS_BUCKET"
+bucket_name = "myjoe-projects"
+preview_bucket_name = "myjoe-projects-preview"
+
+[[r2_buckets]]
+binding = "AVATARS_BUCKET"
+bucket_name = "myjoe-avatars"
+preview_bucket_name = "myjoe-avatars-preview"
+
+[[r2_buckets]]
+binding = "EXPORTS_BUCKET"
+bucket_name = "myjoe-exports"
+preview_bucket_name = "myjoe-exports-preview"
+
+[[r2_buckets]]
+binding = "FEEDBACK_BUCKET"
+bucket_name = "myjoe-feedback"
+preview_bucket_name = "myjoe-feedback-preview"
+
+# Environment Variables (Local Fallbacks)
+[vars]
+# These keys are safe to be public or are local dev variants
+VITE_APP_URL = "http://localhost:8788"

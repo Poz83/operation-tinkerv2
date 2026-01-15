@@ -3,7 +3,9 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import Studio from './pages/Studio';
+import StudioLaunchpad from './pages/StudioLaunchpad';
 import Settings from './pages/Settings';
+import NotFound from './pages/NotFound';
 import LandingPage from './pages/LandingPage';
 import AuthCallback from './pages/AuthCallback';
 import AdminDashboard from './pages/AdminDashboard';
@@ -12,6 +14,8 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ApiKeyProvider, useApiKeyContext } from './context/apiKeyContext';
 import { WelcomeModal } from './components/WelcomeModal';
 import { FeedbackWidget } from './components/FeedbackWidget';
+import { DevToolbar } from './components/DevToolbar';
+import { Gallery } from './pages/Gallery';
 import { SettingsProvider } from './context/settingsContext';
 
 // Placeholder component for routes not yet implemented
@@ -59,6 +63,7 @@ const AppContent: React.FC = () => {
         <>
             {showWelcome && <WelcomeModal />}
             {isAuthenticated && <FeedbackWidget />}
+            {isAuthenticated && <DevToolbar />}
             <Routes>
                 <Route path="/landing" element={<LandingPage />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
@@ -72,7 +77,12 @@ const AppContent: React.FC = () => {
                         <Dashboard />
                     </ProtectedRoute>
                 } />
-                <Route path="/studio/:projectId?" element={
+                <Route path="/studio" element={
+                    <ProtectedRoute>
+                        <StudioLaunchpad />
+                    </ProtectedRoute>
+                } />
+                <Route path="/studio/project/:projectId" element={
                     <ProtectedRoute>
                         <Studio />
                     </ProtectedRoute>
@@ -107,6 +117,11 @@ const AppContent: React.FC = () => {
                         <Vault />
                     </ProtectedRoute>
                 } />
+                <Route path="/gallery" element={
+                    <ProtectedRoute>
+                        <Gallery />
+                    </ProtectedRoute>
+                } />
                 <Route path="/settings" element={
                     <ProtectedRoute>
                         <Settings />
@@ -117,6 +132,9 @@ const AppContent: React.FC = () => {
                         <AdminDashboard />
                     </ProtectedRoute>
                 } />
+
+                {/* 404 Route */}
+                <Route path="*" element={<NotFound />} />
             </Routes>
         </>
     );
