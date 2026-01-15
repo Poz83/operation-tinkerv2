@@ -5,8 +5,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 // Import floating assets
-import floatingPage1 from '../assets/coloring_page_floating_1.png';
-import floatingPage2 from '../assets/coloring_page_floating_2_v2.png';
 
 const LandingPage: React.FC = () => {
     const [email, setEmail] = useState('');
@@ -50,39 +48,7 @@ const LandingPage: React.FC = () => {
                 <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-aurora-blue/20 blur-[120px] rounded-full mix-blend-screen animate-pulse-slow delay-1000" />
             </div>
 
-            {/* Floating Coloring Pages using generated assets */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none select-none">
-                <motion.img
-                    src={floatingPage1}
-                    className="absolute top-[15%] left-[-150px] w-[280px] h-[280px] object-cover rounded-xl shadow-2xl opacity-30 rotate-[-12deg] mix-blend-screen invert"
-                    animate={{
-                        x: ['-100%', '120vw'],
-                        y: [0, -50],
-                        rotate: [-12, 10]
-                    }}
-                    transition={{
-                        duration: 25,
-                        ease: "linear",
-                        repeat: Infinity,
-                        delay: 0
-                    }}
-                />
-                <motion.img
-                    src={floatingPage2}
-                    className="absolute bottom-[20%] right-[-150px] w-[320px] h-[320px] object-cover rounded-xl shadow-2xl opacity-20 rotate-[8deg] mix-blend-screen invert"
-                    animate={{
-                        x: ['100%', '-120vw'],
-                        y: [0, -80],
-                        rotate: [8, -15]
-                    }}
-                    transition={{
-                        duration: 42,
-                        ease: "linear",
-                        repeat: Infinity,
-                        delay: 2
-                    }}
-                />
-            </div>
+
 
             <div className="relative z-10 w-full max-w-md px-6">
                 <motion.div
