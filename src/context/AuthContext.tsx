@@ -57,8 +57,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 setUser(initialSession?.user ?? null);
 
                 if (initialSession?.user) {
-                    const details = await fetchUserDetails(initialSession.user.id);
-                    setUserDetails(details);
+                    fetchUserDetails(initialSession.user.id).then(details => setUserDetails(details));
                 }
             } catch (error) {
                 console.error('Error getting initial session:', error);
@@ -77,8 +76,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 setUser(currentSession?.user ?? null);
 
                 if (currentSession?.user) {
-                    const details = await fetchUserDetails(currentSession.user.id);
-                    setUserDetails(details);
+                    // Fire and forget - don't block UI
+                    fetchUserDetails(currentSession.user.id).then(details => setUserDetails(details));
                 } else {
                     setUserDetails(null);
                 }
