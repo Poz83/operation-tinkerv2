@@ -7,6 +7,7 @@
 
 import React, { useState, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
 
 type FeedbackType = 'issue' | 'suggestion';
 
@@ -75,23 +76,25 @@ export const FeedbackWidget: React.FC = () => {
 
         setIsSubmitting(true);
 
-        const feedback: FeedbackData = {
-            type: feedbackType,
-            details: details.trim(),
-            screenshot,
-            userEmail,
-            timestamp: new Date().toISOString(),
-            url: window.location.href,
-        };
-
         try {
-            // For now, store feedback in localStorage
-            // In production, this would be sent to a backend API
-            const existingFeedback = JSON.parse(localStorage.getItem('myjoe_feedback') || '[]');
-            existingFeedback.push(feedback);
-            localStorage.setItem('myjoe_feedback', JSON.stringify(existingFeedback));
+            // Get current user ID
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('No user found');
 
-            console.log('Feedback submitted:', feedback);
+            const { error } = await supabase
+                .from('feedback')
+                .insert({
+                    user_id: user.id,
+                    type: feedbackType === 'issue' ? 'bug' : 'suggestion',
+                    message: details.trim(),
+                    screenshot_url: screenshot,
+                    page_url: window.location.href,
+                    user_agent: navigator.userAgent
+                });
+
+            if (error) throw error;
+
+            console.log('Feedback submitted to Supabase');
 
             setSubmitted(true);
             setTimeout(() => {
@@ -175,8 +178,8 @@ export const FeedbackWidget: React.FC = () => {
                                     type="button"
                                     onClick={() => setFeedbackType('issue')}
                                     className={`flex-1 py-2.5 px-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${feedbackType === 'issue'
-                                            ? 'bg-red-500/20 border border-red-500/30 text-red-300'
-                                            : 'bg-white/5 border border-white/10 text-zinc-400 hover:text-white hover:bg-white/10'
+                                        ? 'bg-red-500/20 border border-red-500/30 text-red-300'
+                                        : 'bg-white/5 border border-white/10 text-zinc-400 hover:text-white hover:bg-white/10'
                                         }`}
                                 >
                                     🐛 Report Issue
@@ -185,8 +188,8 @@ export const FeedbackWidget: React.FC = () => {
                                     type="button"
                                     onClick={() => setFeedbackType('suggestion')}
                                     className={`flex-1 py-2.5 px-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${feedbackType === 'suggestion'
-                                            ? 'bg-blue-500/20 border border-blue-500/30 text-blue-300'
-                                            : 'bg-white/5 border border-white/10 text-zinc-400 hover:text-white hover:bg-white/10'
+                                        ? 'bg-blue-500/20 border border-blue-500/30 text-blue-300'
+                                        : 'bg-white/5 border border-white/10 text-zinc-400 hover:text-white hover:bg-white/10'
                                         }`}
                                 >
                                     💡 Suggestion

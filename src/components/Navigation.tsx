@@ -5,10 +5,12 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import coloringStudioIcon from '../assets/coloring-studio.png';
 
 export const Navigation: React.FC = () => {
   const location = useLocation();
+  const { userEmail, isAdmin } = useAuth();
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -28,8 +30,16 @@ export const Navigation: React.FC = () => {
           <Link to="/studio" className={`nav-link ${isActive('/studio') ? 'active' : ''}`}>Studio</Link>
           <Link to="/dashboard" className={`nav-link ${isActive('/dashboard') ? 'active' : ''}`}>Dashboard</Link>
           <a href="#" className="nav-link">Gallery</a>
-          <a href="#" className="nav-link">Resources</a>
-          <a href="#" className="nav-link">Help</a>
+          {/* Hide Resources and Help for the dev account */}
+          {userEmail !== 'jamie@myjoe.app' && (
+            <>
+              <a href="#" className="nav-link">Resources</a>
+              <a href="#" className="nav-link">Help</a>
+            </>
+          )}
+          {isAdmin && (
+            <Link to="/admin" className={`nav-link ${isActive('/admin') ? 'active' : ''} text-red-500 hover:text-red-400`}>Admin</Link>
+          )}
         </div>
 
         {/* Right: User Menu */}

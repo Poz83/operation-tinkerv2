@@ -15,22 +15,37 @@ interface AuthContextType {
     userEmail: string | null;
     isLoading: boolean;
     isWhitelisted: boolean;
+    isAdmin: boolean;
     sendMagicLink: (email: string) => Promise<{ success: boolean; error?: string }>;
     logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Alpha whitelist - users allowed during alpha phase
-const WHITELIST = [
-    'jamie@myjoe.app',
-    'stuff.araza@gmail.com'
-];
-
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
     const [session, setSession] = useState<Session | null>(null);
+    const [userDetails, setUserDetails] = useState<{ isWhitelisted: boolean; isAdmin: boolean } | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(true);
+
+    const fetchUserDetails = async (userId: string) => {
+        try {
+            const { data, error } = await supabase
+                .from('users')
+                .select('is_whitelisted, is_admin')
+                .eq('id', userId)
+                .single();
+
+            if (error) {
+                console.error('Error fetching user details:', error);
+                return null;
+            }
+            return { isWhitelisted: data.is_whitelisted, isAdmin: data.is_admin };
+        } catch (error) {
+            console.error('Error in fetchUserDetails:', error);
+            return null;
+        }
+    };
 
     useEffect(() => {
         // Get initial session
@@ -39,6 +54,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 const { data: { session: initialSession } } = await supabase.auth.getSession();
                 setSession(initialSession);
                 setUser(initialSession?.user ?? null);
+
+                if (initialSession?.user) {
+                    const details = await fetchUserDetails(initialSession.user.id);
+                    setUserDetails(details);
+                }
             } catch (error) {
                 console.error('Error getting initial session:', error);
             } finally {
@@ -54,6 +74,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 console.log('Auth state changed:', event);
                 setSession(currentSession);
                 setUser(currentSession?.user ?? null);
+
+                if (currentSession?.user) {
+                    const details = await fetchUserDetails(currentSession.user.id);
+                    setUserDetails(details);
+                } else {
+                    setUserDetails(null);
+                }
+
                 setIsLoading(false);
             }
         );
@@ -65,16 +93,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const isAuthenticated = !!session && !!user;
     const userEmail = user?.email ?? null;
-    const isWhitelisted = userEmail ? WHITELIST.includes(userEmail.toLowerCase()) : false;
+    // For now, if we can't fetch details, assume false to be safe, unless it's a loading state handled elsewhere.
+    const isWhitelisted = userDetails?.isWhitelisted ?? false;
+    const isAdmin = userDetails?.isAdmin ?? false;
 
     const sendMagicLink = async (email: string): Promise<{ success: boolean; error?: string }> => {
-        // Check whitelist before sending magic link
-        if (!WHITELIST.includes(email.toLowerCase())) {
-            return {
-                success: false,
-                error: 'This email is not authorized for alpha access. Please contact support.'
-            };
-        }
+        // We now allow sending magic links to anyone, and check whitelist status AFTER login.
+        // This is necessary because we can't easily check the DB for 'is_whitelisted' 
+        // by email for a user that might not exist or without compromising privacy 
+        // (unless we have a specific RPC or Edge Function).
+        // For the 'Add to whitelist' feature to work for new users, they need to be able to sign up (or sign in to create the account).
 
         try {
             await signInWithMagicLink(email);
@@ -93,6 +121,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             await supabaseSignOut();
             setUser(null);
             setSession(null);
+            setUserDetails(null);
         } catch (error) {
             console.error('Error signing out:', error);
         }
@@ -105,6 +134,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             userEmail,
             isLoading,
             isWhitelisted,
+            isAdmin,
             sendMagicLink,
             logout
         }}>

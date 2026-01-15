@@ -6,6 +6,7 @@ import Studio from './pages/Studio';
 import Settings from './pages/Settings';
 import LandingPage from './pages/LandingPage';
 import AuthCallback from './pages/AuthCallback';
+import AdminDashboard from './pages/AdminDashboard';
 import Vault from './pages/Vault';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ApiKeyProvider, useApiKeyContext } from './context/apiKeyContext';
@@ -109,6 +110,11 @@ const AppContent: React.FC = () => {
                 <Route path="/settings" element={
                     <ProtectedRoute>
                         <Settings />
+                    </ProtectedRoute>
+                } />
+                <Route path="/admin" element={
+                    <ProtectedRoute>
+                        <AdminDashboard />
                     </ProtectedRoute>
                 } />
             </Routes>
