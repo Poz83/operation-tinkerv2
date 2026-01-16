@@ -9,13 +9,11 @@ import NotFound from './pages/NotFound';
 import LandingPage from './pages/LandingPage';
 import AuthCallback from './pages/AuthCallback';
 import AdminDashboard from './pages/AdminDashboard';
-import DevSettings from './pages/DevSettings';
 import Vault from './pages/Vault';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ApiKeyProvider, useApiKeyContext } from './context/apiKeyContext';
 import { WelcomeModal } from './components/WelcomeModal';
 import { FeedbackWidget } from './components/FeedbackWidget';
-import { DevToolbar } from './components/DevToolbar';
 import { Gallery } from './pages/Gallery';
 import { SettingsProvider } from './context/settingsContext';
 
@@ -64,7 +62,6 @@ const AppContent: React.FC = () => {
         <>
             {showWelcome && <WelcomeModal />}
             {isAuthenticated && <FeedbackWidget />}
-            {isAuthenticated && <DevToolbar />}
             <Routes>
                 <Route path="/landing" element={<LandingPage />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
@@ -131,11 +128,6 @@ const AppContent: React.FC = () => {
                 <Route path="/admin" element={
                     <ProtectedRoute>
                         <AdminDashboard />
-                    </ProtectedRoute>
-                } />
-                <Route path="/dev-settings" element={
-                    <ProtectedRoute>
-                        <DevSettings />
                     </ProtectedRoute>
                 } />
 
