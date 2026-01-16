@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { Navigation } from '../components/Navigation';
 
 // Import custom 3D icons
 import coloringStudioIcon from '../assets/coloring-studio.png';
@@ -183,6 +184,7 @@ export const Dashboard: React.FC = () => {
 
     return (
         <div className="dashboard-container">
+            <Navigation />
             <div className="aurora-veil opacity-50 dark:opacity-100 transition-opacity duration-500" />
 
             <header className="dashboard-header">
