@@ -17,6 +17,7 @@ import storybookCreatorIcon from '../assets/storybook-creator.png';
 import paintByNumbersIcon from '../assets/paint-by-numbers.png';
 import vaultIcon from '../assets/vault.png';
 import settingsIcon from '../assets/settings.png';
+import devPortalIcon from '../assets/dev-portal.png';
 
 interface TileProps {
     title: string;
@@ -169,7 +170,7 @@ export const Dashboard: React.FC = () => {
         displayTiles.push({
             title: 'Dev Portal',
             description: 'Restricted Access',
-            icon: settingsIcon,
+            icon: devPortalIcon,
             to: '#', // Handled by onClick
             gradient: 'gradient-orange',
         });
@@ -183,7 +184,7 @@ export const Dashboard: React.FC = () => {
     };
 
     return (
-        <div className="dashboard-container">
+        <div className="dashboard-container pt-24">
             <Navigation />
             <div className="aurora-veil opacity-50 dark:opacity-100 transition-opacity duration-500" />
 

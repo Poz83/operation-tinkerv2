@@ -15,6 +15,7 @@ export const VISUAL_STYLES = [
   { id: 'Cartoon', label: 'Cartoon (Action)' },
   { id: 'Botanical', label: 'Botanical (Scientific)' },
   { id: 'Mandala', label: 'Mandala (Geometric)' },
+  { id: 'Zentangle', label: 'Zentangle (Meditative)' },
   { id: 'Fantasy', label: 'Fantasy (RPG/Epic)' },
   { id: 'Gothic', label: 'Gothic (Stained Glass)' },
   { id: 'Cozy', label: 'Cozy (Hygge)' },
@@ -108,6 +109,7 @@ export interface ColoringPage {
 
 export interface SavedProject {
   id: string;
+  toolType?: 'coloring_studio' | 'hero_lab';
   projectName: string;
   pageAmount: number;
   pageSizeId: string;
@@ -166,4 +168,29 @@ export interface StyleDNA {
 
   // Raw description for prompt injection
   promptFragment: string;  // Concise descriptive text for injection
+}
+
+// ============================================================================
+// Hero Lab - Character DNA
+// ============================================================================
+
+export interface CharacterDNA {
+  name: string;
+  role: string;
+  age: string;
+  face: string;      // jawline, nose, cheekbones, lips
+  eyes: string;      // shape, size, color, unique marks
+  hair: string;      // length, color, texture, parting
+  skin: string;      // tone description
+  body: string;      // build, proportions
+  signatureFeatures: string; // scars, marks, accessories
+  outfitCanon: string;       // default clothing and details
+  styleLock: string;         // overall art style to enforce
+}
+
+export interface HeroProject extends SavedProject {
+  toolType: 'hero_lab';
+  dna: CharacterDNA; // The core definition
+  baseImageUrl?: string; // The generated "perfect" reference
+  seed?: number; // The persistent seed for this character
 }

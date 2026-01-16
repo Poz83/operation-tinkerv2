@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { MotionConfig } from 'framer-motion';
 
 import { ColoringPage, PAGE_SIZES, VISUAL_STYLES, TARGET_AUDIENCES, COMPLEXITY_LEVELS } from '../types';
@@ -21,6 +21,7 @@ import { useImageEditChat } from '../hooks/useImageEditChat';
 import { SummaryCard } from '../components/SummaryCard';
 import { useProject } from '../hooks/useProject';
 import { useGeneration } from '../hooks/useGeneration';
+import { DesignersTip } from '../components/DesignersTip';
 
 const App: React.FC = () => {
   const { hasApiKey } = useApiKeyContext();
@@ -30,6 +31,34 @@ const App: React.FC = () => {
 
   // Central Page State (Shared Source of Truth)
   const [pages, setPages] = useState<ColoringPage[]>([]);
+  const location = useLocation();
+
+  // Handle incoming Hero Lab Data
+  useEffect(() => {
+    if (location.state && (location.state as any).heroData) {
+      const { heroData } = location.state as any;
+      // setHasHeroRef and Image
+      project.setHasHeroRef(true);
+      project.setHeroImage({ base64: heroData.image, mimeType: 'image/png' }); // Assuming it's a URL/Base64 string
+
+      // Construct Prompt from DNA
+      const dna = heroData.dna;
+      const dnaPrompt = `[CHARACTER REFERENCE: ${dna.name}]
+${dna.role}
+${dna.face}
+${dna.body}
+${dna.outfitCanon}
+${dna.signatureFeatures}
+`.trim();
+
+      project.setUserPrompt(dnaPrompt);
+
+      // Clear state to prevent re-running on refresh
+      window.history.replaceState({}, document.title);
+
+      toast.success(`Loaded hero: ${dna.name}`, '🧬');
+    }
+  }, [location.state]);
 
   // Validation Helper
   const validateApiKey = useCallback(() => {
@@ -407,6 +436,10 @@ const App: React.FC = () => {
                 visibility={project.visibility}
                 setVisibility={project.setVisibility}
               />
+
+              <div className="px-6 pb-6">
+                <DesignersTip styleId={project.visualStyle} />
+              </div>
             </div>
 
             <div className="flex-shrink-0 p-6 border-t border-[hsl(var(--border))] bg-transparent z-10">

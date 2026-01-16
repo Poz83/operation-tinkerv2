@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSettings, FEATURE_DESCRIPTIONS, StudioSettings } from '../context/settingsContext';
 import { useApiKeyContext } from '../context/apiKeyContext';
+import { useAuth } from '../context/AuthContext';
 import settingsIcon from '../assets/settings.png';
 
 // Toggle Switch Component
@@ -89,6 +90,7 @@ const SectionHeader: React.FC<{ title: string; description?: string }> = ({ titl
 export const Settings: React.FC = () => {
     const { settings, updateSetting, resetSettings, toggleTheme } = useSettings();
     const { hasApiKey, getMaskedKey, setApiKey, clearApiKey, validateKeyFormat } = useApiKeyContext();
+    const { user, updateProfile } = useAuth();
 
     // API Key editing state
     const [isEditingKey, setIsEditingKey] = useState(false);
@@ -183,6 +185,68 @@ export const Settings: React.FC = () => {
 
             {/* Content */}
             <main className="max-w-2xl mx-auto px-6 py-8 space-y-10">
+
+                {/* Profile Section */}
+                <section>
+                    <SectionHeader
+                        title="Profile"
+                        description="Manage your public profile"
+                    />
+                    <div className="rounded-2xl bg-white/[0.02] border border-white/5 overflow-hidden p-5">
+                        <div className="flex items-center gap-6">
+                            <div className="relative group">
+                                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-white/10 to-transparent border border-white/10 overflow-hidden">
+                                    {user?.avatarUrl ? (
+                                        <img src={user.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-2xl text-zinc-500">
+                                            {user?.email?.[0].toUpperCase() || '?'}
+                                        </div>
+                                    )}
+                                </div>
+                                <label className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-full">
+                                    <span className="text-xs font-medium text-white">Change</span>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={async (e) => {
+                                            const file = e.target.files?.[0];
+                                            if (!file) return;
+
+                                            try {
+                                                // 1. Get presigned URL or upload directly
+                                                const res = await fetch('/api/upload-avatar', {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': file.type },
+                                                    body: file
+                                                });
+
+                                                if (!res.ok) throw new Error('Upload failed');
+
+                                                const data = await res.json() as any;
+
+                                                // 2. Update profile
+                                                // view-avatar endpoint URL
+                                                const avatarUrl = data.url || `/api/view-avatar?key=${data.key}`;
+
+                                                await updateProfile({ avatarUrl });
+
+                                            } catch (err) {
+                                                console.error('Failed to upload avatar', err);
+                                                alert('Failed to upload avatar');
+                                            }
+                                        }}
+                                    />
+                                </label>
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-sm font-medium text-white">{user?.displayName || 'User'}</p>
+                                <p className="text-xs text-zinc-500">{user?.email}</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
 
                 {/* API Key Section */}
                 <section>

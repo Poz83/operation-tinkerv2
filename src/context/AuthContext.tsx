@@ -16,9 +16,12 @@ interface AuthContextType {
     isLoading: boolean;
     isWhitelisted: boolean;
     isAdmin: boolean;
+    avatarUrl: string | null;
+    displayName: string | null;
     sendMagicLink: (email: string) => Promise<{ success: boolean; error?: string }>;
     logout: () => Promise<void>;
     debugLogin: () => Promise<void>; // DEV ONLY
+    updateProfile: (updates: { avatarUrl?: string; displayName?: string }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,22 +29,27 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
     const [session, setSession] = useState<Session | null>(null);
-    const [userDetails, setUserDetails] = useState<{ isWhitelisted: boolean; isAdmin: boolean } | null>(null);
+    const [userDetails, setUserDetails] = useState<{ isWhitelisted: boolean; isAdmin: boolean; avatarUrl: string | null; displayName: string | null } | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(true);
 
     const fetchUserDetails = async (userId: string) => {
         try {
             const { data, error } = await supabase
                 .from('users')
-                .select('is_whitelisted, is_admin')
+                .select('is_whitelisted, is_admin, avatar_url, display_name')
                 .eq('id', userId)
-                .single() as { data: { is_whitelisted: boolean; is_admin: boolean } | null; error: unknown };
+                .single() as { data: { is_whitelisted: boolean; is_admin: boolean; avatar_url: string; display_name: string } | null; error: unknown };
 
             if (error || !data) {
                 console.error('Error fetching user details:', error);
                 return null;
             }
-            return { isWhitelisted: data.is_whitelisted, isAdmin: data.is_admin };
+            return {
+                isWhitelisted: data.is_whitelisted,
+                isAdmin: data.is_admin,
+                avatarUrl: data.avatar_url,
+                displayName: data.display_name
+            };
         } catch (error) {
             console.error('Error in fetchUserDetails:', error);
             return null;
@@ -96,6 +104,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // For now, if we can't fetch details, assume false to be safe, unless it's a loading state handled elsewhere.
     const isWhitelisted = userDetails?.isWhitelisted ?? false;
     const isAdmin = userDetails?.isAdmin ?? false;
+    const avatarUrl = userDetails?.avatarUrl ?? null;
+    const displayName = userDetails?.displayName ?? null;
 
     const sendMagicLink = async (email: string): Promise<{ success: boolean; error?: string }> => {
         // We now allow sending magic links to anyone, and check whitelist status AFTER login.
@@ -127,6 +137,34 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     };
 
+    const updateProfile = async (updates: { avatarUrl?: string; displayName?: string }) => {
+        if (!user) return;
+
+        try {
+            const dbUpdates: any = {};
+            if (updates.avatarUrl !== undefined) dbUpdates.avatar_url = updates.avatarUrl;
+            if (updates.displayName !== undefined) dbUpdates.display_name = updates.displayName;
+
+            const { error } = await supabase
+                .from('users')
+                .update(dbUpdates)
+                .eq('id', user.id);
+
+            if (error) throw error;
+
+            // Refresh local state
+            setUserDetails(prev => prev ? {
+                ...prev,
+                avatarUrl: updates.avatarUrl !== undefined ? updates.avatarUrl : prev.avatarUrl,
+                displayName: updates.displayName !== undefined ? updates.displayName : prev.displayName
+            } : null);
+
+        } catch (error) {
+            console.error('Error updating profile:', error);
+            throw error;
+        }
+    };
+
     const debugLogin = async () => {
         if (!import.meta.env.DEV) return;
 
@@ -155,7 +193,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         setUser(mockUser);
         setSession(mockSession);
-        setUserDetails({ isWhitelisted: true, isAdmin: true });
+        setUserDetails({ isWhitelisted: true, isAdmin: true, avatarUrl: 'https://placehold.co/400', displayName: 'Dev User' });
         setIsLoading(false);
     };
 
@@ -167,9 +205,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             isLoading,
             isWhitelisted,
             isAdmin,
+            avatarUrl,
+            displayName,
             sendMagicLink,
             logout,
-            debugLogin
+            debugLogin,
+            updateProfile
         }}>
             {children}
         </AuthContext.Provider>

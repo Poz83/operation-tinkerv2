@@ -70,15 +70,21 @@ export async function fetchUserProjects(): Promise<SavedProject[]> {
             visibility,
             created_at,
             updated_at,
+            tool_type,
             coloring_studio_data (
                 style,
                 audience,
                 complexity,
                 page_count
+            ),
+            hero_lab_data (
+                dna,
+                base_image_url,
+                seed
             )
         `)
         .eq('user_id', user.id)
-        .eq('tool_type', 'coloring_studio')
+        .in('tool_type', ['coloring_studio', 'hero_lab'])
         .eq('is_archived', false)
         .order('updated_at', { ascending: false });
 
@@ -109,11 +115,17 @@ export async function fetchProject(publicId: string): Promise<SavedProject | nul
             visibility,
             created_at,
             updated_at,
+            tool_type,
             coloring_studio_data (
                 style,
                 audience,
                 complexity,
                 page_count
+            ),
+            hero_lab_data (
+                dna,
+                base_image_url,
+                seed
             )
         `)
         .eq('public_id', publicId)
@@ -211,16 +223,27 @@ export async function saveProject(project: SavedProject): Promise<SavedProject> 
                 })
                 .eq('id', projectId);
 
-            // Update coloring_studio_data
-            await supabase
-                .from('coloring_studio_data')
-                .upsert({
-                    project_id: projectId,
-                    style: project.visualStyle,
-                    audience: project.targetAudienceId,
-                    complexity: project.complexity,
-                    page_count: project.pageAmount
-                });
+            // Update appropriate auxiliary table
+            if ((project as any).toolType === 'hero_lab' || (project as any).dna) {
+                await supabase
+                    .from('hero_lab_data')
+                    .upsert({
+                        project_id: projectId,
+                        dna: (project as any).dna,
+                        base_image_url: (project as any).baseImageUrl,
+                        seed: (project as any).seed
+                    });
+            } else {
+                await supabase
+                    .from('coloring_studio_data')
+                    .upsert({
+                        project_id: projectId,
+                        style: project.visualStyle,
+                        audience: project.targetAudienceId,
+                        complexity: project.complexity,
+                        page_count: project.pageAmount
+                    });
+            }
         }
 
     } else {
@@ -255,7 +278,7 @@ async function createNewProjectDbOnly(userId: string, project: SavedProject) {
         .from('projects')
         .insert({
             public_id: publicId,
-            tool_type: 'coloring_studio',
+            tool_type: (project as any).toolType || 'coloring_studio',
             user_id: userId,
             title: project.projectName || 'Untitled Project',
             description: project.userPrompt,
@@ -266,15 +289,29 @@ async function createNewProjectDbOnly(userId: string, project: SavedProject) {
 
     if (insertError || !newProject) throw insertError || new Error('Failed to create project');
 
-    await supabase
-        .from('coloring_studio_data')
-        .insert({
-            project_id: newProject.id,
-            style: project.visualStyle,
-            audience: project.targetAudienceId,
-            complexity: project.complexity,
-            page_count: project.pageAmount
-        });
+    if (insertError || !newProject) throw insertError || new Error('Failed to create project');
+
+    if (project.toolType === 'hero_lab' || (project as any).dna) {
+        await supabase
+            .from('hero_lab_data')
+            .insert({
+                project_id: newProject.id,
+                dna: (project as any).dna || {},
+                base_image_url: (project as any).baseImageUrl,
+                seed: (project as any).seed
+            });
+    } else {
+        // Default to coloring studio if not specified or regular
+        await supabase
+            .from('coloring_studio_data')
+            .insert({
+                project_id: newProject.id,
+                style: project.visualStyle,
+                audience: project.targetAudienceId,
+                complexity: project.complexity,
+                page_count: project.pageAmount
+            });
+    }
 
     return newProject;
 }
@@ -370,25 +407,51 @@ export async function deleteProject(publicId: string): Promise<void> {
 /**
  * Map database record to frontend SavedProject type
  */
-function mapDbToSavedProject(record: ProjectWithColoringData): SavedProject {
+function mapDbToSavedProject(record: any): SavedProject {
     const coloringData = record.coloring_studio_data;
+    const heroData = record.hero_lab_data;
 
-    return {
+    const baseProject = {
         id: record.public_id,
         projectName: record.title,
-        pageAmount: coloringData?.page_count || 1,
-        pageSizeId: 'square', // Default, not stored in DB
-        visualStyle: coloringData?.style || 'Bold & Easy',
-        complexity: coloringData?.complexity || 'Simple',
-        targetAudienceId: coloringData?.audience || 'kids',
         userPrompt: record.description || '',
-        hasHeroRef: false,
-        heroImage: null,
-        includeText: false,
         createdAt: new Date(record.created_at).getTime(),
         updatedAt: new Date(record.updated_at).getTime(),
         thumbnail: record.cover_image_url || undefined,
-        pages: [], // Default empty, populated in fetchProject
-        visibility: (record.visibility as 'private' | 'unlisted' | 'public') || 'private'
+        pages: [],
+        visibility: (record.visibility as 'private' | 'unlisted' | 'public') || 'private',
+        toolType: record.tool_type || 'coloring_studio'
+    };
+
+    if (record.tool_type === 'hero_lab' && heroData) {
+        return {
+            ...baseProject,
+            pageAmount: 1,
+            pageSizeId: 'portrait',
+            visualStyle: heroData.dna?.styleLock || 'Bold & Easy',
+            complexity: 'Moderate', // Default for now
+            targetAudienceId: 'kids',
+            hasHeroRef: false,
+            heroImage: null,
+            includeText: false,
+            // Hero Specifics (merged into type)
+            ...{
+                dna: heroData.dna || {},
+                baseImageUrl: heroData.base_image_url,
+                seed: heroData.seed
+            }
+        } as unknown as SavedProject; // Using unknown to bypass strict type checking for now
+    }
+
+    return {
+        ...baseProject,
+        pageAmount: coloringData?.page_count || 1,
+        pageSizeId: 'square',
+        visualStyle: coloringData?.style || 'Bold & Easy',
+        complexity: coloringData?.complexity || 'Simple',
+        targetAudienceId: coloringData?.audience || 'kids',
+        hasHeroRef: false,
+        heroImage: null,
+        includeText: false,
     };
 }

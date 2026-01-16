@@ -11,7 +11,7 @@ import logoFull from '../assets/logo_full.png';
 
 export const Navigation: React.FC = () => {
   const location = useLocation();
-  const { userEmail, isAdmin, logout } = useAuth();
+  const { userEmail, isAdmin, logout, avatarUrl } = useAuth();
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -78,10 +78,19 @@ export const Navigation: React.FC = () => {
             </svg>
           </button>
 
-          <div
-            className="w-8 h-8 rounded-full bg-gradient-to-br from-[hsl(var(--card))] to-[hsl(var(--muted))] cursor-default shadow-lg border border-[hsl(var(--border))]"
+          <Link
+            to="/settings"
+            className="w-8 h-8 rounded-full bg-gradient-to-br from-[hsl(var(--card))] to-[hsl(var(--muted))] cursor-pointer shadow-lg border border-[hsl(var(--border))] overflow-hidden hover:ring-2 hover:ring-[hsl(var(--ring))] transition-all"
             aria-label="User profile"
-          />
+          >
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="User" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-[hsl(var(--muted-foreground))] uppercase">
+                {userEmail?.[0] || '?'}
+              </div>
+            )}
+          </Link>
         </div>
       </div>
     </nav>

@@ -9,6 +9,8 @@ import NotFound from './pages/NotFound';
 import LandingPage from './pages/LandingPage';
 import AuthCallback from './pages/AuthCallback';
 import AdminDashboard from './pages/AdminDashboard';
+import { HeroLab } from './pages/HeroLab';
+import { HeroLabLaunchpad } from './pages/HeroLabLaunchpad';
 import Vault from './pages/Vault';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ApiKeyProvider, useApiKeyContext } from './context/apiKeyContext';
@@ -87,7 +89,12 @@ const AppContent: React.FC = () => {
                 } />
                 <Route path="/hero-lab" element={
                     <ProtectedRoute>
-                        <ComingSoon title="Hero Lab" />
+                        <HeroLabLaunchpad />
+                    </ProtectedRoute>
+                } />
+                <Route path="/hero-lab/:projectId" element={
+                    <ProtectedRoute>
+                        <HeroLab />
                     </ProtectedRoute>
                 } />
                 <Route path="/cover-creator" element={

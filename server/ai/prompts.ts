@@ -84,9 +84,19 @@ export const STYLE_RULES: Record<string, StyleRule> = {
   'Mandala': {
     id: 'mandala_sacred',
     label: 'Mandala',
-    positivePrompt: `complex mandala design, radial symmetry, sacred geometry, kaleidoscope pattern, zentangle style, precise vector geometry, mathematical patterns, tessellation, perfectly centered, circular composition, crisp architectural lines, meditative pattern.`,
-    negativePrompt: `asymmetry, organic chaos, broken lines, sketching, shading, grey fill, humans, faces, animals, text, signature, blurry lines.`,
+    positivePrompt: `complex mandala design, radial symmetry, sacred geometry, kaleidoscope pattern, precise vector geometry, mathematical patterns, tessellation, perfectly centered, circular composition, crisp architectural lines, meditative pattern.`,
+    negativePrompt: `asymmetry, organic chaos, broken lines, sketching, shading, grey fill, humans, faces, animals, text, signature, blurry lines, zentangle.`,
     technicalDirectives: `Enforce strict 8-fold or 12-fold radial symmetry. Lines must be mechanically consistent weight. No solid black fills > 5%.`,
+    isFloodFillFriendly: true,
+  },
+
+  // --- 7. Zentangle ---
+  'Zentangle': {
+    id: 'zentangle_meditative',
+    label: 'Zentangle',
+    positivePrompt: `zentangle art style, repetitive structured patterns, non-representational, intricate doodling, black ink on white tiles, "no mistakes" philosophy, organic tile-based patterns, meditative flow, detailed textures (orbs, hatching, woven lines), high contrast.`,
+    negativePrompt: `radial symmetry, mandala, rigid grid, perfectly straight lines, realism, shading, greyscale, coloring book outline only.`,
+    technicalDirectives: `Do NOT use radial symmetry. Fill distinct "strings" or zones with varying patterns. Hand-drawn feel but persistent line weight.`,
     isFloodFillFriendly: true,
   },
 
@@ -140,13 +150,13 @@ export const STYLE_RULES: Record<string, StyleRule> = {
     isFloodFillFriendly: false, // Fur texture usually breaks fills
   },
 
-  // --- 12. Floral ---
+  // --- 13. Floral ---
   'Floral': {
     id: 'floral_pattern',
     label: 'Floral',
-    positivePrompt: `floral pattern design, horror vacui composition, Art Nouveau influence, intertwining stems, lush garden density, decorative motif, elegant sworls, wallpaper aesthetic, all-over print style.`,
-    negativePrompt: `single flower, empty background, geometric, mechanical, stiff, dead space.`,
-    technicalDirectives: `Maximize coverage (minimize white space). Stems must flow elegantly into one another.`,
+    positivePrompt: `floral design, tossed layout, random distribution, organic visual flow, varied flower sizes, botanical line art, elegant sworls, garden aesthetic, nature pattern.`,
+    negativePrompt: `geometric grid, stiff repetition, dead space, single flower, heavy outlines.`,
+    technicalDirectives: `Use a 'Tossed Layout': distribute elements randomly regardless of orientation. Layer larger blooms first, then fill gaps with smaller elements.`,
     isFloodFillFriendly: true,
   },
 
@@ -244,9 +254,9 @@ export const buildPrompt = (
   const style = STYLE_RULES[styleKey] || STYLE_RULES['default'];
   const complexity = COMPLEXITY_RULES[complexityKey] || COMPLEXITY_RULES['Moderate'];
 
-  const typographyInstruction = includeText 
-      ? `[TYPOGRAPHY RULES]: Include the text "${userSubject}" or related words styled as HOLLOW OUTLINES (bubble letters). Never fill with black.`
-      : ``;
+  const typographyInstruction = includeText
+    ? `[TYPOGRAPHY RULES]: Include the text "${userSubject}" or related words styled as HOLLOW OUTLINES (bubble letters). Never fill with black.`
+    : ``;
 
   // Filter out text-related negative prompts if text is requested
   let negativePrompts = `
@@ -263,7 +273,7 @@ export const buildPrompt = (
   `;
 
   if (!includeText) {
-      negativePrompts += ", text";
+    negativePrompts += ", text";
   }
 
   // Construct the narrative prompt using 'Chain of Thought' logic

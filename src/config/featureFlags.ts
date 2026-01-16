@@ -78,9 +78,9 @@ export const featureFlags: FeatureFlags = {
 
     // Hero Lab - Character illustration tool
     heroLab: {
-        enabled: false, // Coming soon
-        enableCharacterGeneration: false,
-        enableStyleTransfer: false,
+        enabled: true,
+        enableCharacterGeneration: true,
+        enableStyleTransfer: true,
     },
 
     // Cover Creator - Book cover generation
