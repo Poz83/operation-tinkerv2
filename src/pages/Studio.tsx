@@ -404,6 +404,8 @@ const App: React.FC = () => {
                 embeddedMode={true}
                 creativeVariation={project.creativeVariation}
                 setCreativeVariation={project.setCreativeVariation}
+                visibility={project.visibility}
+                setVisibility={project.setVisibility}
               />
             </div>
 

@@ -27,6 +27,7 @@ export const useProject = (
     const [heroImage, setHeroImage] = useState<{ base64: string; mimeType: string } | null>(null);
     const [includeText, setIncludeText] = useState(false);
     const [creativeVariation, setCreativeVariation] = useState<CreativeVariation>('auto');
+    const [visibility, setVisibility] = useState<'private' | 'unlisted' | 'public'>('private');
 
     // --- Persistence State ---
     const { projectId: urlProjectId } = useParams<{ projectId?: string }>();
@@ -49,11 +50,12 @@ export const useProject = (
         createdAt: Date.now(),
         updatedAt: Date.now(),
         thumbnail: pages.find(p => p.imageUrl)?.imageUrl,
-        pages // Pass pages for persistence
+        pages, // Pass pages for persistence
+        visibility
     }), [
         currentProjectId, projectName, pageAmount, pageSizeId, visualStyle,
         complexity, targetAudienceId, userPrompt, hasHeroRef, heroImage,
-        includeText, pages
+        includeText, pages, visibility
     ]);
 
     const { status: saveStatus, lastSavedAt } = useAutosave({
@@ -106,6 +108,7 @@ export const useProject = (
         setHeroImage(project.heroImage);
         setIncludeText(project.includeText);
         setCurrentProjectId(project.id);
+        setVisibility(project.visibility || 'private');
 
         if (project.pages) {
             setPages(project.pages);
@@ -127,6 +130,7 @@ export const useProject = (
         setIncludeText(false);
         setCurrentProjectId(null);
         setPages([]);
+        setVisibility('private');
     }, [setPages]);
 
     // Load project on mount if URL ID exists
@@ -161,6 +165,7 @@ export const useProject = (
         heroImage, setHeroImage,
         includeText, setIncludeText,
         creativeVariation, setCreativeVariation,
+        visibility, setVisibility,
 
         currentProjectId,
         saveStatus,

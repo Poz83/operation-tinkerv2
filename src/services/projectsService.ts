@@ -17,6 +17,7 @@ interface ProjectWithColoringData {
     description: string | null;
     cover_image_url: string | null;
     user_id: string | null;
+    visibility: string;
     created_at: string;
     updated_at: string;
     coloring_studio_data: {
@@ -66,6 +67,7 @@ export async function fetchUserProjects(): Promise<SavedProject[]> {
             description,
             cover_image_url,
             user_id,
+            visibility,
             created_at,
             updated_at,
             coloring_studio_data (
@@ -104,6 +106,7 @@ export async function fetchProject(publicId: string): Promise<SavedProject | nul
             description,
             cover_image_url,
             user_id,
+            visibility,
             created_at,
             updated_at,
             coloring_studio_data (
@@ -203,6 +206,7 @@ export async function saveProject(project: SavedProject): Promise<SavedProject> 
                     title: project.projectName,
                     description: project.userPrompt,
                     cover_image_url: project.thumbnail || null,
+                    visibility: project.visibility || 'private',
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', projectId);
@@ -384,6 +388,7 @@ function mapDbToSavedProject(record: ProjectWithColoringData): SavedProject {
         createdAt: new Date(record.created_at).getTime(),
         updatedAt: new Date(record.updated_at).getTime(),
         thumbnail: record.cover_image_url || undefined,
-        pages: [] // Default empty, populated in fetchProject
+        pages: [], // Default empty, populated in fetchProject
+        visibility: (record.visibility as 'private' | 'unlisted' | 'public') || 'private'
     };
 }

@@ -4,25 +4,12 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { ChatMessage } from '../hooks/useImageEditChat';
+import { ChatMessage, UseImageEditChatReturn } from '../hooks/useImageEditChat';
 import { PaintbrushMaskCanvas } from './PaintbrushMaskCanvas';
 
 interface ImageEditChatPanelProps {
-    isOpen: boolean;
-    selectedImage: { url: string; pageIndex: number } | null;
-    messages: ChatMessage[];
-    isLoading: boolean;
-    currentMask: string | null;
     onClose: () => void;
-    onSendEdit: (prompt: string) => void;
-    onMaskGenerated: (maskDataUrl: string | null) => void;
-    onClearChat: () => void;
-    onApplyEdit: (messageId: string, replace: boolean) => void;
-    // Undo/Redo
-    canUndo?: boolean;
-    canRedo?: boolean;
-    onUndo?: () => void;
-    onRedo?: () => void;
+    imageEditChat: UseImageEditChatReturn;
 }
 
 /**
@@ -30,21 +17,23 @@ interface ImageEditChatPanelProps {
  * Provides a larger image preview for easier editing.
  */
 export const ImageEditChatPanel: React.FC<ImageEditChatPanelProps> = ({
-    isOpen,
-    selectedImage,
-    messages,
-    isLoading,
-    currentMask,
     onClose,
-    onSendEdit,
-    onMaskGenerated,
-    onClearChat,
-    onApplyEdit,
-    canUndo = false,
-    canRedo = false,
-    onUndo,
-    onRedo
+    imageEditChat
 }) => {
+    const {
+        messages,
+        isLoading,
+        currentMask,
+        selectedImage,
+        sendEdit,
+        setMask,
+        clearChat,
+        applyEdit,
+        canUndo,
+        canRedo,
+        undo,
+        redo
+    } = imageEditChat;
     const [inputValue, setInputValue] = useState('');
     const [isMaskMode, setIsMaskMode] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -57,10 +46,10 @@ export const ImageEditChatPanel: React.FC<ImageEditChatPanelProps> = ({
 
     // Focus input when panel opens
     useEffect(() => {
-        if (isOpen && inputRef.current) {
+        if (selectedImage && inputRef.current) {
             setTimeout(() => inputRef.current?.focus(), 300);
         }
-    }, [isOpen]);
+    }, [selectedImage]);
 
     // Reset mask mode when image changes
     useEffect(() => {
@@ -71,7 +60,7 @@ export const ImageEditChatPanel: React.FC<ImageEditChatPanelProps> = ({
         e.preventDefault();
         if (!inputValue.trim() || isLoading) return;
 
-        onSendEdit(inputValue.trim());
+        sendEdit(inputValue.trim());
         setInputValue('');
     };
 
@@ -82,7 +71,7 @@ export const ImageEditChatPanel: React.FC<ImageEditChatPanelProps> = ({
         }
     };
 
-    if (!isOpen || !selectedImage) return null;
+    if (!selectedImage) return null;
 
     return (
         <>
@@ -120,7 +109,7 @@ export const ImageEditChatPanel: React.FC<ImageEditChatPanelProps> = ({
                         </button>
                         {/* Undo/Redo buttons */}
                         <button
-                            onClick={onUndo}
+                            onClick={undo}
                             disabled={!canUndo}
                             className={`image-edit-tool-btn ${!canUndo ? 'disabled' : ''}`}
                             title="Undo last edit"
@@ -131,7 +120,7 @@ export const ImageEditChatPanel: React.FC<ImageEditChatPanelProps> = ({
                             </svg>
                         </button>
                         <button
-                            onClick={onRedo}
+                            onClick={redo}
                             disabled={!canRedo}
                             className={`image-edit-tool-btn ${!canRedo ? 'disabled' : ''}`}
                             title="Redo edit"
@@ -161,7 +150,7 @@ export const ImageEditChatPanel: React.FC<ImageEditChatPanelProps> = ({
                         <PaintbrushMaskCanvas
                             imageUrl={selectedImage.url}
                             isActive={isMaskMode}
-                            onMaskGenerated={onMaskGenerated}
+                            onMaskGenerated={setMask}
                         />
                     </div>
                     {isMaskMode && (
@@ -220,14 +209,14 @@ export const ImageEditChatPanel: React.FC<ImageEditChatPanelProps> = ({
                                             ) : (
                                                 <div className="flex gap-2 mt-2">
                                                     <button
-                                                        onClick={() => onApplyEdit(message.id, true)}
+                                                        onClick={() => applyEdit(message.id, true)}
                                                         className="flex-1 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-xs rounded border border-white/10 transition-colors"
                                                         title="Replace original image"
                                                     >
                                                         Replace
                                                     </button>
                                                     <button
-                                                        onClick={() => onApplyEdit(message.id, false)}
+                                                        onClick={() => applyEdit(message.id, false)}
                                                         className="flex-1 py-1.5 bg-blue-600/30 hover:bg-blue-600/50 text-blue-100 text-xs rounded border border-blue-500/30 transition-colors"
                                                         title="Add as new page"
                                                     >
@@ -288,7 +277,7 @@ export const ImageEditChatPanel: React.FC<ImageEditChatPanelProps> = ({
                         {messages.length > 0 && (
                             <button
                                 type="button"
-                                onClick={onClearChat}
+                                onClick={clearChat}
                                 className="image-edit-clear-btn"
                                 disabled={isLoading}
                             >

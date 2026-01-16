@@ -122,7 +122,14 @@ export interface SavedProject {
   updatedAt: number;
   thumbnail?: string; // Optional thumbnail data URL
   pages?: ColoringPage[];
+  visibility?: 'private' | 'unlisted' | 'public'; // Gallery visibility
 }
+
+export const VISIBILITY_OPTIONS = [
+  { id: 'private' as const, label: 'Private', description: 'Only you can see this project' },
+  { id: 'unlisted' as const, label: 'Unlisted', description: 'Anyone with the link can view' },
+  { id: 'public' as const, label: 'Public', description: 'Visible in the community gallery' },
+];
 
 // ============================================================================
 // Style DNA - Forensic Analysis Results for Reference Images

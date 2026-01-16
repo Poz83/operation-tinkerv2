@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { PAGE_SIZES, VISUAL_STYLES, TARGET_AUDIENCES, COMPLEXITY_LEVELS, CreativeVariation } from '../types';
+import { PAGE_SIZES, VISUAL_STYLES, TARGET_AUDIENCES, COMPLEXITY_LEVELS, CreativeVariation, VISIBILITY_OPTIONS } from '../types';
 import joeMascot from '../assets/joe-mascot.png';
 import magicWandIcon from '../assets/magic-wand.png';
 import saveIcon from '../assets/save-icon.png';
@@ -48,6 +48,8 @@ interface ToolbarProps {
   showToast?: (type: 'success' | 'error' | 'warning' | 'info', message: string, emoji?: string) => void;
   creativeVariation: CreativeVariation;
   setCreativeVariation: (v: CreativeVariation) => void;
+  visibility?: 'private' | 'unlisted' | 'public';
+  setVisibility?: (v: 'private' | 'unlisted' | 'public') => void;
 }
 
 export const Setup: React.FC<ToolbarProps> = (props) => {
@@ -217,13 +219,30 @@ export const Setup: React.FC<ToolbarProps> = (props) => {
                 </button>
               )}
             </div>
-            <div>
+            <div className="flex gap-2">
+              {/* Visibility Selector */}
+              {props.visibility && props.setVisibility && (
+                <div className="w-1/3">
+                  <select
+                    value={props.visibility}
+                    onChange={(e) => props.setVisibility?.(e.target.value as any)}
+                    className="glass-select text-xs py-2 bg-[hsl(var(--card))]"
+                    title="Project Visibility"
+                  >
+                    {VISIBILITY_OPTIONS.map(opt => (
+                      <option key={opt.id} value={opt.id} className="bg-[hsl(var(--card))]">
+                        {opt.label === 'Private' ? '🔒' : opt.label === 'Unlisted' ? '🔗' : '🌍'} {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <input
                 type="text"
                 value={props.projectName}
                 onChange={(e) => props.setProjectName(e.target.value)}
-                className="glass-input font-medium"
-                placeholder="Animals Coloring Book, Ocean Scenes, Mandalas..."
+                className="glass-input font-medium flex-1"
+                placeholder="Project Name..."
               />
             </div>
 
