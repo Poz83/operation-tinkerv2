@@ -134,8 +134,9 @@ export const Dashboard: React.FC = () => {
                     .eq('key', 'dev_password')
                     .single();
 
-                if (data?.value) {
-                    setStoredPassword(data.value);
+                const setting = data as any;
+                if (setting?.value) {
+                    setStoredPassword(setting.value);
                 }
             }
         };

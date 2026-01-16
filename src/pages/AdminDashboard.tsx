@@ -112,11 +112,13 @@ export const AdminDashboard: React.FC = () => {
     const handleChangePassword = async (oldPass: string, newPass: string) => {
         try {
             // Verify old password
-            const { data: setting } = await supabase
+            const { data } = await supabase
                 .from('app_settings' as any)
                 .select('value')
                 .eq('key', 'dev_password')
                 .single();
+
+            const setting = data as any;
 
             if (!setting || setting.value !== oldPass) {
                 alert('Incorrect old password');
