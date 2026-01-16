@@ -102,8 +102,8 @@ export const FeedbackWidget: React.FC = () => {
                 backgroundColor: '#0a0a0b',
                 scale: 0.75, // Better quality
                 logging: false,
-                useCORS: true, // IMPORTANT: Allows capturing cross-origin images (like R2/Supabase)
-                allowTaint: true, // Allow tainted canvas just in case (though toDataURL might fail if actually tainted)
+                useCORS: true, // IMPORTANT: Allows capturing cross-origin images
+                allowTaint: false, // Don't allow taint, or toDataURL will fail
                 ignoreElements: (element) => {
                     // Ignore the feedback widget itself
                     return element.tagName === 'BUTTON' && element.getAttribute('aria-label') === 'Send Feedback';
