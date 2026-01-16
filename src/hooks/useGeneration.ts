@@ -59,8 +59,11 @@ export const useGeneration = ({
     }, [validateApiKey, setUserPrompt, showToast]);
 
     const handleCancel = useCallback(() => {
+        console.log("User requested cancellation.");
+        setIsGenerating(false); // Immediate UI feedback
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
+            abortControllerRef.current = null; // Clear immediately to prevent race conditions
         }
     }, []);
 

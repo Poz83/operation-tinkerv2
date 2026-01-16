@@ -5,7 +5,7 @@
  * issues or suggestions with optional screenshot attachment.
  */
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 
@@ -18,6 +18,47 @@ interface FeedbackData {
     userEmail: string | null;
     timestamp: string;
     url: string;
+}
+
+// Global log buffer
+const logBuffer: string[] = [];
+const MAX_LOGS = 50;
+
+// Intercept console logs once
+if (typeof window !== 'undefined' && !(window as any).__consoleInterceptorsAttached) {
+    (window as any).__consoleInterceptorsAttached = true;
+    const originalError = console.error;
+    const originalWarn = console.warn;
+    const originalLog = console.log;
+
+    const addLog = (type: string, args: any[]) => {
+        try {
+            const message = args.map(a =>
+                typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
+            ).join(' ');
+            const logEntry = `[${new Date().toLocaleTimeString()}] [${type}] ${message}`;
+            logBuffer.push(logEntry);
+            if (logBuffer.length > MAX_LOGS) logBuffer.shift();
+        } catch (e) {
+            // Ignore format errors
+        }
+    };
+
+    console.error = (...args) => {
+        addLog('ERROR', args);
+        originalError.apply(console, args);
+    };
+
+    console.warn = (...args) => {
+        addLog('WARN', args);
+        originalWarn.apply(console, args);
+    };
+
+    // Optional: capture info logs too if needed, but might be noisy
+    // console.log = (...args) => {
+    //     addLog('INFO', args);
+    //     originalLog.apply(console, args);
+    // };
 }
 
 export const FeedbackWidget: React.FC = () => {
@@ -59,10 +100,24 @@ export const FeedbackWidget: React.FC = () => {
             const html2canvas = (await import('html2canvas')).default;
             const canvas = await html2canvas(document.body, {
                 backgroundColor: '#0a0a0b',
-                scale: 0.5, // Reduce size for faster processing
+                scale: 0.75, // Better quality
                 logging: false,
+                useCORS: true, // IMPORTANT: Allows capturing cross-origin images (like R2/Supabase)
+                allowTaint: true, // Allow tainted canvas just in case (though toDataURL might fail if actually tainted)
+                ignoreElements: (element) => {
+                    // Ignore the feedback widget itself
+                    return element.tagName === 'BUTTON' && element.getAttribute('aria-label') === 'Send Feedback';
+                }
             });
-            setScreenshot(canvas.toDataURL('image/png'));
+
+            try {
+                const dataUrl = canvas.toDataURL('image/png');
+                setScreenshot(dataUrl);
+            } catch (err) {
+                console.error('Canvas tainted, cannot export', err);
+                alert('Could not capture specific elements due to security restrictions. Screenshot might be incomplete.');
+            }
+
         } catch (error) {
             console.error('Failed to capture screenshot:', error);
             alert('Failed to capture screenshot. Try uploading an image instead.');
@@ -128,12 +183,18 @@ export const FeedbackWidget: React.FC = () => {
                 finalScreenshotUrl = `r2://${key}`;
             }
 
+            // Append console logs to message
+            let finalMessage = details.trim();
+            if (logBuffer.length > 0) {
+                finalMessage += `\n\n--- CONSOLE LOGS ---\n${logBuffer.join('\n')}`;
+            }
+
             const { error } = await supabase
                 .from('feedback')
                 .insert({
                     user_id: user.id,
                     type: feedbackType === 'issue' ? 'bug' : 'suggestion',
-                    message: details.trim(),
+                    message: finalMessage,
                     screenshot_url: finalScreenshotUrl,
                     page_url: window.location.href,
                     user_agent: navigator.userAgent
