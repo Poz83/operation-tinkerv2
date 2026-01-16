@@ -8,9 +8,7 @@ import confetti from 'canvas-confetti';
 import { ColoringPage, PAGE_SIZES, VISUAL_STYLES, TARGET_AUDIENCES, CreativeVariation } from '../types';
 import { processGeneration } from '../server/jobs/process-generation';
 import { brainstormPrompt } from '../services/geminiService';
-import { batchLogStore, isBatchLoggingEnabled } from '../logging/batchLog';
 import { PageGenerationEvent } from '../logging/events';
-import { dataUrlToBlob } from '../logging/utils';
 
 interface UseGenerationProps {
     apiKey: string | null;
@@ -38,8 +36,6 @@ export const useGeneration = ({
     const [generationPhase, setGenerationPhase] = useState<'planning' | 'generating' | 'complete'>('planning');
     const [currentSheetIndex, setCurrentSheetIndex] = useState(0);
     const abortControllerRef = useRef<AbortController | null>(null);
-
-    const BATCH_LOGS_ENABLED = isBatchLoggingEnabled();
 
     // --- Actions ---
 
@@ -111,33 +107,6 @@ export const useGeneration = ({
 
             let batchId: string | undefined;
 
-            // Batch Logging Setup
-            if (BATCH_LOGS_ENABLED) {
-                const heroDataUrl = params.hasHeroRef && params.heroImage
-                    ? `data:${params.heroImage.mimeType};base64,${params.heroImage.base64}`
-                    : undefined;
-                const estimatedHeroSize = params.heroImage?.base64 ? Math.ceil((params.heroImage.base64.length * 3) / 4) : undefined;
-
-                batchId = await batchLogStore.createBatch({
-                    projectName: params.projectName || 'Untitled Project',
-                    userIdea: params.userPrompt,
-                    pageCount: params.pageAmount,
-                    audience: audienceLabel,
-                    style: params.visualStyle,
-                    complexity: params.complexity,
-                    aspectRatio: aspectRatio,
-                    includeText: params.includeText,
-                    hasHeroRef: params.hasHeroRef,
-                    heroImageMeta: params.heroImage
-                        ? {
-                            mimeType: params.heroImage.mimeType,
-                            size: estimatedHeroSize,
-                        }
-                        : undefined,
-                    heroImageDataUrl: heroDataUrl,
-                });
-            }
-
             const handlePageEvent = async (event: PageGenerationEvent) => {
                 switch (event.type) {
                     case 'start':
@@ -208,44 +177,6 @@ export const useGeneration = ({
                         ));
                         break;
                 }
-
-                // Logging
-                if (!BATCH_LOGS_ENABLED || !batchId) return;
-
-                if (event.type === 'start') {
-                    await batchLogStore.recordPageStart(batchId, event.pageNumber, {
-                        aspectRatio: event.aspectRatio,
-                        resolution: event.resolution,
-                        width: event.width,
-                        height: event.height,
-                        fullPrompt: event.fullPrompt,
-                        fullNegativePrompt: event.fullNegativePrompt,
-                        startedAt: new Date().toISOString(),
-                    });
-                } else if (event.type === 'success') {
-                    const imageBlob = await dataUrlToBlob(event.imageUrl);
-                    await batchLogStore.recordPageResult(batchId, event.pageNumber, {
-                        aspectRatio: event.aspectRatio,
-                        resolution: event.resolution,
-                        width: event.width,
-                        height: event.height,
-                        fullPrompt: event.fullPrompt,
-                        fullNegativePrompt: event.fullNegativePrompt,
-                        imageBlob,
-                        imageDataUrl: event.imageUrl,
-                        startedAt: event.startedAt,
-                        finishedAt: event.finishedAt,
-                        latencyMs: event.latencyMs,
-                        qa: event.qa,
-                    });
-                } else if (event.type === 'error') {
-                    await batchLogStore.recordPageResult(batchId, event.pageNumber, {
-                        error: event.error,
-                        startedAt: event.startedAt,
-                        finishedAt: event.finishedAt,
-                        latencyMs: event.latencyMs,
-                    });
-                }
             };
 
             await processGeneration(
@@ -290,17 +221,6 @@ export const useGeneration = ({
 
                     setPages(newPages);
                     totalTasks = newPages.length;
-
-                    if (BATCH_LOGS_ENABLED && batchId) {
-                        batchLogStore.savePlan(
-                            batchId,
-                            finalPlan.map((p) => ({
-                                pageNumber: p.pageNumber,
-                                planPrompt: p.prompt,
-                                requiresText: p.requiresText,
-                            }))
-                        ).catch((err) => console.error('Logging plan failed', err));
-                    }
                 },
                 // 2. On Page Complete
                 (pageNumber, imageUrl) => {
@@ -333,7 +253,7 @@ export const useGeneration = ({
                 });
             }
         }
-    }, [apiKey, BATCH_LOGS_ENABLED, setPages, settings.enableCelebrations, showToast]);
+    }, [apiKey, setPages, settings.enableCelebrations, showToast]);
 
     // --- Downloads ---
 
