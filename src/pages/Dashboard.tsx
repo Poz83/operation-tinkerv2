@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 
 // Import custom 3D icons
 import coloringStudioIcon from '../assets/coloring-studio.png';
+import magicWandIcon from '../assets/magic-wand.png';
 import heroLabIcon from '../assets/hero-lab.png';
 import coverCreatorIcon from '../assets/cover-creator.png';
 import monochromeMakerIcon from '../assets/monochrome-maker.png';
@@ -53,6 +54,13 @@ const tiles = [
         icon: coloringStudioIcon,
         to: '/studio',
         gradient: 'gradient-purple',
+    },
+    {
+        title: 'Community Gallery',
+        description: 'Explore and remix community artwork',
+        icon: magicWandIcon,
+        to: '/gallery',
+        gradient: 'gradient-blue',
     },
     {
         title: 'Hero Lab',
