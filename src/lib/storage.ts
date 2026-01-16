@@ -57,7 +57,7 @@ export async function uploadImage(options: {
             body: JSON.stringify(options),
         });
 
-        const data = await response.json();
+        const data = await response.json() as { error?: string };
 
         if (!response.ok) {
             return {
@@ -126,7 +126,7 @@ export async function getSignedDownloadUrl(options: {
             }),
         });
 
-        const data = await response.json();
+        const data = await response.json() as { error?: string };
 
         if (!response.ok) {
             return {
@@ -163,7 +163,7 @@ export async function getSignedUploadUrl(options: {
             }),
         });
 
-        const data = await response.json();
+        const data = await response.json() as { error?: string };
 
         if (!response.ok) {
             return {
@@ -195,7 +195,7 @@ export async function deleteImage(options: {
             body: JSON.stringify(options),
         });
 
-        const data = await response.json();
+        const data = await response.json() as { error?: string };
 
         if (!response.ok) {
             return {
@@ -227,7 +227,7 @@ export async function deleteImages(options: {
             body: JSON.stringify(options),
         });
 
-        const data = await response.json();
+        const data = await response.json() as { error?: string };
 
         if (!response.ok) {
             return {

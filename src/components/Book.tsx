@@ -125,10 +125,12 @@ export const Book: React.FC<BookProps> = ({ pages, currentSheetIndex, onSheetCli
 
             {/* Main Canvas Area */}
             <div className="flex-1 min-h-0 w-full flex items-center justify-center p-12 pb-32">
-                {/* Floating Page Number - moved outside canvas to prevent clipping */}
-                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 bg-[#1E1E1F]/70 backdrop-blur-md px-4 py-1 rounded-full text-xs font-medium text-white border border-white/10 transition-all pointer-events-none">
-                    {activePage.isCover ? 'Cover' : `Page ${activePage.pageIndex + 1}`}
-                </div>
+                {/* Floating Page Number - only show if we have an active page */}
+                {activePage && (
+                    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 bg-[#1E1E1F]/70 backdrop-blur-md px-4 py-1 rounded-full text-xs font-medium text-white border border-white/10 transition-all pointer-events-none">
+                        {activePage.isCover ? 'Cover' : `Page ${activePage.pageIndex + 1}`}
+                    </div>
+                )}
 
                 <div
                     className="relative group bg-white shadow-2xl shadow-black/20 ring-1 ring-white/10 rounded-sm transition-all duration-300 overflow-hidden"
@@ -141,20 +143,51 @@ export const Book: React.FC<BookProps> = ({ pages, currentSheetIndex, onSheetCli
                     }}
                 >
                     {/* Content Wrapper with Keyed Animation */}
-                    <div key={activePage.id} className={`w-full h-full ${slideClass}`}>
-                        <ErrorBoundary>
-                            <Panel
-                                page={activePage}
-                                isBack={false}
-                                generationPercent={percentComplete}
-                                completedPages={completedPages}
-                                totalPages={totalPages}
-                            />
-                        </ErrorBoundary>
-                    </div>
+                    {activePage ? (
+                        <div key={activePage.id} className={`w-full h-full ${slideClass}`}>
+                            <ErrorBoundary>
+                                <Panel
+                                    page={activePage}
+                                    isBack={false}
+                                    generationPercent={percentComplete}
+                                    completedPages={completedPages}
+                                    totalPages={totalPages}
+                                />
+                            </ErrorBoundary>
+                        </div>
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gray-50/50 flex-col gap-4 p-8 text-center animate-in fade-in duration-700">
+                            <div className="w-20 h-20 rounded-full bg-blue-500/10 flex items-center justify-center mb-2">
+                                <svg className="w-10 h-10 text-blue-500/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                </svg>
+                            </div>
+                            <div className="space-y-1">
+                                <h3 className="text-xl font-semibold text-gray-700">Ready to Create!</h3>
+                                <p className="text-sm text-gray-500 max-w-[200px] mx-auto">
+                                    Describe your idea on the left and hit the magic button ✨
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Generating / Loading Indicator - Clear Status Overlay */}
+                    {activePage && (activePage.isLoading || activePage.status === 'generating') && (
+                        <div className="absolute inset-0 z-[60] flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm animate-in fade-in duration-500">
+                            <div className="relative">
+                                <div className="w-16 h-16 border-4 border-indigo-100 border-t-indigo-500 rounded-full animate-spin"></div>
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <span className="text-xl">✨</span>
+                                </div>
+                            </div>
+                            <p className="mt-4 text-sm font-medium text-indigo-600 animate-pulse">
+                                {activePage.statusMessage || 'Creating magic...'}
+                            </p>
+                        </div>
+                    )}
 
                     {/* Subtle Loading Indicator during Transitions */}
-                    {isTransitioning && !activePage.isLoading && (
+                    {isTransitioning && activePage && !activePage.isLoading && (
                         <div className="absolute top-4 right-4 z-50 animate-in fade-in duration-200">
                             <div className="w-4 h-4 border-2 border-black/10 border-t-black/50 rounded-full animate-spin" />
                         </div>
@@ -180,28 +213,12 @@ export const Book: React.FC<BookProps> = ({ pages, currentSheetIndex, onSheetCli
                         </button>
                     )}
 
-                    {/* Edit Button - appears when image is loaded */}
-                    {activePage?.imageUrl && !activePage.isLoading && onImageSelect && (
-                        <button
-                            onClick={handleEditClick}
-                            className={`absolute bottom-4 right-4 z-50 flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${isSelectedForEdit
-                                ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30'
-                                : 'bg-white/90 hover:bg-white text-gray-700 hover:text-blue-600 shadow-md border border-gray-200/50 backdrop-blur-md'
-                                } animate-in fade-in slide-in-from-bottom-2 duration-300`}
-                            title="Edit this image with AI"
-                        >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M12 20h9" />
-                                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-                            </svg>
-                            {isSelectedForEdit ? 'Editing...' : 'Edit with AI'}
-                        </button>
-                    )}
+
                 </div>
             </div>
 
             {/* Slider Bar */}
-            <div className="absolute bottom-8 left-0 right-0 z-30 flex justify-center items-end px-6 pointer-events-none">
+            <div className="absolute bottom-4 left-0 right-0 z-30 flex justify-center items-end px-6 pointer-events-none">
                 <div className="pointer-events-auto bg-[#1E1E1F]/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl shadow-black/30 p-2 max-w-4xl w-full mx-auto animate-in slide-in-from-bottom-6 duration-500">
                     <div
                         ref={scrollRef}

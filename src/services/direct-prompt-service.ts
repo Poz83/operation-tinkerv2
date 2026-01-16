@@ -182,15 +182,46 @@ export class DirectPromptService {
     return [];
   }
 
-  async brainstormPrompt(rawPrompt: string): Promise<string> {
+  async brainstormPrompt(rawPrompt: string, pageCount: number = 1): Promise<string> {
     this.ensureInitialized();
-    const systemInstruction = `
-      You are a Prompt Engineer specialized in generative AI for coloring books. 
-      Take the user's simple idea and expand it into a descriptive coloring book scene. 
-      Add details about setting, mood, and specific elements to draw. 
-      Keep it under 40 words.
+
+    // Different system instruction based on page count
+    const singlePageInstruction = `
+      You are a Creative Director for bestselling coloring books, specializing in evocative scene descriptions.
+      
+      Take the user's simple idea and expand it into a captivating coloring book scene.
+      
+      YOUR GOALS:
+      1. ADD A VISUAL HOOK: What makes this image interesting to look at? A dramatic angle? An unusual setting? A heartwarming moment?
+      2. SET THE MOOD: Use adjectives that evoke feeling (cozy, majestic, playful, serene).
+      3. DESCRIBE A MOMENT: Instead of static objects, capture a narrative moment (a cat curling up for a nap, a flower unfolding at dawn).
+      4. SPECIFY SETTING: Ground the subject in an environment (on a mossy rock, beside a crackling fireplace, in a sun-dappled forest).
+      
+      Keep it under 75 words.
       Focus on visual elements that translate well to black and white line art.
+      Do NOT include style instructions (like "line art" or "coloring page") - just describe the scene itself.
     `;
+
+    const multiPageInstruction = `
+      You are a Creative Director for bestselling coloring books, planning a cohesive ${pageCount}-page collection.
+      
+      Take the user's theme and create a NARRATIVE ARC across ${pageCount} pages. Each page should be a distinct scene that builds on the theme.
+      
+      YOUR GOALS:
+      1. VARIETY: Each page should show a different aspect, angle, or moment of the theme.
+      2. PROGRESSION: Create a visual journey (e.g., morning to night, small to large, calm to exciting).
+      3. COHESION: All pages should feel like they belong together in the same book.
+      4. BALANCE: Mix close-up details with wider scenes. Include character moments and environmental scenes.
+      
+      FORMAT YOUR RESPONSE AS:
+      "A ${pageCount}-page collection exploring [theme]: Page 1 - [brief scene]. Page 2 - [brief scene]. ..." etc.
+      
+      Keep each page description to 10-15 words.
+      Focus on visual elements that translate well to black and white line art.
+      Do NOT include style instructions - just describe the scenes.
+    `;
+
+    const systemInstruction = pageCount > 1 ? multiPageInstruction : singlePageInstruction;
 
     try {
       const response = await this.ai!.models.generateContent({
@@ -206,5 +237,109 @@ export class DirectPromptService {
       console.error("Failed to brainstorm prompt", e);
       return rawPrompt;
     }
+  }
+
+  /**
+   * Forensic Style Analysis - Analyzes a reference image to extract its visual style DNA
+   * for replication across all generated pages.
+   */
+  async analyzeReferenceStyle(
+    imageBase64: string,
+    mimeType: string,
+    signal?: AbortSignal
+  ): Promise<import('../types').StyleDNA | null> {
+    this.ensureInitialized();
+
+    const systemInstruction = `
+ROLE: Expert Art Analyst specializing in coloring book illustration techniques.
+
+TASK: Analyze this coloring page image and extract its visual style DNA for precise replication.
+
+OUTPUT FORMAT (JSON only, no markdown):
+{
+  "lineWeight": "[hairline|fine|medium|bold|ultra-bold]",
+  "lineWeightMm": "[estimated thickness range, e.g. '1.5mm-2mm']",
+  "lineConsistency": "[uniform|variable|tapered]",
+  "lineStyle": "[smooth-vector|hand-drawn|scratchy|brush-like]",
+  "shadingTechnique": "[none|stippling|hatching|cross-hatch|solid-fills]",
+  "density": "[sparse|moderate|dense|horror-vacui]",
+  "whiteSpaceRatio": "[percentage, e.g. '40%']",
+  "hasBorder": [true|false],
+  "borderStyle": "[thick-rounded|thin-rectangular|decorative|none]",
+  "styleFamily": "[Bold & Easy|Kawaii|Whimsical|Cartoon|Botanical|Mandala|Fantasy|Gothic|Cozy|Geometric|Wildlife|Floral|Abstract|Realistic]",
+  "temperature": [0.7-1.2],
+  "promptFragment": "[2-3 sentences describing the exact visual style for prompt injection]"
+}
+
+ANALYSIS GUIDELINES:
+1. LINE WEIGHT: 
+   - hairline = nearly invisible, requires close inspection
+   - fine = delicate, 0.3-0.5mm
+   - medium = standard, 0.5-1mm  
+   - bold = clearly visible, 1-2mm
+   - ultra-bold = very thick, 2mm+
+
+2. LINE CONSISTENCY:
+   - uniform = same thickness throughout
+   - variable = natural hand-drawn variation
+   - tapered = thick-to-thin with calligraphic feel
+
+3. SHADING: Look for texture techniques. "none" = pure black lines on white only.
+
+4. DENSITY: How much of the page is covered?
+   - sparse = lots of white space, single subject
+   - moderate = balanced coverage
+   - dense = most of page filled
+   - horror-vacui = almost no white space
+
+5. TEMPERATURE: Lower (0.7) for styles needing precision, higher (1.2) for creative freedom.
+
+6. PROMPT FRAGMENT: Write this as if instructing an AI artist. Be specific about line qualities, avoid vague terms. Example: "Use bold 1.5mm uniform vector lines with smooth curves. No shading techniques. Include thick rounded border frame with 5% internal padding."
+
+RESPOND WITH JSON ONLY. No explanations.
+`;
+
+    try {
+      if (signal?.aborted) throw new Error('Aborted');
+
+      const response = await this.ai!.models.generateContent({
+        model: GEMINI_TEXT_MODEL,
+        contents: {
+          parts: [
+            { text: "Analyze this coloring page image and extract its style DNA:" },
+            {
+              inlineData: {
+                data: imageBase64,
+                mimeType: mimeType,
+              },
+            },
+          ],
+        },
+        config: {
+          systemInstruction: systemInstruction,
+          responseMimeType: "application/json",
+        },
+      });
+
+      if (signal?.aborted) throw new Error('Aborted');
+
+      if (response.text) {
+        try {
+          const parsed = JSON.parse(response.text);
+          console.log('🔬 Style DNA extracted:', parsed);
+          return parsed as import('../types').StyleDNA;
+        } catch (parseError) {
+          console.error('Failed to parse StyleDNA JSON:', parseError, response.text);
+          return null;
+        }
+      }
+    } catch (e: any) {
+      if (e.name === 'AbortError' || e.message === 'Aborted' || signal?.aborted) {
+        throw new Error('Aborted');
+      }
+      console.error("Failed to analyze reference style", e);
+    }
+
+    return null;
   }
 }

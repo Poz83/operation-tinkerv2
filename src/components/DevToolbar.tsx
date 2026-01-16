@@ -31,6 +31,14 @@ export const DevToolbar: React.FC = () => {
                     </Link>
 
                     <Link
+                        to="/dev-settings"
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-white/5 transition-colors ${location.pathname === '/dev-settings' ? 'bg-white/10 text-white' : 'text-zinc-400'}`}
+                    >
+                        <span className="text-lg">🔧</span>
+                        Dev Settings
+                    </Link>
+
+                    <Link
                         to="/dashboard"
                         className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-zinc-400 hover:bg-white/5 transition-colors"
                     >

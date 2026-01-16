@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useSettings } from '../context/settingsContext';
 
 // Import floating assets
 
@@ -11,6 +12,7 @@ const LandingPage: React.FC = () => {
     const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
     const [errorMessage, setErrorMessage] = useState('');
     const { sendMagicLink, isAuthenticated, debugLogin } = useAuth();
+    const { settings, toggleTheme } = useSettings();
     const navigate = useNavigate();
 
     // If already authenticated, redirect to dashboard
@@ -41,32 +43,39 @@ const LandingPage: React.FC = () => {
     };
 
     return (
-        <div className="landing-container relative w-full h-screen overflow-hidden flex items-center justify-center bg-deep-onyx">
+        <div className="landing-container relative w-full h-screen overflow-hidden flex items-center justify-center bg-[hsl(var(--background))] transition-colors duration-500">
+            {/* Theme Toggle */}
+            <button
+                onClick={toggleTheme}
+                className="absolute top-6 right-6 z-50 p-3 rounded-full bg-[hsl(var(--card))]/30 border border-[hsl(var(--border))]/50 backdrop-blur-md hover:bg-[hsl(var(--card))]/50 transition-all text-[hsl(var(--foreground))]"
+                title="Toggle Theme"
+            >
+                {settings.theme === 'light' ? '☀️' : '🌙'}
+            </button>
+
             {/* Ambient Background */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-aurora-purple/20 blur-[120px] rounded-full mix-blend-screen animate-pulse-slow" />
                 <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-aurora-blue/20 blur-[120px] rounded-full mix-blend-screen animate-pulse-slow delay-1000" />
             </div>
 
-
-
             <div className="relative z-10 w-full max-w-md px-6">
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, ease: "easeOut" }}
-                    className="glass-panel p-8 rounded-2xl border border-white/10 shadow-2xl backdrop-blur-xl bg-black/40"
+                    className="glass-panel p-8 rounded-2xl border border-[hsl(var(--glass-border))] shadow-2xl backdrop-blur-xl bg-[hsl(var(--glass-bg))]"
                 >
                     <div className="text-center mb-8">
                         <motion.h1
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             transition={{ delay: 0.2 }}
-                            className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white via-white/80 to-white/50 mb-2 font-display"
+                            className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-[hsl(var(--foreground))] via-[hsl(var(--foreground))]/80 to-[hsl(var(--foreground))]/50 mb-2 font-display"
                         >
                             myjoe
                         </motion.h1>
-                        <p className="text-white/40 text-sm tracking-wide uppercase">Private Access</p>
+                        <p className="text-[hsl(var(--muted-foreground))] text-sm tracking-wide uppercase">Private Access</p>
                     </div>
 
                     <AnimatePresence mode="wait">
@@ -81,9 +90,9 @@ const LandingPage: React.FC = () => {
                                 <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-green-500/30 text-green-400 text-2xl">
                                     ✨
                                 </div>
-                                <h3 className="text-xl font-medium text-white mb-2">Check your email</h3>
-                                <p className="text-white/60 text-sm">We've sent a magic link to {email}</p>
-                                <p className="text-white/30 text-xs mt-6">
+                                <h3 className="text-xl font-medium text-[hsl(var(--foreground))] mb-2">Check your email</h3>
+                                <p className="text-[hsl(var(--muted-foreground))] text-sm">We've sent a magic link to {email}</p>
+                                <p className="text-[hsl(var(--muted-foreground))]/70 text-xs mt-6">
                                     Click the link in your email to sign in.
                                 </p>
                             </motion.div>
@@ -97,7 +106,7 @@ const LandingPage: React.FC = () => {
                                 className="space-y-6"
                             >
                                 <div>
-                                    <label htmlFor="email" className="block text-xs font-medium text-white/50 mb-2 ml-1">
+                                    <label htmlFor="email" className="block text-xs font-medium text-[hsl(var(--muted-foreground))] mb-2 ml-1">
                                         EMAIL ADDRESS
                                     </label>
                                     <input
@@ -107,7 +116,7 @@ const LandingPage: React.FC = () => {
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
                                         placeholder="name@example.com"
-                                        className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-aurora-blue/50 focus:border-transparent transition-all"
+                                        className="w-full px-4 py-3 bg-[var(--glass-input-bg)] border border-[hsl(var(--border))] rounded-xl text-[hsl(var(--foreground))] placeholder-[hsl(var(--muted-foreground))]/50 focus:outline-none focus:ring-2 focus:ring-aurora-blue/50 focus:border-transparent transition-all"
                                     />
                                 </div>
 
@@ -146,7 +155,7 @@ const LandingPage: React.FC = () => {
                         <div className="mt-4 flex justify-center">
                             <button
                                 onClick={() => debugLogin()}
-                                className="text-xs text-white/30 hover:text-white/50 transition-colors uppercase tracking-widest"
+                                className="text-xs text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors uppercase tracking-widest"
                             >
                                 [Debug Login]
                             </button>
@@ -154,8 +163,8 @@ const LandingPage: React.FC = () => {
                     )}
 
                     <div className="mt-8 text-center">
-                        <p className="text-white/20 text-xs">
-                            © 2026 MyJoe. All rights reserved.
+                        <p className="text-[hsl(var(--muted-foreground))]/50 text-xs">
+                            © 2026 myjoe. All rights reserved.
                         </p>
                     </div>
                 </motion.div>

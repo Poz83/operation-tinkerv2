@@ -9,6 +9,7 @@ import NotFound from './pages/NotFound';
 import LandingPage from './pages/LandingPage';
 import AuthCallback from './pages/AuthCallback';
 import AdminDashboard from './pages/AdminDashboard';
+import DevSettings from './pages/DevSettings';
 import Vault from './pages/Vault';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ApiKeyProvider, useApiKeyContext } from './context/apiKeyContext';
@@ -130,6 +131,11 @@ const AppContent: React.FC = () => {
                 <Route path="/admin" element={
                     <ProtectedRoute>
                         <AdminDashboard />
+                    </ProtectedRoute>
+                } />
+                <Route path="/dev-settings" element={
+                    <ProtectedRoute>
+                        <DevSettings />
                     </ProtectedRoute>
                 } />
 

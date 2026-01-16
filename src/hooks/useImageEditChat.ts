@@ -32,11 +32,17 @@ export interface UseImageEditChatReturn {
     setSelectedImage: (imageUrl: string, pageIndex: number) => void;
     clearSelectedImage: () => void;
     applyEdit: (messageId: string, replace: boolean) => void;
+    // Undo/Redo
+    canUndo: boolean;
+    canRedo: boolean;
+    undo: () => void;
+    redo: () => void;
 }
 
 /**
  * Hook for managing AI image edit chat state.
  * Automatically resets chat when a new image is selected.
+ * Includes undo/redo history for edits.
  */
 export function useImageEditChat(
     onImageEdited?: (pageIndex: number, newImageUrl: string, isNewVersion: boolean) => void
@@ -45,6 +51,10 @@ export function useImageEditChat(
     const [isLoading, setIsLoading] = useState(false);
     const [currentMask, setCurrentMask] = useState<string | null>(null);
     const [selectedImage, setSelectedImageState] = useState<SelectedImage | null>(null);
+
+    // Undo/Redo history - tracks image URLs that have been applied
+    const [editHistory, setEditHistory] = useState<string[]>([]);
+    const [redoStack, setRedoStack] = useState<string[]>([]);
 
     const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -59,6 +69,9 @@ export function useImageEditChat(
         setMessages([]);
         setCurrentMask(null);
         setIsLoading(false);
+        // Reset undo/redo when clearing
+        setEditHistory([]);
+        setRedoStack([]);
     }, []);
 
     const setSelectedImage = useCallback((imageUrl: string, pageIndex: number) => {
@@ -186,12 +199,54 @@ export function useImageEditChat(
                 const isNewVersion = !replace;
                 onImageEdited(selectedImage.pageIndex, msg.editedImageUrl, isNewVersion);
 
+                // Track in history for undo (save the current image before it gets replaced)
+                if (replace) {
+                    setEditHistory(h => [...h, selectedImage.url]);
+                    setRedoStack([]); // Clear redo stack on new edit
+                }
+
                 // Mark as applied
                 return prev.map(m => m.id === messageId ? { ...m, isApplied: true } : m);
             }
             return prev;
         });
     }, [selectedImage, onImageEdited]);
+
+    // Undo: revert to the previous image in history
+    const undo = useCallback(() => {
+        if (editHistory.length === 0 || !selectedImage || !onImageEdited) return;
+
+        const prevHistory = [...editHistory];
+        const previousImageUrl = prevHistory.pop()!;
+        setEditHistory(prevHistory);
+
+        // Push current to redo stack
+        setRedoStack(r => [...r, selectedImage.url]);
+
+        // Apply the previous image (replace mode)
+        onImageEdited(selectedImage.pageIndex, previousImageUrl, false);
+
+        // Update selectedImage to the reverted image
+        setSelectedImageState({ url: previousImageUrl, pageIndex: selectedImage.pageIndex });
+    }, [editHistory, selectedImage, onImageEdited]);
+
+    // Redo: re-apply the undone edit
+    const redo = useCallback(() => {
+        if (redoStack.length === 0 || !selectedImage || !onImageEdited) return;
+
+        const prevRedo = [...redoStack];
+        const redoImageUrl = prevRedo.pop()!;
+        setRedoStack(prevRedo);
+
+        // Push current to history
+        setEditHistory(h => [...h, selectedImage.url]);
+
+        // Apply the redo image
+        onImageEdited(selectedImage.pageIndex, redoImageUrl, false);
+
+        // Update selectedImage
+        setSelectedImageState({ url: redoImageUrl, pageIndex: selectedImage.pageIndex });
+    }, [redoStack, selectedImage, onImageEdited]);
 
     return {
         messages,
@@ -203,6 +258,11 @@ export function useImageEditChat(
         clearChat,
         setSelectedImage,
         clearSelectedImage,
-        applyEdit
+        applyEdit,
+        // Undo/Redo
+        canUndo: editHistory.length > 0,
+        canRedo: redoStack.length > 0,
+        undo,
+        redo
     };
 }

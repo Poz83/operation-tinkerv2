@@ -87,7 +87,7 @@ const SectionHeader: React.FC<{ title: string; description?: string }> = ({ titl
 );
 
 export const Settings: React.FC = () => {
-    const { settings, updateSetting, resetSettings } = useSettings();
+    const { settings, updateSetting, resetSettings, toggleTheme } = useSettings();
     const { hasApiKey, getMaskedKey, setApiKey, clearApiKey, validateKeyFormat } = useApiKeyContext();
 
     // API Key editing state
@@ -136,7 +136,7 @@ export const Settings: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-[hsl(var(--background))] text-white">
+        <div className="h-screen overflow-y-auto bg-[hsl(var(--background))] text-white">
             <div className="aurora-veil" />
 
             {/* Header */}
@@ -346,23 +346,50 @@ export const Settings: React.FC = () => {
                 {/* Accessibility Section */}
                 <section>
                     <SectionHeader
-                        title="Accessibility"
+                        title="Display & Accessibility"
                         description="Settings that affect motion and visual presentation"
                     />
                     <div className="space-y-3">
-                        <div className="flex items-center justify-between py-4 px-5 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 hover:bg-white/[0.04] transition-all group">
+                        {/* Theme Toggle */}
+                        <div className="flex items-center justify-between py-4 px-5 rounded-2xl bg-[hsl(var(--card))]/50 border border-[hsl(var(--border))] hover:border-[hsl(var(--border))]/80 hover:bg-[hsl(var(--card))]/80 transition-all group">
                             <div className="flex items-center gap-4 flex-1 min-w-0">
-                                <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-xl flex-shrink-0 group-hover:bg-white/10 transition-colors">
+                                <div className="w-10 h-10 rounded-xl bg-[hsl(var(--background))] border border-[hsl(var(--border))] flex items-center justify-center text-xl flex-shrink-0 group-hover:bg-[hsl(var(--muted))] transition-colors">
+                                    {settings.theme === 'light' ? '☀️' : '🌙'}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <label
+                                        htmlFor="toggle-theme"
+                                        className="block text-sm font-semibold text-[hsl(var(--foreground))] cursor-pointer"
+                                    >
+                                        Theme Mode
+                                    </label>
+                                    <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">
+                                        {settings.theme === 'light' ? 'Light mode enabled' : 'Dark mode enabled'}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="ml-4 flex-shrink-0">
+                                <ToggleSwitch
+                                    id="toggle-theme"
+                                    enabled={settings.theme === 'light'}
+                                    onChange={toggleTheme}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-between py-4 px-5 rounded-2xl bg-[hsl(var(--card))]/50 border border-[hsl(var(--border))] hover:border-[hsl(var(--border))]/80 hover:bg-[hsl(var(--card))]/80 transition-all group">
+                            <div className="flex items-center gap-4 flex-1 min-w-0">
+                                <div className="w-10 h-10 rounded-xl bg-[hsl(var(--background))] border border-[hsl(var(--border))] flex items-center justify-center text-xl flex-shrink-0 group-hover:bg-[hsl(var(--muted))] transition-colors">
                                     🎬
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <label
                                         htmlFor="toggle-reducedMotion"
-                                        className="block text-sm font-semibold text-white cursor-pointer"
+                                        className="block text-sm font-semibold text-[hsl(var(--foreground))] cursor-pointer"
                                     >
                                         Reduced Motion
                                     </label>
-                                    <p className="text-xs text-zinc-500 mt-0.5">
+                                    <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">
                                         Minimize animations throughout the app
                                     </p>
                                 </div>

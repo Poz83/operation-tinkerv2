@@ -18,6 +18,7 @@ export interface StudioSettings {
 
     // Accessibility
     reducedMotion: boolean;            // Disable animations
+    theme: 'light' | 'dark';           // UI Theme
 }
 
 // Default settings - all features OFF for clean experience
@@ -32,6 +33,7 @@ const DEFAULT_SETTINGS: StudioSettings = {
     reducedMotion: typeof window !== 'undefined'
         ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
         : false,
+    theme: 'dark', // Default to dark mode
 };
 
 const STORAGE_KEY = 'myjoe_studio_settings';
@@ -41,6 +43,7 @@ interface SettingsContextType {
     updateSetting: <K extends keyof StudioSettings>(key: K, value: StudioSettings[K]) => void;
     updateSettings: (updates: Partial<StudioSettings>) => void;
     resetSettings: () => void;
+    toggleTheme: () => void;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -54,6 +57,7 @@ function loadSettings(): StudioSettings {
         if (stored) {
             const parsed = JSON.parse(stored);
             // Merge with defaults to handle new settings added in updates
+            // Ensure theme exists if loading old settings
             return { ...DEFAULT_SETTINGS, ...parsed };
         }
     } catch (e) {
@@ -85,6 +89,24 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
         saveSettings(settings);
     }, [settings]);
 
+    // Apply theme to document
+    useEffect(() => {
+        const root = window.document.documentElement;
+        root.setAttribute('data-theme', settings.theme);
+
+        // Also toggle class for Tailwind dark mode if using 'class' strategy (usually 'dark' class)
+        // But we are using data-theme for variables. 
+        // If Tailwind is configured for 'class', we need to add/remove 'dark'.
+        // Let's support both.
+        if (settings.theme === 'dark') {
+            root.classList.add('dark');
+            root.classList.remove('light');
+        } else {
+            root.classList.add('light');
+            root.classList.remove('dark');
+        }
+    }, [settings.theme]);
+
     // Listen for system reduced motion preference changes
     useEffect(() => {
         const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -108,8 +130,15 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
         setSettings(DEFAULT_SETTINGS);
     };
 
+    const toggleTheme = () => {
+        setSettings(prev => ({
+            ...prev,
+            theme: prev.theme === 'light' ? 'dark' : 'light'
+        }));
+    };
+
     return (
-        <SettingsContext.Provider value={{ settings, updateSetting, updateSettings, resetSettings }}>
+        <SettingsContext.Provider value={{ settings, updateSetting, updateSettings, resetSettings, toggleTheme }}>
             {children}
         </SettingsContext.Provider>
     );
@@ -161,4 +190,9 @@ export const FEATURE_DESCRIPTIONS: Record<keyof Omit<StudioSettings, 'reducedMot
         description: 'Quick access to your previously used prompts',
         icon: '📝',
     },
+    theme: {
+        title: 'Theme',
+        description: 'Switch between light and dark mode',
+        icon: '🌗',
+    }
 };

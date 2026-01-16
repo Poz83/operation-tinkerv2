@@ -1,14 +1,13 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
-*/
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PAGE_SIZES, VISUAL_STYLES, TARGET_AUDIENCES, COMPLEXITY_LEVELS, CreativeVariation } from '../types';
-import coloringStudioIcon from '../assets/coloring-studio.png';
+import joeMascot from '../assets/joe-mascot.png';
 import magicWandIcon from '../assets/magic-wand.png';
 import saveIcon from '../assets/save-icon.png';
 import loadIcon from '../assets/load-icon.png';
+import { useSettings } from '../context/settingsContext';
+import { StyleSelector } from './StyleSelector';
+import { PromptQuality } from './PromptQuality';
 
 interface ToolbarProps {
   projectName: string;
@@ -52,12 +51,53 @@ interface ToolbarProps {
 }
 
 export const Setup: React.FC<ToolbarProps> = (props) => {
+  const { settings } = useSettings();
   const isPredefinedStyle = VISUAL_STYLES.some(s => s.id === props.visualStyle);
   const [showCostWarning, setShowCostWarning] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showStyleSelector, setShowStyleSelector] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [recentPrompts, setRecentPrompts] = useState<string[]>([]);
+
+  // Load recent prompts
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('recent_prompts');
+      if (saved) {
+        setRecentPrompts(JSON.parse(saved));
+      }
+    } catch (e) { console.error('Failed to load recent prompts', e); }
+  }, []);
+  useEffect(() => {
+    if (!settings.enableSmartDefaults || !props.userPrompt) return;
+
+    const lower = props.userPrompt.toLowerCase();
+
+    // Auto-detect style
+    if (lower.includes('mandala')) props.setVisualStyle('Mandala');
+    else if (lower.includes('stained glass')) props.setVisualStyle('Gothic');
+    else if (lower.includes('geometric') || lower.includes('low poly')) props.setVisualStyle('Geometric');
+    else if (lower.includes('flower') || lower.includes('floral')) props.setVisualStyle('Floral');
+    else if (lower.includes('cute') || lower.includes('kawaii')) props.setVisualStyle('Kawaii');
+
+    // Auto-detect audience
+    if (lower.includes('simple') || lower.includes('toddler')) props.setTargetAudience('toddlers');
+    else if (lower.includes('complex') || lower.includes('adult')) props.setTargetAudience('adults');
+  }, [props.userPrompt, settings.enableSmartDefaults]);
 
   // Handle generate click with cost warning for 4K resolution
   const handleGenerateClick = () => {
+    // Save to history if enabled
+    if (settings.enableRecentPrompts && props.userPrompt) {
+      try {
+        const unique = Array.from(new Set([props.userPrompt, ...recentPrompts])).slice(0, 10);
+        setRecentPrompts(unique);
+        localStorage.setItem('recent_prompts', JSON.stringify(unique));
+      } catch (e) {
+        console.error('Failed to save recent prompt', e);
+      }
+    }
+
     const highCostLevels = ['Intricate', 'Extreme Detail'];
     if (highCostLevels.includes(props.complexity)) {
       setShowCostWarning(true);
@@ -85,7 +125,7 @@ export const Setup: React.FC<ToolbarProps> = (props) => {
     }
   };
 
-  const labelClass = "block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2";
+  const labelClass = "block text-[10px] font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-widest mb-2";
 
   return (
     <>
@@ -107,7 +147,7 @@ export const Setup: React.FC<ToolbarProps> = (props) => {
               </div>
             </div>
 
-            <p className="text-zinc-300 text-sm mb-6 leading-relaxed">
+            <p className="text-[hsl(var(--muted-foreground))] text-sm mb-6 leading-relaxed">
               Your <strong className="text-amber-400">{props.complexity}</strong> detail level creates super high-resolution images
               (4K quality). This uses <strong className="text-amber-400">4x more API credits</strong> than standard quality.
               <br /><br />
@@ -117,7 +157,7 @@ export const Setup: React.FC<ToolbarProps> = (props) => {
             <div className="flex gap-3">
               <button
                 onClick={() => setShowCostWarning(false)}
-                className="flex-1 px-4 py-2.5 rounded-xl btn-secondary text-zinc-300 font-medium transition-colors"
+                className="flex-1 px-4 py-2.5 rounded-xl btn-secondary text-[hsl(var(--foreground))] font-medium transition-colors"
               >
                 Go Back
               </button>
@@ -138,20 +178,20 @@ export const Setup: React.FC<ToolbarProps> = (props) => {
       <div className={`flex flex-col ${props.embeddedMode ? '' : 'h-full'}`}>
         {/* Header - Only shown if NOT embedded */}
         {!props.embeddedMode && (
-          <div className="px-6 py-6 border-b border-white/5 flex items-center justify-between">
+          <div className="px-6 py-6 border-b border-[hsl(var(--border))] flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <img src={coloringStudioIcon} className="w-8 h-8 object-contain drop-shadow" alt="Lab" />
+              <img src={joeMascot} className="w-12 h-12 object-contain drop-shadow hover:rotate-6 transition-transform duration-300" alt="Joe" />
               <div>
-                <h1 className="font-bold text-base text-white tracking-tight leading-none">Coloring Lab</h1>
-                <p className="text-[10px] text-zinc-500 font-medium pt-0.5">Creative Studio</p>
+                <h1 className="font-bold text-base text-[hsl(var(--foreground))] tracking-tight leading-none">Coloring Lab</h1>
+                <p className="text-[10px] text-[hsl(var(--muted-foreground))] font-medium pt-0.5">Creative Studio</p>
               </div>
             </div>
 
             <div className="flex gap-2">
-              <button onClick={props.onSaveProject} className="p-2 hover:bg-white/5 rounded-lg transition-colors group" title="Save your work">
+              <button onClick={props.onSaveProject} className="p-2 hover:bg-[hsl(var(--muted))]/20 rounded-lg transition-colors group" title="Save your work">
                 <img src={saveIcon} className="w-5 h-5 object-contain opacity-70 group-hover:opacity-100 transition-opacity" alt="Save" />
               </button>
-              <button onClick={props.onLoadProject} className="p-2 hover:bg-white/5 rounded-lg transition-colors group" title="Open a saved project">
+              <button onClick={props.onLoadProject} className="p-2 hover:bg-[hsl(var(--muted))]/20 rounded-lg transition-colors group" title="Open a saved project">
                 <img src={loadIcon} className="w-5 h-5 object-contain opacity-70 group-hover:opacity-100 transition-opacity" alt="Load" />
               </button>
             </div>
@@ -169,7 +209,7 @@ export const Setup: React.FC<ToolbarProps> = (props) => {
                 <button
                   id="clear-btn"
                   onClick={props.onClear}
-                  className="text-[10px] font-medium text-zinc-400 hover:text-white transition-colors flex items-center gap-1.5 mb-2 px-2 py-1 hover:bg-white/5 rounded-lg border border-transparent hover:border-white/10"
+                  className="text-[10px] font-medium text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors flex items-center gap-1.5 mb-2 px-2 py-1 hover:bg-[hsl(var(--muted))]/20 rounded-lg border border-transparent hover:border-[hsl(var(--border))]"
                   title="Reset everything"
                 >
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
@@ -186,23 +226,91 @@ export const Setup: React.FC<ToolbarProps> = (props) => {
                 placeholder="Animals Coloring Book, Ocean Scenes, Mandalas..."
               />
             </div>
+
+            {/* Page Count - Moved here for logical flow */}
+            <div>
+              <div className="flex justify-between items-center mb-3">
+                <label className={labelClass + " mb-0"}>How Many Pages?</label>
+                <span className="text-xs font-bold text-[hsl(var(--foreground))]">{props.pageAmount} page{props.pageAmount !== 1 ? 's' : ''}</span>
+              </div>
+              <input
+                type="range" min={1} max={40} step={1}
+                value={props.pageAmount}
+                onChange={(e) => props.setPageAmount(parseInt(e.target.value))}
+                className="glass-slider"
+              />
+            </div>
           </div>
 
           {/* Section: Concept */}
           <div className="space-y-4">
             <div className="flex justify-between items-end">
               <label className={labelClass}>What Should We Create?</label>
-              {props.onEnhancePrompt && (
-                <button
-                  id="enhance-btn"
-                  onClick={props.onEnhancePrompt}
-                  disabled={props.isEnhancing || !props.userPrompt}
-                  className="text-[10px] font-medium text-zinc-400 hover:text-white transition-colors disabled:opacity-50 flex items-center gap-1.5 mb-2 group"
-                >
-                  <img src={magicWandIcon} className={`w-4 h-4 object-contain ${props.isEnhancing ? 'animate-pulse' : 'group-hover:rotate-12 transition-transform'}`} alt="Magic" />
-                  {props.isEnhancing ? 'Enhancing...' : 'Make It Better'}
-                </button>
-              )}
+              <div className="flex gap-2">
+                {settings.enableRecentPrompts && (
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowHistory(!showHistory)}
+                      className="text-[10px] font-medium text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors flex items-center gap-1.5 mb-2 px-2 py-1 hover:bg-[hsl(var(--muted))]/20 rounded-lg border border-transparent hover:border-[hsl(var(--border))]"
+                      title="Recent Prompts"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" /></svg>
+                      History
+                    </button>
+
+                    {showHistory && (
+                      <>
+                        <div className="fixed inset-0 z-30" onClick={() => setShowHistory(false)} />
+                        <div className="absolute right-0 top-8 z-40 w-64 bg-[hsl(var(--popover))] border border-[hsl(var(--border))] rounded-xl shadow-xl p-2 animate-in fade-in zoom-in-95 duration-200">
+                          <div className="text-[10px] font-bold text-[hsl(var(--muted-foreground))] uppercase px-2 py-1 mb-1">Recent Prompts</div>
+                          {recentPrompts.length > 0 ? (
+                            <div className="max-h-48 overflow-y-auto space-y-1 custom-scrollbar">
+                              {recentPrompts.map((p, i) => (
+                                <button
+                                  key={i}
+                                  onClick={() => {
+                                    props.setUserPrompt(p);
+                                    setShowHistory(false);
+                                  }}
+                                  className="w-full text-left text-xs text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))]/20 p-2 rounded-lg transition-colors truncate"
+                                  title={p}
+                                >
+                                  {p}
+                                </button>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-xs text-[hsl(var(--muted-foreground))] p-2 italic">No history yet.</div>
+                          )}
+                          <div className="border-t border-[hsl(var(--border))] mt-2 pt-1">
+                            <button
+                              onClick={() => {
+                                setRecentPrompts([]);
+                                localStorage.removeItem('recent_prompts');
+                              }}
+                              className="w-full text-left text-[10px] text-red-400 hover:text-red-300 p-1.5 rounded-lg hover:bg-red-500/10 transition-colors"
+                            >
+                              Clear History
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {props.onEnhancePrompt && (
+                  <button
+                    id="enhance-btn"
+                    onClick={props.onEnhancePrompt}
+                    disabled={props.isEnhancing || !props.userPrompt}
+                    className="text-[10px] font-medium text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors disabled:opacity-50 flex items-center gap-1.5 mb-2 group"
+                  >
+                    <img src={magicWandIcon} className={`w-4 h-4 object-contain ${props.isEnhancing ? 'animate-pulse' : 'group-hover:rotate-12 transition-transform'}`} alt="Magic" />
+                    {props.isEnhancing ? 'Enhancing...' : 'Make It Better'}
+                  </button>
+                )}
+              </div>
             </div>
             <div className="relative group">
               <textarea
@@ -214,7 +322,7 @@ export const Setup: React.FC<ToolbarProps> = (props) => {
               <div className="absolute bottom-2 right-2">
                 <button
                   onClick={() => props.setHasHeroRef(!props.hasHeroRef)}
-                  className={`p-1.5 rounded-lg transition-all ${props.hasHeroRef ? 'bg-zinc-100 text-black shadow-lg' : 'bg-white/5 text-zinc-500 hover:text-zinc-300 border border-white/5'}`}
+                  className={`p-1.5 rounded-lg transition-all ${props.hasHeroRef ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-lg' : 'bg-[hsl(var(--card))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] border border-[hsl(var(--border))]'}`}
                   title="Show/hide reference"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
@@ -222,14 +330,18 @@ export const Setup: React.FC<ToolbarProps> = (props) => {
               </div>
             </div>
 
+            {settings.enablePromptQuality && (
+              <PromptQuality prompt={props.userPrompt} />
+            )}
+
             {props.hasHeroRef && (
               <div className="animate-in fade-in slide-in-from-top-2 duration-300">
                 <label className="block w-full cursor-pointer group">
-                  <div className="w-full h-32 rounded-xl border border-dashed border-white/10 hover:border-white/30 bg-white/5 flex flex-col items-center justify-center transition-all relative overflow-hidden">
+                  <div className="w-full h-32 rounded-xl border border-dashed border-[hsl(var(--border))] hover:border-[hsl(var(--ring))] bg-[hsl(var(--card))]/30 flex flex-col items-center justify-center transition-all relative overflow-hidden">
                     {props.heroImage ? (
                       <img src={`data:${props.heroImage.mimeType};base64,${props.heroImage.base64}`} className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity" alt="Hero Ref" />
                     ) : (
-                      <div className="text-zinc-500 group-hover:text-zinc-300 transition-colors flex flex-col items-center gap-2">
+                      <div className="text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--foreground))] transition-colors flex flex-col items-center gap-2">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
                         <span className="text-xs font-medium">Add Inspiration Image</span>
                       </div>
@@ -241,28 +353,37 @@ export const Setup: React.FC<ToolbarProps> = (props) => {
             )}
           </div>
 
-          <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+          <div className="h-px bg-gradient-to-r from-transparent via-[hsl(var(--border))] to-transparent"></div>
 
           {/* Section: Configuration */}
           <div className="space-y-5">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={labelClass}>Visual Vibe</label>
-                <div className="relative">
-                  <select
-                    value={isPredefinedStyle ? props.visualStyle : 'CUSTOM_OPTION'}
-                    onChange={(e) => e.target.value === 'CUSTOM_OPTION' ? props.setVisualStyle('') : props.setVisualStyle(e.target.value)}
-                    className="glass-select"
-                  >
-                    {VISUAL_STYLES.map(s => <option key={s.id} value={s.id} className="bg-[#0a0a0b]">{s.label}</option>)}
-                    <option value="CUSTOM_OPTION" className="bg-[#0a0a0b]">Custom...</option>
-                  </select>
-                </div>
+                {settings.enableStylePreviews ? (
+                  <StyleSelector
+                    value={props.visualStyle}
+                    onChange={props.setVisualStyle}
+                    isOpen={showStyleSelector}
+                    onToggle={() => setShowStyleSelector(!showStyleSelector)}
+                  />
+                ) : (
+                  <div className="relative">
+                    <select
+                      value={isPredefinedStyle ? props.visualStyle : 'CUSTOM_OPTION'}
+                      onChange={(e) => e.target.value === 'CUSTOM_OPTION' ? props.setVisualStyle('') : props.setVisualStyle(e.target.value)}
+                      className="glass-select"
+                    >
+                      {VISUAL_STYLES.map(s => <option key={s.id} value={s.id} className="bg-[hsl(var(--card))] text-[hsl(var(--foreground))]">{s.label}</option>)}
+                      <option value="CUSTOM_OPTION" className="bg-[hsl(var(--card))] text-[hsl(var(--foreground))]">Custom...</option>
+                    </select>
+                  </div>
+                )}
               </div>
               <div>
                 <label className={labelClass}>Detail Level</label>
                 <select value={props.complexity} onChange={(e) => props.setComplexity(e.target.value)} className="glass-select">
-                  {COMPLEXITY_LEVELS.map(c => <option key={c} value={c} className="bg-[#0a0a0b]">{c}</option>)}
+                  {COMPLEXITY_LEVELS.map(c => <option key={c} value={c} className="bg-[hsl(var(--card))] text-[hsl(var(--foreground))]">{c}</option>)}
                 </select>
               </div>
             </div>
@@ -270,18 +391,18 @@ export const Setup: React.FC<ToolbarProps> = (props) => {
             <div>
               <label className={labelClass}>Who's This For?</label>
               <select value={props.targetAudience} onChange={(e) => props.setTargetAudience(e.target.value)} className="glass-select">
-                {TARGET_AUDIENCES.map(a => <option key={a.id} value={a.id} className="bg-[#0a0a0b]">{a.label}</option>)}
+                {TARGET_AUDIENCES.map(a => <option key={a.id} value={a.id} className="bg-[hsl(var(--card))] text-[hsl(var(--foreground))]">{a.label}</option>)}
               </select>
             </div>
 
             {/* Custom Toggles */}
             <div className="flex items-center justify-between py-1">
-              <span className="text-xs font-medium text-zinc-400">Add Text & Labels</span>
+              <span className="text-xs font-medium text-[hsl(var(--muted-foreground))]">Add Text & Labels</span>
               <button
                 onClick={() => props.setIncludeText(!props.includeText)}
-                className={`w-10 h-6 rounded-full transition-colors relative ${props.includeText ? 'bg-white' : 'bg-zinc-800'}`}
+                className={`w-10 h-6 rounded-full transition-colors relative ${props.includeText ? 'bg-[hsl(var(--foreground))]' : 'bg-[hsl(var(--muted))]'}`}
               >
-                <div className={`absolute top-1 left-1 w-4 h-4 rounded-full shadow-md transform transition-transform ${props.includeText ? 'translate-x-4 bg-black' : 'translate-x-0 bg-zinc-500'}`} />
+                <div className={`absolute top-1 left-1 w-4 h-4 rounded-full shadow-md transform transition-transform ${props.includeText ? 'translate-x-4 bg-[hsl(var(--background))]' : 'translate-x-0 bg-[hsl(var(--muted-foreground))]'}`} />
               </button>
             </div>
           </div>
@@ -297,25 +418,12 @@ export const Setup: React.FC<ToolbarProps> = (props) => {
                   <button
                     key={s.id}
                     onClick={() => props.setPageSize(s.id)}
-                    className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all ${props.pageSize === s.id ? 'bg-white text-black border-white' : 'bg-transparent text-zinc-500 border-white/10 hover:border-white/20'}`}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all ${props.pageSize === s.id ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] border-[hsl(var(--primary))]' : 'bg-transparent text-[hsl(var(--muted-foreground))] border-[hsl(var(--border))] hover:border-[hsl(var(--ring))]'}`}
                   >
                     {s.label}
                   </button>
                 ))}
               </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between items-center mb-3">
-                <label className={labelClass + " mb-0"}>How Many Pages?</label>
-                <span className="text-xs font-bold text-white">{props.pageAmount} page{props.pageAmount !== 1 ? 's' : ''}</span>
-              </div>
-              <input
-                type="range" min={1} max={40} step={1}
-                value={props.pageAmount}
-                onChange={(e) => props.setPageAmount(parseInt(e.target.value))}
-                className="glass-slider"
-              />
             </div>
           </div>
 
@@ -325,7 +433,7 @@ export const Setup: React.FC<ToolbarProps> = (props) => {
           <div className="space-y-4">
             <button
               onClick={() => setShowAdvanced(!showAdvanced)}
-              className="flex items-center gap-2 text-xs font-medium text-zinc-500 hover:text-zinc-300 transition-colors"
+              className="flex items-center gap-2 text-xs font-medium text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
             >
               <svg
                 width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
@@ -343,18 +451,18 @@ export const Setup: React.FC<ToolbarProps> = (props) => {
                   <div className="flex justify-between items-center">
                     <label className={labelClass + " mb-0"}>Creative Variation</label>
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-zinc-500">AI Auto</span>
+                      <span className="text-[10px] text-[hsl(var(--muted-foreground))]">AI Auto</span>
                       <button
                         onClick={() => props.setCreativeVariation(
                           props.creativeVariation === 'auto' ? 'balanced' : 'auto'
                         )}
-                        className={`w-10 h-6 rounded-full transition-colors relative ${props.creativeVariation !== 'auto' ? 'bg-white' : 'bg-zinc-800'
+                        className={`w-10 h-6 rounded-full transition-colors relative ${props.creativeVariation !== 'auto' ? 'bg-[hsl(var(--foreground))]' : 'bg-[hsl(var(--muted))]'
                           }`}
                       >
-                        <div className={`absolute top-1 left-1 w-4 h-4 rounded-full shadow-md transform transition-transform ${props.creativeVariation !== 'auto' ? 'translate-x-4 bg-black' : 'translate-x-0 bg-zinc-500'
+                        <div className={`absolute top-1 left-1 w-4 h-4 rounded-full shadow-md transform transition-transform ${props.creativeVariation !== 'auto' ? 'translate-x-4 bg-[hsl(var(--background))]' : 'translate-x-0 bg-[hsl(var(--muted-foreground))]'
                           }`} />
                       </button>
-                      <span className="text-[10px] text-zinc-500">Manual</span>
+                      <span className="text-[10px] text-[hsl(var(--muted-foreground))]">Manual</span>
                     </div>
                   </div>
 
@@ -367,15 +475,15 @@ export const Setup: React.FC<ToolbarProps> = (props) => {
                             key={level}
                             onClick={() => props.setCreativeVariation(level)}
                             className={`flex-1 py-2 text-xs font-medium rounded-lg border transition-all ${props.creativeVariation === level
-                                ? 'bg-white text-black border-white'
-                                : 'bg-transparent text-zinc-500 border-white/10 hover:border-white/20'
+                              ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] border-[hsl(var(--primary))]'
+                              : 'bg-transparent text-[hsl(var(--muted-foreground))] border-[hsl(var(--border))] hover:border-[hsl(var(--ring))]'
                               }`}
                           >
                             {level.charAt(0).toUpperCase() + level.slice(1)}
                           </button>
                         ))}
                       </div>
-                      <p className="text-[10px] text-zinc-600 leading-relaxed">
+                      <p className="text-[10px] text-[hsl(var(--muted-foreground))] leading-relaxed">
                         {props.creativeVariation === 'precision' && '🎯 Consistent, predictable outputs. Best for Mandala, Geometric.'}
                         {props.creativeVariation === 'balanced' && '⚖️ Good mix of consistency and variety. Works for most styles.'}
                         {props.creativeVariation === 'freedom' && '🎨 More creative, varied outputs. Best for Abstract, Fantasy.'}
@@ -384,7 +492,7 @@ export const Setup: React.FC<ToolbarProps> = (props) => {
                   )}
 
                   {props.creativeVariation === 'auto' && (
-                    <p className="text-[10px] text-zinc-600 leading-relaxed">
+                    <p className="text-[10px] text-[hsl(var(--muted-foreground))] leading-relaxed">
                       🤖 AI will choose the best setting based on your style, detail level, and audience.
                     </p>
                   )}
@@ -396,7 +504,7 @@ export const Setup: React.FC<ToolbarProps> = (props) => {
 
         {/* Footer - Only shown if NOT embedded */}
         {!props.embeddedMode && (
-          <div className="p-6 border-t border-white/5 bg-black/20 backdrop-blur-md">
+          <div className="p-6 border-t border-[hsl(var(--border))] bg-[hsl(var(--card))]/30 backdrop-blur-md">
             {props.isGenerating ? (
               <button disabled className="btn-primary opacity-80 cursor-wait flex items-center justify-center gap-3">
                 <svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>

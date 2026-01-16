@@ -109,7 +109,7 @@ export const FeedbackWidget: React.FC = () => {
                     throw new Error('Failed to get upload key');
                 }
 
-                const { key, uploadUrl } = await response.json();
+                const { key, uploadUrl } = await response.json() as { key: string; uploadUrl?: string };
 
                 // 3. Upload to R2 via the API
                 const uploadResponse = await fetch(uploadUrl || `/api/upload-feedback?key=${key}`, {

@@ -21,7 +21,8 @@ export const VISUAL_STYLES = [
   { id: 'Geometric', label: 'Geometric (Low Poly)' },
   { id: 'Wildlife', label: 'Wildlife (Realistic)' },
   { id: 'Floral', label: 'Floral (Pattern)' },
-  { id: 'Abstract', label: 'Abstract (Flow)' }
+  { id: 'Abstract', label: 'Abstract (Flow)' },
+  { id: 'Realistic', label: 'Realistic (Fine Art)' }
 ];
 
 export const COMPLEXITY_LEVELS = [
@@ -121,4 +122,41 @@ export interface SavedProject {
   updatedAt: number;
   thumbnail?: string; // Optional thumbnail data URL
   pages?: ColoringPage[];
+}
+
+// ============================================================================
+// Style DNA - Forensic Analysis Results for Reference Images
+// ============================================================================
+
+export type LineWeight = 'hairline' | 'fine' | 'medium' | 'bold' | 'ultra-bold';
+export type LineConsistency = 'uniform' | 'variable' | 'tapered';
+export type LineStyle = 'smooth-vector' | 'hand-drawn' | 'scratchy' | 'brush-like';
+export type ShadingTechnique = 'none' | 'stippling' | 'hatching' | 'cross-hatch' | 'solid-fills';
+export type DensityLevel = 'sparse' | 'moderate' | 'dense' | 'horror-vacui';
+export type BorderStyle = 'thick-rounded' | 'thin-rectangular' | 'decorative' | 'none';
+
+export interface StyleDNA {
+  // Line Analysis
+  lineWeight: LineWeight;
+  lineWeightMm: string;  // e.g., "0.3mm-0.5mm" or "1.5mm-2mm"
+  lineConsistency: LineConsistency;
+  lineStyle: LineStyle;
+
+  // Shading Analysis
+  shadingTechnique: ShadingTechnique;
+
+  // Composition Analysis
+  density: DensityLevel;
+  whiteSpaceRatio: string;  // e.g., "30-40%"
+
+  // Border/Frame
+  hasBorder: boolean;
+  borderStyle: BorderStyle;
+
+  // Overall Vibe
+  styleFamily: string;  // Closest match to existing styles
+  temperature: number;  // Recommended 0.7-1.2
+
+  // Raw description for prompt injection
+  promptFragment: string;  // Concise descriptive text for injection
 }

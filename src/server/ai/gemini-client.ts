@@ -96,15 +96,24 @@ export const generateWithGemini = async (options: GenerateImageOptions): Promise
       options.height
     );
 
-    const response = await ai.models.generateContent({
+    // Wrap API call in a race with the abort signal to ensure immediate cancellation
+    const generatePromise = ai.models.generateContent({
       model: GEMINI_IMAGE_MODEL,
       contents: { parts },
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
         imageConfig: imageConfig,
-        temperature: options.temperature ?? 1.0, // Style-based, defaults to balanced
+        temperature: options.temperature ?? 1.0,
       },
     });
+
+    const abortPromise = new Promise<never>((_, reject) => {
+      if (options.signal?.aborted) reject(new Error('Aborted'));
+      options.signal?.addEventListener('abort', () => reject(new Error('Aborted')));
+    });
+
+    // @ts-ignore - Promise.race types can be tricky with SDK returns
+    const response = await Promise.race([generatePromise, abortPromise]);
 
     const part = response.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
     if (part?.inlineData?.data) {

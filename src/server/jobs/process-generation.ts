@@ -113,6 +113,27 @@ export const processGeneration = async (
   // Check before starting
   if (params.signal?.aborted) throw new Error('Aborted');
 
+  // 0. Forensic Style Analysis (if reference image provided)
+  let styleDNA: import('../../types').StyleDNA | null = null;
+  if (params.hasHeroRef && params.heroImage) {
+    console.log('🔬 Analyzing reference image style...');
+    try {
+      styleDNA = await directPromptService.analyzeReferenceStyle(
+        params.heroImage.base64,
+        params.heroImage.mimeType,
+        params.signal
+      );
+      if (styleDNA) {
+        console.log('✅ Style DNA extracted:', styleDNA.styleFamily, styleDNA.lineWeight);
+      }
+    } catch (e: any) {
+      if (e.message === 'Aborted') throw e;
+      console.warn('Style analysis failed, continuing without:', e);
+    }
+  }
+
+  if (params.signal?.aborted) throw new Error('Aborted');
+
   // 1. Generate Book Plan
   let plan = await directPromptService.generateBookPlan(
     params.userIdea,
@@ -227,11 +248,13 @@ export const processGeneration = async (
       params.style,
       params.complexity,
       item.requiresText,
-      audiencePrompt
+      audiencePrompt,
+      params.audience, // Pass the raw audience label for border calibration
+      styleDNA // Pass StyleDNA for style matching
     );
 
-    // Compute temperature from style/complexity/audience or user override
-    const temperature = computeTemperature(
+    // Compute temperature - StyleDNA overrides if available
+    const temperature = styleDNA?.temperature ?? computeTemperature(
       params.style,
       params.complexity,
       params.audience,

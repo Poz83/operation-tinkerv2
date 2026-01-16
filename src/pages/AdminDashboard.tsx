@@ -94,7 +94,7 @@ export const AdminDashboard: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
+        <div className="h-screen overflow-y-auto bg-[hsl(var(--background))] text-[hsl(var(--foreground))] font-sans">
             <Navigation />
 
             <main className="max-w-7xl mx-auto px-6 py-24">
@@ -102,26 +102,26 @@ export const AdminDashboard: React.FC = () => {
                     <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
                         Admin Dashboard
                     </h1>
-                    <p className="text-zinc-400 mt-2">Manage settings, users, and feedback.</p>
+                    <p className="text-[hsl(var(--muted-foreground))] mt-2">Manage settings, users, and feedback.</p>
                 </div>
 
                 {/* Tabs */}
-                <div className="flex gap-4 mb-8 border-b border-white/10">
+                <div className="flex gap-4 mb-8 border-b border-[hsl(var(--border))]">
                     <button
                         onClick={() => setActiveTab('overview')}
-                        className={`pb-3 px-1 font-medium text-sm transition-colors ${activeTab === 'overview' ? 'text-purple-400 border-b-2 border-purple-400' : 'text-zinc-400 hover:text-white'}`}
+                        className={`pb-3 px-1 font-medium text-sm transition-colors ${activeTab === 'overview' ? 'text-purple-400 border-b-2 border-purple-400' : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'}`}
                     >
                         Feature Flags
                     </button>
                     <button
                         onClick={() => setActiveTab('users')}
-                        className={`pb-3 px-1 font-medium text-sm transition-colors ${activeTab === 'users' ? 'text-purple-400 border-b-2 border-purple-400' : 'text-zinc-400 hover:text-white'}`}
+                        className={`pb-3 px-1 font-medium text-sm transition-colors ${activeTab === 'users' ? 'text-purple-400 border-b-2 border-purple-400' : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'}`}
                     >
                         Users & Whitelist
                     </button>
                     <button
                         onClick={() => setActiveTab('inbox')}
-                        className={`pb-3 px-1 font-medium text-sm transition-colors ${activeTab === 'inbox' ? 'text-purple-400 border-b-2 border-purple-400' : 'text-zinc-400 hover:text-white'}`}
+                        className={`pb-3 px-1 font-medium text-sm transition-colors ${activeTab === 'inbox' ? 'text-purple-400 border-b-2 border-purple-400' : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'}`}
                     >
                         Feedback Inbox
                     </button>
@@ -137,16 +137,16 @@ export const AdminDashboard: React.FC = () => {
                         {activeTab === 'overview' && (
                             <div className="grid gap-4">
                                 {featureFlags.map(flag => (
-                                    <div key={flag.id} className="p-4 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between">
+                                    <div key={flag.id} className="p-4 rounded-xl bg-[hsl(var(--card))]/50 border border-[hsl(var(--border))] flex items-center justify-between">
                                         <div>
                                             <h3 className="font-semibold">{flag.key}</h3>
-                                            <p className="text-sm text-zinc-400">{flag.description}</p>
+                                            <p className="text-sm text-[hsl(var(--muted-foreground))]">{flag.description}</p>
                                         </div>
                                         <button
                                             onClick={() => toggleFeature(flag.id, flag.enabled)}
-                                            className={`w-12 h-6 rounded-full transition-colors relative ${flag.enabled ? 'bg-purple-500' : 'bg-zinc-700'}`}
+                                            className={`w-12 h-6 rounded-full transition-colors relative ${flag.enabled ? 'bg-purple-500' : 'bg-[hsl(var(--muted))]'}`}
                                         >
-                                            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${flag.enabled ? 'left-7' : 'left-1'}`} />
+                                            <div className={`absolute top-1 w-4 h-4 rounded-full bg-[hsl(var(--foreground))] transition-transform ${flag.enabled ? 'left-7' : 'left-1'}`} />
                                         </button>
                                     </div>
                                 ))}
@@ -156,8 +156,8 @@ export const AdminDashboard: React.FC = () => {
 
                         {activeTab === 'users' && (
                             <div className="overflow-x-auto">
-                                <table className="w-full text-left text-sm text-zinc-400">
-                                    <thead className="text-xs uppercase bg-white/5 text-zinc-300">
+                                <table className="w-full text-left text-sm text-[hsl(var(--muted-foreground))]">
+                                    <thead className="text-xs uppercase bg-[hsl(var(--card))]/50 text-[hsl(var(--muted-foreground))]">
                                         <tr>
                                             <th className="px-6 py-3 rounded-l-lg">Email</th>
                                             <th className="px-6 py-3">Created At</th>
@@ -167,8 +167,8 @@ export const AdminDashboard: React.FC = () => {
                                     </thead>
                                     <tbody>
                                         {users.map(user => (
-                                            <tr key={user.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                                                <td className="px-6 py-4 font-medium text-white">{user.email}</td>
+                                            <tr key={user.id} className="border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]/10 transition-colors">
+                                                <td className="px-6 py-4 font-medium text-[hsl(var(--foreground))]">{user.email}</td>
                                                 <td className="px-6 py-4">{new Date(user.created_at).toLocaleDateString()}</td>
                                                 <td className="px-6 py-4">
                                                     <span className={`px-2 py-1 rounded text-xs ${user.is_whitelisted ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
@@ -193,24 +193,24 @@ export const AdminDashboard: React.FC = () => {
                         {activeTab === 'inbox' && (
                             <div className="grid gap-4">
                                 {feedback.map(item => (
-                                    <div key={item.id} className="p-4 rounded-xl bg-white/5 border border-white/10">
+                                    <div key={item.id} className="p-4 rounded-xl bg-[hsl(var(--card))]/50 border border-[hsl(var(--border))]">
                                         <div className="flex justify-between items-start mb-2">
                                             <span className={`px-2 py-0.5 rounded text-xs uppercase ${item.type === 'bug' ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'}`}>
                                                 {item.type}
                                             </span>
-                                            <span className="text-xs text-zinc-500">{new Date(item.created_at).toLocaleString()}</span>
+                                            <span className="text-xs text-[hsl(var(--muted-foreground))]">{new Date(item.created_at).toLocaleString()}</span>
                                         </div>
-                                        <p className="text-white mb-3">{item.message}</p>
-                                        <div className="text-xs text-zinc-500 truncate mb-3">Page: {item.page_url}</div>
+                                        <p className="text-[hsl(var(--foreground))] mb-3">{item.message}</p>
+                                        <div className="text-xs text-[hsl(var(--muted-foreground))] truncate mb-3">Page: {item.page_url}</div>
                                         {item.screenshot_url && (
                                             <div className="mt-2">
-                                                <p className="text-xs font-medium text-zinc-400 mb-1">Screenshot attached</p>
+                                                <p className="text-xs font-medium text-[hsl(var(--muted-foreground))] mb-1">Screenshot attached</p>
                                                 <img
                                                     src={item.screenshot_url.startsWith('r2://')
                                                         ? `/api/view-feedback-image?key=${item.screenshot_url.replace('r2://', '')}`
                                                         : item.screenshot_url}
                                                     alt="User screenshot"
-                                                    className="h-32 rounded border border-white/10 object-contain bg-black"
+                                                    className="h-32 rounded border border-[hsl(var(--border))] object-contain bg-[hsl(var(--background))]"
                                                 />
                                             </div>
                                         )}

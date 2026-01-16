@@ -6,7 +6,8 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import coloringStudioIcon from '../assets/coloring-studio.png';
+import joeMascot from '../assets/joe-mascot.png';
+import logoFull from '../assets/logo_full.png';
 
 export const Navigation: React.FC = () => {
   const location = useLocation();
@@ -15,14 +16,11 @@ export const Navigation: React.FC = () => {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 h-16 bg-[rgba(10,10,11,0.8)] backdrop-blur-xl border-b border-white/5">
+    <nav className="fixed top-0 left-0 right-0 z-50 h-16 bg-[var(--glass-bg)] backdrop-blur-xl border-b border-[var(--glass-border)] transition-colors duration-300">
       <div className="h-full max-w-[1920px] mx-auto px-6 flex items-center justify-between">
         {/* Left: Logo/Brand */}
         <div className="flex items-center gap-2">
-          <img src={coloringStudioIcon} alt="Studio Logo" className="w-8 h-8 object-contain drop-shadow" />
-          <span className="text-xl font-bold text-gradient-sleek">
-            Myjoe Studio
-          </span>
+          <img src={logoFull} alt="Myjoe Creative Suite" className="h-12 object-contain drop-shadow-md hover:scale-105 transition-transform duration-300" />
         </div>
 
         {/* Center: Nav Links */}
@@ -30,22 +28,22 @@ export const Navigation: React.FC = () => {
           {location.pathname.startsWith('/studio/project/') ? (
             // Studio Editor Navigation
             <>
-              <Link to="/studio" className="nav-link">Projects</Link>
-              <Link to="/dashboard" className="nav-link">Dashboard</Link>
-              <Link to="/gallery" className={`nav-link ${isActive('/gallery') ? 'active' : ''}`}>Gallery</Link>
-              <Link to="/vault" className={`nav-link ${isActive('/vault') ? 'active' : ''}`}>Vault</Link>
+              <Link to="/studio" className="nav-link text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">Projects</Link>
+              <Link to="/dashboard" className="nav-link text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">Dashboard</Link>
+              <Link to="/gallery" className={`nav-link ${isActive('/gallery') ? 'text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'}`}>Gallery</Link>
+              <Link to="/vault" className={`nav-link ${isActive('/vault') ? 'text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'}`}>Vault</Link>
             </>
           ) : (
             // Default Navigation
             <>
-              <Link to="/studio" className={`nav-link ${isActive('/studio') ? 'active' : ''}`}>Studio</Link>
-              <Link to="/dashboard" className={`nav-link ${isActive('/dashboard') ? 'active' : ''}`}>Dashboard</Link>
-              <Link to="/gallery" className="nav-link">Gallery</Link>
+              <Link to="/studio" className={`nav-link ${isActive('/studio') ? 'text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'}`}>Studio</Link>
+              <Link to="/dashboard" className={`nav-link ${isActive('/dashboard') ? 'text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'}`}>Dashboard</Link>
+              <Link to="/gallery" className="nav-link text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">Gallery</Link>
               {/* Hide Resources and Help for the dev account */}
               {userEmail !== 'jamie@myjoe.app' && (
                 <>
                   {/* <a href="#" className="nav-link">Resources</a> */}
-                  <a href="#" className="nav-link">Help</a>
+                  <a href="#" className="nav-link text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">Help</a>
                 </>
               )}
             </>
@@ -56,14 +54,14 @@ export const Navigation: React.FC = () => {
         <div className="flex items-center gap-3">
           <Link
             to="/settings"
-            className={`icon-button ${isActive('/settings') ? 'bg-white/10 border-white/20' : ''}`}
+            className={`icon-button ${isActive('/settings') ? 'bg-[hsl(var(--card))]/10 border-[hsl(var(--border))]' : ''} text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] border border-transparent hover:border-[hsl(var(--border))] hover:bg-[hsl(var(--card))]/50`}
             aria-label="Settings"
             title="Settings"
           >
             <span role="img" aria-label="settings">⚙️</span>
           </Link>
           <div
-            className="w-8 h-8 rounded-full bg-gradient-to-br from-white to-zinc-400 cursor-pointer shadow-lg"
+            className="w-8 h-8 rounded-full bg-gradient-to-br from-[hsl(var(--card))] to-[hsl(var(--muted))] cursor-pointer shadow-lg border border-[hsl(var(--border))]"
             role="button"
             aria-label="User profile"
             title="User profile"

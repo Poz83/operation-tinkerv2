@@ -114,16 +114,23 @@ export const Dashboard: React.FC = () => {
     if (isAdmin && userEmail === 'jamie@myjoe.app') {
         displayTiles.push({
             title: 'Admin Dashboard',
-            description: 'System management & feedback',
-            icon: settingsIcon, // Reusing settings icon for admin
+            description: 'User & feature management',
+            icon: settingsIcon,
             to: '/admin',
             gradient: 'gradient-slate',
+        });
+        displayTiles.push({
+            title: 'Dev Settings',
+            description: 'Developer tools & debugging',
+            icon: settingsIcon,
+            to: '/dev-settings',
+            gradient: 'gradient-orange',
         });
     }
 
     return (
         <div className="dashboard-container">
-            <div className="aurora-veil" />
+            <div className="aurora-veil opacity-50 dark:opacity-100 transition-opacity duration-500" />
 
             <header className="dashboard-header">
                 <h1 className="dashboard-title">

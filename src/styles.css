@@ -63,7 +63,73 @@
 
   --shadow-strong: 0 20px 50px -12px rgba(0, 0, 0, 0.6);
 
+  /* Glass Component Variables */
+  --glass-input-bg: rgba(255, 255, 255, 0.03);
+  --tile-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+  --tile-border: rgba(255, 255, 255, 0.05);
+
+  --tile-hover-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%);
+  --tile-hover-border: rgba(255, 255, 255, 0.1);
+  --gradient-sleek: linear-gradient(135deg, #ffffff 0%, #a1a1aa 100%);
+
   color-scheme: dark;
+}
+
+[data-theme="light"] {
+  /* Light Mode Overrides: High Contrast */
+  --background: 240 10% 98%;
+  --foreground: 222 47% 2%;
+  /* Slate-950 (Almost Black) */
+
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 2%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 2%;
+
+  --primary: 222 47% 2%;
+  --primary-foreground: 0 0% 98%;
+
+  --secondary: 240 4.8% 95.9%;
+  --secondary-foreground: 222 47% 2%;
+
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215 25% 27%;
+  /* Slate-700 (Dark Gray) */
+
+  --accent: 240 4.8% 95.9%;
+  --accent-foreground: 240 5.9% 10%;
+
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 98%;
+
+  --border: 215 20% 65%;
+  /* Slate-400 (Much Darker) */
+  --input: 215 20% 65%;
+  --ring: 215 27% 20%;
+
+  /* Glass Overrides for Light Mode */
+  /* Glass Overrides for Light Mode */
+  --glass-border: rgba(0, 0, 0, 0.25);
+  /* Stronger glass border */
+  --glass-highlight: rgba(255, 255, 255, 0.9);
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  /* More opaque */
+  --glass-panel: rgba(255, 255, 255, 0.95);
+
+  --glass-input-bg: rgba(0, 0, 0, 0.08);
+  --tile-bg: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
+  --tile-border: rgba(0, 0, 0, 0.2);
+
+  --tile-hover-bg: linear-gradient(180deg, #ffffff 0%, #e2e8f0 100%);
+  --tile-hover-border: rgba(0, 0, 0, 0.25);
+  --gradient-sleek: linear-gradient(135deg, #020617 0%, #334155 100%);
+  /* Nearly black gradient */
+
+  /* Shadows - Softer & Diffuse */
+  --shadow-strong: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+
+  color-scheme: light;
 }
 
 *,
@@ -181,7 +247,7 @@ body {
 .glass-select,
 .glass-textarea {
   width: 100%;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--glass-input-bg);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius);
   padding: 10px 14px;
@@ -222,7 +288,7 @@ body {
 /* Gradient Text Utilities */
 /* Refined Typography & Gradients */
 .text-gradient-sleek {
-  background: linear-gradient(135deg, #ffffff 0%, #a1a1aa 100%);
+  background: var(--gradient-sleek);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -671,11 +737,12 @@ body {
   display: flex;
   flex-direction: column;
   padding: 2rem;
+  padding: 2rem;
   border-radius: 24px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+  background: var(--tile-bg);
   backdrop-filter: blur(40px);
   -webkit-backdrop-filter: blur(40px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--tile-border);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   text-decoration: none;
   color: inherit;
@@ -712,8 +779,8 @@ body {
 
 .tile-card:hover {
   transform: translateY(-8px);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%);
-  border-color: rgba(255, 255, 255, 0.1);
+  background: var(--tile-hover-bg);
+  border-color: var(--tile-hover-border);
   box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.5);
 }
 
@@ -871,26 +938,42 @@ body {
   animation: fadeIn 0.2s ease-out;
 }
 
-/* Main panel */
+/* Main panel - now centered popup modal */
 .image-edit-chat-panel {
   position: fixed;
-  top: 64px;
-  /* Below nav */
-  right: 0;
-  bottom: 0;
-  width: 400px;
-  max-width: 90vw;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90vw;
+  max-width: 900px;
+  height: 90vh;
+  max-height: 750px;
   display: flex;
   flex-direction: column;
-  background: rgba(15, 15, 17, 0.95);
+  background: rgba(15, 15, 17, 0.98);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border-left: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: -20px 0 60px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
   z-index: 101;
-  animation: slideInFromRight 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: popupZoomIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
 }
 
+@keyframes popupZoomIn {
+  from {
+    transform: translate(-50%, -50%) scale(0.95);
+    opacity: 0;
+  }
+
+  to {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+}
+
+/* Keep old animation for backwards compat */
 @keyframes slideInFromRight {
   from {
     transform: translateX(100%);
@@ -961,6 +1044,13 @@ body {
   background: rgba(59, 130, 246, 0.2);
   border-color: rgba(59, 130, 246, 0.4);
   color: rgb(96, 165, 250);
+}
+
+.image-edit-tool-btn.disabled,
+.image-edit-tool-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .image-edit-close-btn {

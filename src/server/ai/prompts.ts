@@ -20,6 +20,8 @@ export interface StyleRule {
   allowsTextureShading?: boolean;
   /** Recommended temperature for this style (0.7-1.2 range) */
   recommendedTemperature: number;
+  /** Style-specific anatomy guidance (Tier 2) - injected for character-heavy styles */
+  anatomyGuidance?: string;
 }
 
 export interface ComplexityRule {
@@ -47,6 +49,7 @@ export const STYLE_RULES: Record<string, StyleRule> = {
     technicalDirectives: `Stroke width: 4px (Very Bold). All shapes convex or simple concave. Gap size: 5mm minimum (Marker Safe). Closed paths only (Watertight). Thick rounded border frame with 5-8% internal padding.`,
     isFloodFillFriendly: true,
     recommendedTemperature: 0.7, // Requires precision for thick consistent lines
+    anatomyGuidance: `SIMPLIFIED ANATOMY: Chibi/cartoon style allowed. Mitten hands (no individual fingers) OK. 3-4 fingers acceptable. Round paw feet OK. Exaggerated head-to-body ratio (big head, small body) is desirable.`,
   },
 
   // --- 2. Kawaii ---
@@ -59,6 +62,7 @@ export const STYLE_RULES: Record<string, StyleRule> = {
     technicalDirectives: `Use uniform rounded line caps. No sharp points. Eyes must be large and distinct.`,
     isFloodFillFriendly: true,
     recommendedTemperature: 0.8, // Needs consistency for cute proportions
+    anatomyGuidance: `PLUSH TOY ANATOMY: 1:1 head-to-body ratio. Stub limbs OK. Mitten hands preferred. Dot eyes or large shimmering anime eyes. No detailed fingers required. Bean-shaped bodies acceptable.`,
   },
 
   // --- 3. Whimsical ---
@@ -71,6 +75,7 @@ export const STYLE_RULES: Record<string, StyleRule> = {
     technicalDirectives: `Use variable line width (thick swells and thin tapers) to mimic a nib pen. Allow slight physics-defying placement of objects.`,
     isFloodFillFriendly: true,
     recommendedTemperature: 1.0, // Benefits from creative variety
+    anatomyGuidance: `STORYBOOK ANATOMY: Gentle exaggeration allowed. Maintain readable human/animal forms. Limbs can be elongated or curved whimsically but must remain functional and attached properly.`,
   },
 
   // --- 4. Cartoon ---
@@ -83,6 +88,7 @@ export const STYLE_RULES: Record<string, StyleRule> = {
     technicalDirectives: `Prioritize silhouette readability. Use 'Speed Lines' for motion. Lines should be uniform thickness vector strokes.`,
     isFloodFillFriendly: true,
     recommendedTemperature: 0.9, // Dynamic but consistent poses
+    anatomyGuidance: `CLASSIC TOON ANATOMY: 4 fingers per hand is standard (like Mickey Mouse). Squash and stretch deformation OK. Exaggerated expressions and poses allowed but limbs must be clearly attached and functional.`,
   },
 
   // --- 5. Botanical ---
@@ -121,6 +127,7 @@ export const STYLE_RULES: Record<string, StyleRule> = {
     isFloodFillFriendly: false, // Stippling breaks fills
     allowsTextureShading: true, // EXEMPT from global stippling ban
     recommendedTemperature: 1.1, // Benefits from creative variation
+    anatomyGuidance: `HEROIC ANATOMY: Detailed, accurate human proportions. 5 fingers required. Muscular definition for warriors. Armor/clothing must wrap around body logically. Creatures follow fantasy species conventions (dragons: 4 legs + 2 wings OR 2 legs + 2 wings).`,
   },
 
   // --- 8. Gothic ---
@@ -135,7 +142,21 @@ export const STYLE_RULES: Record<string, StyleRule> = {
     recommendedTemperature: 0.8, // Architectural precision needed
   },
 
-  // --- 9. Cozy (The Nostalgia Factor) ---
+  // --- 9. Realistic ---
+  'Realistic': {
+    id: 'realistic_fine_art',
+    label: 'Realistic',
+    sceneIntent: `Capture the subject with academic precision and dignity. A serious, artistic study suitable for advanced colorists who enjoy shading.`,
+    positivePrompt: `academic realism, fine line art, technical pen illustration, correct perspective, cross-hatching texture, scientific accuracy, highly detailed, museum quality sketch, etching style.`,
+    negativePrompt: `cartoon, caricature, distorted proportions, anime, doodle, simplified, cute, mascot, abstract, surreal.`,
+    technicalDirectives: `Use 'Cross-Hatching' and 'Stippling' for depth. Maintain realistic proportions. No simplified symbols.`,
+    isFloodFillFriendly: false, // Hatching breaks fills
+    allowsTextureShading: true, // Crucial for realism
+    recommendedTemperature: 0.7, // Lower temp for accuracy
+    anatomyGuidance: `STRICT REALISM: Anatomically perfect. Muscles, joints, and skeletal structure must be accurate. No cartoon exaggeration.`,
+  },
+
+  // --- 10. Cozy (The Nostalgia Factor) ---
   'Cozy': {
     id: 'cozy_hygge',
     label: 'Cozy',
@@ -260,23 +281,48 @@ export const COMPLEXITY_RULES: Record<string, ComplexityRule> = {
 // ============================================================================
 
 export const SYSTEM_INSTRUCTION = `
-You are a professional Coloring Book Illustrator and Vector Artist.
-Your goal is to generate high-quality, black-and-white line art suitable for printing or digital coloring.
+You are a MASTERFUL Coloring Book Illustrator and Vector Artist with decades of experience creating bestselling coloring books.
+Your goal is to generate high-quality, black-and-white line art that is BEAUTIFUL, INVITING, and a JOY to color.
 
-STRICT RULES:
-1. OUTPUT MUST BE PURE BLACK AND WHITE. No gray, no shading, no gradients. (1-Bit Logic).
-   BACKGROUND MUST BE PURE WHITE (#FFFFFF). No cream, beige, off-white, or paper texture.
-2. LINES MUST BE CRISP AND CONTINUOUS. Emulate vector art.
-3. COMPOSITION MUST FIT THE CANVAS. Do not crop the main subject.
-4. RESPECT THE COMPLEXITY LEVEL.
-5. NO TEXT OR WATERMARKS (unless explicitly requested).
-6. TOPOLOGY: Ensure paths are closed loops (watertight) for digital flood fill where possible.
-7. COLORABILITY: Do not fill areas with black. All distinct regions must be white to allow user coloring.
-8. EDGE SAFETY: Leave a clear, unmarked margin (about 8-10% of the canvas) on all sides. No objects, bubbles, or lines may touch or cross the border.
-9. HUMAN COLORING FRIENDLY: Use closed, clearly bounded regions sized for coloring by hand; avoid microscopic cells. Most enclosed areas should be comfortably colorable at print size.
-10. NO SHADING TEXTURES: Absolutely forbid stippling, hatching, cross-hatching, halftone, dithering, or dots-for-shading. Do not simulate shading or engraving textures; rely on clean shapes and patterns instead.
-11. AVOID TANGENTS AND MICRO-GAPS: Lines that are meant to be separate must maintain minimum 3-5mm separation at print scale. Never create near-touching lines (tangents) or accidental sliver regions. Ensure unrelated elements have clear visual separation.
-12. SCALE AND PROPORTION: Objects must maintain realistic relative proportions to each other. A phone should not be larger than a lamp. Headphones should not be larger than a bed. Use common sense scale relationships. Anchor the scene with one primary subject at appropriate size, then scale all other objects relative to it.
+ARTISTIC GUIDELINES & CONSTRAINTS:
+
+== CORE QUALITY ==
+1.  OUTPUT: Pure black lines on pure white (#FFFFFF) background. No gray, no gradients, no texture.
+2.  LINE QUALITY: Crisp, confident, continuous lines. Emulate professional vector art with smooth curves and deliberate strokes.
+3.  COMPOSITION: Main subject must fit the canvas with 8-10% margin on all edges. Nothing touches the border.
+
+== MARKETABILITY & COLORING APPEAL ==
+4.  INVITING SHAPES: Design shapes that BEG to be colored. Include a satisfying mix of:
+    - 2-3 LARGE, simple anchor shapes for quick coloring wins.
+    - Medium-sized shapes for engaging detail work.
+    - Small accents (but NOT microscopic) for finishing touches.
+5.  VISUAL FLOW: Guide the eye through the composition. Avoid "floating object syndrome" where elements feel randomly scattered. Connect elements visually (overlapping, proximity, shared ground lines).
+6.  MEANINGFUL OPEN SPACES: Instead of empty voids, make open areas part of the scene (e.g., clear sky, calm water, smooth tabletop, side of a building). These give the colorist rest areas that feel intentional.
+7.  THE "COLORING SATISFACTION FACTOR": Imagine someone coloring this with markers. Are there enough medium-large areas to feel productive? Are small areas still manageable? Optimize for this feeling.
+
+== TECHNICAL CONSTRAINTS ==
+8.  TOPOLOGY: Closed, watertight paths for digital flood fill. All regions must be clearly bounded.
+9.  NO BLACK FILLS: All distinct regions must be white/empty for the user to color.
+10. NO SHADING TEXTURES: Absolutely no stippling, hatching, cross-hatching, halftone, dithering, or dots-for-shading.
+11. SEPARATION: Maintain 3-5mm minimum gap between unrelated lines. Avoid tangents (near-touching lines).
+12. SCALE & PROPORTION: Objects must have realistic relative proportions. Anchor scene with primary subject and scale everything else appropriately.
+13. NO TEXT OR WATERMARKS (unless explicitly requested).
+
+== THE ARTIST'S TOUCH ==
+14. NARRATIVE MOMENT: Every page should capture a "moment" or tell a micro-story. A cat isn't just sitting; it's "napping in a sunbeam." A flower isn't just there; it's "swaying in a gentle breeze."
+15. DELIGHTFUL DETAILS: Add one small, surprising, or charming detail that fits the theme and rewards close inspection.
+
+== ANATOMICAL INTEGRITY ==
+16. CORRECT LIMB COUNT: Humans have exactly 2 arms and 2 legs. Animals match their species (dogs: 4 legs, birds: 2 wings, octopus: 8 tentacles).
+17. HANDS & FEET: Unless stylized (mitten hands, paws), humans have 5 fingers per hand and 5 toes per foot.
+18. FACIAL FEATURES: Faces are symmetric with 2 eyes, 1 nose, 1 mouth in anatomically correct positions.
+19. NO MUTATIONS: No extra limbs, fused body parts, floating appendages, or distorted anatomy.
+
+== PHYSICAL COHERENCE ==
+20. NATURAL POSES: Limbs must be in physically possible positions. Joints bend in correct directions only.
+21. CLEAR BOUNDARIES: Bodies do NOT merge into objects, furniture, or backgrounds. A character sits ON a chair, not fused with it.
+22. PROPER LAYERING: When objects overlap, one is clearly in front with logical occlusion.
+23. GROUNDED ELEMENTS: Objects and characters appear grounded unless intentionally floating (flying birds, balloons).
 `;
 
 export const buildPrompt = (
@@ -284,16 +330,36 @@ export const buildPrompt = (
   styleKey: string,
   complexityKey: string,
   includeText: boolean = false,
-  audiencePrompt: string = '' // Audience-specific guidance
+  audiencePrompt: string = '',
+  audienceLabel: string = '', // For precise border logic
+  styleDNA?: import('../../types').StyleDNA | null // Forensic analysis results
 ): { fullPrompt: string; fullNegativePrompt: string } => {
   const style = STYLE_RULES[styleKey] || STYLE_RULES['default'];
   const complexity = COMPLEXITY_RULES[complexityKey] || COMPLEXITY_RULES['Moderate'];
+
+  // === SMART ANATOMY DETECTION ===
+  // Detect if the subject involves characters (humans, animals) or just objects
+  const CHARACTER_KEYWORDS = [
+    'person', 'human', 'man', 'woman', 'child', 'kid', 'boy', 'girl', 'baby',
+    'animal', 'cat', 'dog', 'bird', 'bunny', 'rabbit', 'bear', 'fox', 'owl',
+    'dragon', 'unicorn', 'creature', 'monster', 'fairy', 'mermaid', 'character',
+    'princess', 'prince', 'knight', 'witch', 'wizard', 'elf', 'dwarf',
+    'dinosaur', 'elephant', 'lion', 'tiger', 'horse', 'cow', 'pig', 'sheep',
+    'fish', 'dolphin', 'whale', 'octopus', 'crab', 'turtle', 'frog',
+    'monkey', 'gorilla', 'penguin', 'panda', 'koala', 'kangaroo',
+    'squirrel', 'hedgehog', 'mouse', 'rat', 'hamster', 'guinea pig',
+    'people', 'family', 'friends', 'couple'
+  ];
+
+  const lowerSubject = userSubject.toLowerCase();
+  const hasCharacter = CHARACTER_KEYWORDS.some(keyword => lowerSubject.includes(keyword));
+  const shouldApplyAnatomy = hasCharacter;
 
   const typographyInstruction = includeText
     ? `[TYPOGRAPHY RULES]: Include the text "${userSubject}" or related words styled as HOLLOW OUTLINES (bubble letters). Never fill with black.`
     : ``;
 
-  // Build negative prompts - handle texture shading exemption for Botanical/Fantasy
+  // Build negative prompts
   let negativePrompts = `
     ${style.negativePrompt},
     ${complexity.negativePrompt},
@@ -302,22 +368,24 @@ export const buildPrompt = (
     watermark, signature, logo, copyright,
     blurry, low resolution, jpeg artifacts, pixelated,
     cropped, out of frame, cut off,
-    distorted hands, bad anatomy, extra fingers, missing limbs, mutated,
     messy, smudge, dirt, noise,
-    double lines, loose sketch, rough draft
+    double lines, loose sketch, rough draft,
+    extra limbs, extra arms, extra legs, extra fingers, extra toes, missing limbs, missing fingers,
+    fused limbs, fused fingers, merged body parts, bad anatomy, malformed hands, malformed feet,
+    distorted face, asymmetric eyes, floating limbs, disconnected body parts,
+    impossible pose, backwards joints, merged with object, body fused with furniture,
+    artifacts, stray marks, broken lines, dangling lines
   `;
 
-  // Only add hatching/stippling ban if style doesn't allow texture shading
   if (!style.allowsTextureShading) {
     negativePrompts += `, hatching, cross-hatching, stippling, halftone, dithering, dots used for shading, engraving texture, etching texture, scratchy shading, scribble shading, texture used as shading, micro-texture, microscopic details, ultra fine noise`;
   }
 
   if (!includeText) {
-    // Explicitly ban all forms of text and numbers if not requested
     negativePrompts += `, text, words, alphabet, kanji, signage, signboards, branding, numbers, numerals, digits, alphanumeric`;
   }
 
-  // Construct Rest Areas instruction - using concrete "WHITE VOID ZONES" terminology
+  // Construct Rest Areas instruction
   let restAreasInstruction = '';
   if (complexityKey === 'Moderate') {
     restAreasInstruction = 'WHITE VOID ZONES: Include 4-6 completely empty white regions (pure white, NO lines, NO marks, NO decoration). Each zone should cover approximately 8-12% of the canvas. Distribute these breathing spaces evenly. These are NOT clouds, flowers, or decorative elements - they are pure empty white space for coloring comfort.';
@@ -327,10 +395,19 @@ export const buildPrompt = (
     restAreasInstruction = 'WHITE VOID ZONES: Include 1-2 large simple shapes or empty white regions as visual anchors amidst the maximum density. Each should cover at least 5% of the canvas.';
   }
 
-  // Construct Borders instruction - extended to kid-friendly styles at simpler complexity levels
+  // --- BORDER CALIBRATION LOGIC ---
+  // A border is FORCED if:
+  // 1. Audience is young (Toddlers, Preschool, Kids) - "Containment Rule"
+  // 2. Complexity is low (Very Simple, Simple) and style allows it - "Anchor Rule"
+  const isYoungAudience = ['Toddlers', 'Preschool', 'Kids'].some(a => audienceLabel.includes(a));
+  const isLowComplexity = ['Very Simple', 'Simple'].includes(complexityKey);
   const kidFriendlyStyles = ['Bold & Easy', 'Kawaii', 'Cartoon', 'Whimsical'];
-  const simplerComplexities = ['Very Simple', 'Simple'];
-  const bordersInstruction = (kidFriendlyStyles.includes(styleKey) && simplerComplexities.includes(complexityKey))
+
+  // Logic: Young audience GETS a border. Low complexity GETS a border (if style fits). 
+  // We expand the "kid friendly" check to strict audience check.
+  const shouldHaveBorder = isYoungAudience || (isLowComplexity && kidFriendlyStyles.includes(styleKey));
+
+  const bordersInstruction = shouldHaveBorder
     ? 'Include a thick, rounded decorative border frame. Border thickness must match main outlines. Soft rounded corners. 5-8% internal padding.'
     : '';
 
@@ -341,7 +418,31 @@ DRAW WITH: Closed watertight paths suitable for digital flood fill.
 MAINTAIN: Consistent line weight throughout the composition.
 PRESERVE: 8-10% blank margin on all edges - nothing touches the border.
 BACKGROUND: Pure white paper (#FFFFFF) - no cream, beige, or texture.
+COMPOSITION: Connect elements visually to avoid floating object syndrome.
+SATISFACTION: Include a mix of large anchor shapes, medium detail areas, and small accents.
 `;
+
+  // Creative Spark - encourage one delightful detail
+  const CREATIVE_SPARK = `
+[ARTIST'S TOUCH]: Add ONE small, delightful, or surprising detail that fits the theme. This could be a hidden element, a charming expression, an unexpected texture, or a tiny narrative moment. Make it rewarding to discover.
+`;
+
+  // StyleDNA Override - when reference image was analyzed
+  const styleDNASection = styleDNA ? `
+[STYLE_MATCHING - CRITICAL]: 
+You MUST match the exact visual style of the provided reference image:
+${styleDNA.promptFragment}
+- Line Weight: ${styleDNA.lineWeightMm} (${styleDNA.lineWeight}, ${styleDNA.lineConsistency})
+- Line Style: ${styleDNA.lineStyle}
+- Shading: ${styleDNA.shadingTechnique === 'none' ? 'NO shading - pure black lines on white only' : styleDNA.shadingTechnique + ' shading technique'}
+- Density: ${styleDNA.density} (${styleDNA.whiteSpaceRatio} white space)
+${styleDNA.hasBorder ? `- Border: ${styleDNA.borderStyle} border frame required` : '- Border: None - no border frame'}
+` : '';
+
+  // Override line weight instruction when StyleDNA is present
+  const effectiveLineWeight = styleDNA
+    ? `${styleDNA.lineWeightMm} (${styleDNA.lineWeight}, ${styleDNA.lineConsistency} - FROM REFERENCE IMAGE)`
+    : complexity.lineWeightInstruction;
 
   // Construct the narrative prompt using Gemini 3 Pro's deep visual reasoning
   // Note: Preserving newlines for better tokenization (removed .replace(/\s+/g, ' '))
@@ -356,12 +457,12 @@ BACKGROUND: Pure white paper (#FFFFFF) - no cream, beige, or texture.
 
 [STYLE]: ${style.label}
 ${style.positivePrompt}
-
+${styleDNASection}
 [COMPLEXITY]: ${complexity.label}
 ${complexity.objectDensityInstruction}
 
 [TECHNICAL_SPECS]:
-- Line Weight: ${complexity.lineWeightInstruction}
+- Line Weight: ${effectiveLineWeight}
 - Rendering: ${style.technicalDirectives}
 - Background: ${complexity.backgroundInstruction}
 - Topology: Closed Paths (Watertight)${style.allowsTextureShading ? '' : '; no hatching, stippling, or open sketch lines'}.
@@ -370,11 +471,15 @@ ${complexity.objectDensityInstruction}
 ${restAreasInstruction ? `- Rest Areas: ${restAreasInstruction}` : ''}
 ${bordersInstruction ? `- Borders: ${bordersInstruction}` : ''}
 - Scale: All objects must have realistic proportions relative to each other. Anchor scene with primary subject, scale everything else appropriately.
+${(shouldApplyAnatomy && style.anatomyGuidance) ? `
+[ANATOMY_GUIDANCE]: ${style.anatomyGuidance}` : ''}
 
 ${typographyInstruction}
 
 [CRITICAL_REQUIREMENTS]:
 ${POSITIVE_REINFORCEMENTS}
+
+${CREATIVE_SPARK}
 
 [OUTPUT_FORMAT]: High-resolution line art, 300 DPI, Vector style, Black Ink on White Paper.
 `.trim();
