@@ -11,7 +11,7 @@ import logoFull from '../assets/logo_full.png';
 
 export const Navigation: React.FC = () => {
   const location = useLocation();
-  const { userEmail, isAdmin } = useAuth();
+  const { userEmail, isAdmin, logout } = useAuth();
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -58,13 +58,29 @@ export const Navigation: React.FC = () => {
             aria-label="Settings"
             title="Settings"
           >
-            <span role="img" aria-label="settings">⚙️</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.47a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
           </Link>
+
+          {/* Sign Out Button */}
+          <button
+            onClick={logout}
+            className="icon-button text-[hsl(var(--muted-foreground))] hover:text-red-400 border border-transparent hover:border-red-500/20 hover:bg-red-500/10 transition-colors"
+            aria-label="Sign Out"
+            title="Sign Out"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+          </button>
+
           <div
-            className="w-8 h-8 rounded-full bg-gradient-to-br from-[hsl(var(--card))] to-[hsl(var(--muted))] cursor-pointer shadow-lg border border-[hsl(var(--border))]"
-            role="button"
+            className="w-8 h-8 rounded-full bg-gradient-to-br from-[hsl(var(--card))] to-[hsl(var(--muted))] cursor-default shadow-lg border border-[hsl(var(--border))]"
             aria-label="User profile"
-            title="User profile"
           />
         </div>
       </div>

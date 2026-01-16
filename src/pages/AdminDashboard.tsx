@@ -172,6 +172,19 @@ export const AdminDashboard: React.FC = () => {
         }
     };
 
+    const handleDeleteFeedback = async (id: string) => {
+        if (!confirm('Are you sure you want to delete this submission? This cannot be undone.')) return;
+
+        try {
+            const { error } = await supabase.from('feedback').delete().eq('id', id);
+            if (error) throw error;
+            setFeedback(prev => prev.filter(f => f.id !== id));
+        } catch (error) {
+            console.error('Error deleting feedback:', error);
+            alert('Failed to delete feedback');
+        }
+    };
+
     const parseMessage = (fullMessage: string) => {
         const parts = fullMessage.split('\n\n--- CONSOLE LOGS ---\n');
         const userMessage = parts[0];
@@ -319,6 +332,15 @@ export const AdminDashboard: React.FC = () => {
                                                             <option value="resolved">Resolved</option>
                                                             <option value="wont_fix">Won't Fix</option>
                                                         </select>
+                                                        <button
+                                                            onClick={() => handleDeleteFeedback(item.id)}
+                                                            className="p-1 text-[hsl(var(--muted-foreground))] hover:text-red-400 transition-colors"
+                                                            title="Delete Feedback"
+                                                        >
+                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                                            </svg>
+                                                        </button>
                                                     </div>
                                                     <span className="text-xs text-[hsl(var(--muted-foreground))]">{new Date(item.created_at).toLocaleString()}</span>
                                                 </div>
