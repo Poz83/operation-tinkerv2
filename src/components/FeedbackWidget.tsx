@@ -96,27 +96,25 @@ export const FeedbackWidget: React.FC = () => {
 
     const handleCaptureScreen = useCallback(async () => {
         try {
-            // Use html2canvas to capture the current page
-            const html2canvas = (await import('html2canvas')).default;
-            const canvas = await html2canvas(document.body, {
+            // Use modern-screenshot to capture the current page
+            // html2canvas fails with "oklab" colors (Tailwind v4 / Modern CSS)
+            const { domToPng } = await import('modern-screenshot');
+
+            const dataUrl = await domToPng(document.body, {
+                scale: 1, // modern-screenshot handles DPI better
                 backgroundColor: '#0a0a0b',
-                scale: 0.75, // Better quality
-                logging: false,
-                useCORS: true, // IMPORTANT: Allows capturing cross-origin images
-                allowTaint: false, // Don't allow taint, or toDataURL will fail
-                ignoreElements: (element) => {
-                    // Ignore the feedback widget itself
-                    return element.tagName === 'BUTTON' && element.getAttribute('aria-label') === 'Send Feedback';
+                filter: (node) => {
+                    // Ignore the feedback widget button
+                    if (node instanceof HTMLElement) {
+                        if (node.tagName === 'BUTTON' && node.getAttribute('aria-label') === 'Send Feedback') return false;
+                        // Also ignore the panel itself if it's somehow capturing (though it should be hidden by logic usually)
+                        if (node.classList?.contains('feedback-panel-container')) return false;
+                    }
+                    return true;
                 }
             });
 
-            try {
-                const dataUrl = canvas.toDataURL('image/png');
-                setScreenshot(dataUrl);
-            } catch (err) {
-                console.error('Canvas tainted, cannot export', err);
-                alert('Could not capture specific elements due to security restrictions. Screenshot might be incomplete.');
-            }
+            setScreenshot(dataUrl);
 
         } catch (error) {
             console.error('Failed to capture screenshot:', error);
