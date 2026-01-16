@@ -18,7 +18,9 @@ export const CharacterSetup: React.FC<CharacterSetupProps> = ({
     onGenerate,
     isGenerating,
     projectName,
-    setProjectName
+    setProjectName,
+    seed,
+    setSeed
 }) => {
     const handleChange = (field: keyof CharacterDNA, value: string) => {
         setDna({ ...dna, [field]: value });
