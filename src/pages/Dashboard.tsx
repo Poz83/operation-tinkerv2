@@ -156,7 +156,15 @@ export const Dashboard: React.FC = () => {
 
     // Add Dev Tile if user is authorized (still kept hidden from regular users for cleanliness)
     const displayTiles = [...tiles];
-    if (isAdmin && userEmail === 'jamie@myjoe.app') {
+
+    // Debug logging to help troubleshoot visibility
+    console.log('Dev Tile Visibility Check:', {
+        isAdmin,
+        email: userEmail,
+        match: userEmail?.toLowerCase() === 'jamie@myjoe.app'
+    });
+
+    if (isAdmin && userEmail?.toLowerCase() === 'jamie@myjoe.app') {
         displayTiles.push({
             title: 'Dev Portal',
             description: 'Restricted Access',
