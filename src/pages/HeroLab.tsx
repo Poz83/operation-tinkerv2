@@ -15,19 +15,20 @@ import { DirectPromptService } from '../services/direct-prompt-service';
  * Creates a 5-angle turnaround: Front, Back, Left, Right, 3/4 View
  */
 const buildProfileSheetPrompt = (dna: CharacterDNA, referenceImage?: boolean, replicateMode?: boolean): string => {
+    const layoutInstructions = `
+ARRANGEMENT:
+Arrange the 5 views in a clean landscape layout, preferably a single horizontal row or two balanced rows:
+[ FRONT ] [ 3/4 VIEW ] [ SIDE ] [ BACK ] [ ACTION POSE ]
+Ensure clear separation between each character view.
+`;
+
     if (replicateMode && referenceImage) {
         return `
 CHARACTER TURNAROUND SHEET - EXACT REPLICATION
 
-Analyze the provided character image and create a 5-angle reference sheet showing this EXACT character in a grid layout:
+Analyze the provided character image and create a 5-angle reference sheet showing this EXACT character.
 
-┌─────────┬─────────┐
-│  FRONT  │  BACK   │
-├─────────┼─────────┤
-│  LEFT   │  RIGHT  │
-├─────────┴─────────┤
-│    3/4 VIEW       │
-└───────────────────┘
+${layoutInstructions}
 
 CRITICAL RULES:
 1. EXACTLY replicate the character's appearance from the reference
@@ -47,15 +48,9 @@ OUTPUT: 5-angle turnaround maintaining perfect consistency with reference.
     return `
 CHARACTER TURNAROUND SHEET - 5-ANGLE REFERENCE
 
-Create a professional character reference sheet showing the SAME character from 5 angles arranged in a grid:
+Create a professional character reference sheet showing the SAME character from 5 angles.
 
-┌─────────┬─────────┐
-│  FRONT  │  BACK   │
-├─────────┼─────────┤
-│  LEFT   │  RIGHT  │
-├─────────┴─────────┤
-│    3/4 VIEW       │
-└───────────────────┘
+${layoutInstructions}
 
 ${referenceImage ? 'Use the provided image as CREATIVE INSPIRATION. Capture the essence and vibe, but feel free to interpret and enhance based on the DNA below.' : ''}
 
@@ -261,7 +256,7 @@ export const HeroLab: React.FC = () => {
             projectName: project.projectName || project.dna.name,
             userPrompt: fullPrompt,
             pageAmount: 1,
-            pageSizeId: 'square', // Square for grid layout
+            pageSizeId: 'landscape', // Landscape for wide turnaround layout
             visualStyle: project.dna.styleLock,
             complexity: 'Moderate',
             targetAudienceId: 'kids',
