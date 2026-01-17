@@ -88,40 +88,42 @@ export const HeroEditChatPanel: React.FC<HeroEditChatPanelProps> = ({
         <>
             {/* Backdrop */}
             <div
-                className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 transition-opacity"
+                className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 transition-opacity"
                 onClick={onClose}
             />
 
             {/* Panel */}
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8 pointer-events-none">
-                <div className="bg-[#18181b] border border-[hsl(var(--border))] rounded-2xl shadow-2xl w-full max-w-7xl h-[85vh] flex overflow-hidden pointer-events-auto">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 pointer-events-none">
+                <div className="bg-[#18181b] border border-[hsl(var(--border))] rounded-2xl shadow-2xl w-full max-w-[95vw] h-[90vh] flex overflow-hidden pointer-events-auto">
 
                     {/* Left Column: Character Canvas */}
-                    <div className="flex-1 relative bg-black/40 flex items-center justify-center overflow-hidden p-4">
-                        <div className="relative max-w-full max-h-full">
+                    <div className="flex-1 relative bg-black/40 flex items-center justify-center overflow-hidden p-2 group/canvas">
+                        <div className="relative w-full h-full flex items-center justify-center">
                             <img
                                 src={selectedImage.url}
                                 alt={selectedImage.name}
-                                className="max-w-full max-h-full object-contain shadow-lg rounded-lg"
+                                className="max-w-full max-h-full object-contain shadow-2xl rounded-sm"
                             />
-                            <div className="absolute inset-0">
-                                <PaintbrushMaskCanvas
-                                    imageUrl={selectedImage.url}
-                                    isActive={isMaskMode}
-                                    onMaskGenerated={setMask}
-                                />
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <div className="relative w-full h-full max-w-full max-h-full pointer-events-auto">
+                                    <PaintbrushMaskCanvas
+                                        imageUrl={selectedImage.url}
+                                        isActive={isMaskMode}
+                                        onMaskGenerated={setMask}
+                                    />
+                                </div>
                             </div>
                         </div>
 
                         {/* Canvas Overlays */}
                         {isMaskMode && (
-                            <div className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-cyan-500/20 border border-cyan-500/30 text-cyan-200 text-xs font-medium flex items-center gap-2 backdrop-blur-md">
+                            <div className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-cyan-500/20 border border-cyan-500/30 text-cyan-200 text-xs font-medium flex items-center gap-2 backdrop-blur-md z-10">
                                 <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
                                 Paint the area to edit
                             </div>
                         )}
                         {currentMask && !isMaskMode && (
-                            <div className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-green-500/20 border border-green-500/30 text-green-200 text-xs font-medium flex items-center gap-2 backdrop-blur-md">
+                            <div className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-green-500/20 border border-green-500/30 text-green-200 text-xs font-medium flex items-center gap-2 backdrop-blur-md z-10">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                     <path d="M20 6L9 17l-5-5" />
                                 </svg>
@@ -131,7 +133,7 @@ export const HeroEditChatPanel: React.FC<HeroEditChatPanelProps> = ({
 
                         {/* Character DNA Badge */}
                         {characterDNA?.name && (
-                            <div className="absolute bottom-4 left-4 px-3 py-2 rounded-xl bg-black/60 border border-white/10 backdrop-blur-md">
+                            <div className="absolute bottom-4 left-4 px-3 py-2 rounded-xl bg-black/60 border border-white/10 backdrop-blur-md z-10">
                                 <div className="text-xs text-zinc-400 mb-0.5">Editing</div>
                                 <div className="font-bold text-white">{characterDNA.name}</div>
                                 {characterDNA.role && (

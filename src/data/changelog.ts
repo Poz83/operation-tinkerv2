@@ -15,6 +15,20 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
     {
+        id: 'update-2026-01-17-magic-editor',
+        date: '2026-01-17',
+        title: 'Magic Editor & UX Polish',
+        version: 'v2.1.2',
+        description: 'Major usability upgrades for the Magic Editor across Studio and Hero Lab.',
+        changes: [
+            'Unified Magic Editor design: Consistent full-screen experience in both Studio and Hero Lab',
+            'Added Navigation Controls: Cycle through Studio pages directly within the editor',
+            'Maximized canvas area for effortless editing on smaller screens',
+            'Improved modal backdrops and visual hierarchy'
+        ],
+        type: 'patch'
+    },
+    {
         id: 'update-2026-01-17-hero-consistency',
         date: '2026-01-17',
         title: 'Hero Card Consistency & UI Polish',

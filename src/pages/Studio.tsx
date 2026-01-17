@@ -624,6 +624,36 @@ const App: React.FC = () => {
           <ImageEditChatPanel
             onClose={() => setShowEditChat(false)}
             imageEditChat={imageEditChat}
+            onNext={() => {
+              if (!imageEditChat.selectedImage) return;
+              const validPages = pages.filter(p => !p.isLoading && p.imageUrl).sort((a, b) => a.pageIndex - b.pageIndex);
+              const currentIdx = validPages.findIndex(p => p.pageIndex === imageEditChat.selectedImage!.pageIndex);
+              if (currentIdx !== -1 && currentIdx < validPages.length - 1) {
+                const next = validPages[currentIdx + 1];
+                handleImageSelect(next.imageUrl!, next.pageIndex);
+              }
+            }}
+            onPrevious={() => {
+              if (!imageEditChat.selectedImage) return;
+              const validPages = pages.filter(p => !p.isLoading && p.imageUrl).sort((a, b) => a.pageIndex - b.pageIndex);
+              const currentIdx = validPages.findIndex(p => p.pageIndex === imageEditChat.selectedImage!.pageIndex);
+              if (currentIdx > 0) {
+                const prev = validPages[currentIdx - 1];
+                handleImageSelect(prev.imageUrl!, prev.pageIndex);
+              }
+            }}
+            hasNext={(() => {
+              if (!imageEditChat.selectedImage) return false;
+              const validPages = pages.filter(p => !p.isLoading && p.imageUrl).sort((a, b) => a.pageIndex - b.pageIndex);
+              const currentIdx = validPages.findIndex(p => p.pageIndex === imageEditChat.selectedImage!.pageIndex);
+              return currentIdx !== -1 && currentIdx < validPages.length - 1;
+            })()}
+            hasPrevious={(() => {
+              if (!imageEditChat.selectedImage) return false;
+              const validPages = pages.filter(p => !p.isLoading && p.imageUrl).sort((a, b) => a.pageIndex - b.pageIndex);
+              const currentIdx = validPages.findIndex(p => p.pageIndex === imageEditChat.selectedImage!.pageIndex);
+              return currentIdx > 0;
+            })()}
           />
         )}
 

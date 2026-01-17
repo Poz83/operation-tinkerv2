@@ -10,6 +10,10 @@ import { PaintbrushMaskCanvas } from './PaintbrushMaskCanvas';
 interface ImageEditChatPanelProps {
     onClose: () => void;
     imageEditChat: UseImageEditChatReturn;
+    onNext?: () => void;
+    onPrevious?: () => void;
+    hasNext?: boolean;
+    hasPrevious?: boolean;
 }
 
 /**
@@ -18,7 +22,11 @@ interface ImageEditChatPanelProps {
  */
 export const ImageEditChatPanel: React.FC<ImageEditChatPanelProps> = ({
     onClose,
-    imageEditChat
+    imageEditChat,
+    onNext,
+    onPrevious,
+    hasNext,
+    hasPrevious
 }) => {
     const {
         messages,
@@ -44,10 +52,11 @@ export const ImageEditChatPanel: React.FC<ImageEditChatPanelProps> = ({
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
-    // Focus input when panel opens
+    // Focus input when panel opens or image changes
     useEffect(() => {
         if (selectedImage && inputRef.current) {
-            setTimeout(() => inputRef.current?.focus(), 300);
+            // Small delay to ensure render
+            setTimeout(() => inputRef.current?.focus(), 100);
         }
     }, [selectedImage]);
 
@@ -76,38 +85,64 @@ export const ImageEditChatPanel: React.FC<ImageEditChatPanelProps> = ({
     return (
         <>
             {/* Backdrop */}
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 transition-opacity" onClick={onClose} />
+            <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 transition-opacity" onClick={onClose} />
 
             {/* Panel */}
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8 pointer-events-none">
-                <div className="bg-[#18181b] border border-[hsl(var(--border))] rounded-2xl shadow-2xl w-full max-w-7xl h-[85vh] flex overflow-hidden pointer-events-auto">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 pointer-events-none">
+                <div className="bg-[#18181b] border border-[hsl(var(--border))] rounded-2xl shadow-2xl w-full max-w-[95vw] h-[90vh] flex overflow-hidden pointer-events-auto">
 
                     {/* Left Column: Image Canvas */}
-                    <div className="flex-1 relative bg-black/40 flex items-center justify-center overflow-hidden p-4">
-                        <div className="relative max-w-full max-h-full">
+                    <div className="flex-1 relative bg-black/40 flex items-center justify-center overflow-hidden p-2 group/canvas">
+                        <div className="relative w-full h-full flex items-center justify-center">
                             <img
                                 src={selectedImage.url}
                                 alt={`Page ${selectedImage.pageIndex + 1}`}
-                                className="max-w-full max-h-full object-contain shadow-lg rounded-sm"
+                                className="max-w-full max-h-full object-contain shadow-2xl rounded-sm"
                             />
-                            <div className="absolute inset-0">
-                                <PaintbrushMaskCanvas
-                                    imageUrl={selectedImage.url}
-                                    isActive={isMaskMode}
-                                    onMaskGenerated={setMask}
-                                />
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <div className="relative w-full h-full max-w-full max-h-full pointer-events-auto">
+                                    <PaintbrushMaskCanvas
+                                        imageUrl={selectedImage.url}
+                                        isActive={isMaskMode}
+                                        onMaskGenerated={setMask}
+                                    />
+                                </div>
                             </div>
                         </div>
 
+                        {/* Navigation Buttons */}
+                        {(hasPrevious || hasNext) && (
+                            <>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); onPrevious?.(); }}
+                                    disabled={!hasPrevious}
+                                    className={`absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/50 hover:bg-black/70 border border-white/10 text-white transition-all transform hover:scale-110 disabled:opacity-0 disabled:pointer-events-none z-20 ${!hasPrevious ? 'hidden' : ''}`}
+                                >
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                        <path d="M15 18l-6-6 6-6" />
+                                    </svg>
+                                </button>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); onNext?.(); }}
+                                    disabled={!hasNext}
+                                    className={`absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/50 hover:bg-black/70 border border-white/10 text-white transition-all transform hover:scale-110 disabled:opacity-0 disabled:pointer-events-none z-20 ${!hasNext ? 'hidden' : ''}`}
+                                >
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                        <path d="M9 18l6-6-6-6" />
+                                    </svg>
+                                </button>
+                            </>
+                        )}
+
                         {/* Canvas Overlays */}
                         {isMaskMode && (
-                            <div className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-200 text-xs font-medium flex items-center gap-2 backdrop-blur-md">
+                            <div className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-200 text-xs font-medium flex items-center gap-2 backdrop-blur-md z-10">
                                 <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
                                 Masking Mode Active
                             </div>
                         )}
                         {currentMask && !isMaskMode && (
-                            <div className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-green-500/20 border border-green-500/30 text-green-200 text-xs font-medium flex items-center gap-2 backdrop-blur-md">
+                            <div className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-green-500/20 border border-green-500/30 text-green-200 text-xs font-medium flex items-center gap-2 backdrop-blur-md z-10">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                     <path d="M20 6L9 17l-5-5" />
                                 </svg>
@@ -143,8 +178,8 @@ export const ImageEditChatPanel: React.FC<ImageEditChatPanelProps> = ({
                                 <button
                                     onClick={() => setIsMaskMode(!isMaskMode)}
                                     className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all ${isMaskMode
-                                            ? 'bg-blue-500/20 text-blue-200 ring-1 ring-blue-500/50'
-                                            : 'bg-[hsl(var(--muted))]/30 hover:bg-[hsl(var(--muted))]/50 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'
+                                        ? 'bg-blue-500/20 text-blue-200 ring-1 ring-blue-500/50'
+                                        : 'bg-[hsl(var(--muted))]/30 hover:bg-[hsl(var(--muted))]/50 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'
                                         }`}
                                     title="Paint mask area"
                                 >
