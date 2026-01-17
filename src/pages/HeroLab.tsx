@@ -216,20 +216,49 @@ export const HeroLab: React.FC = () => {
         }
     }, [project, toast]);
 
-    const handleUseInStudio = useCallback(() => {
+    const handleUseInStudio = useCallback(async () => {
         const heroImage = project.profileSheetUrl || project.baseImageUrl;
         if (!heroImage) return;
 
-        navigate('/studio', {
-            state: {
-                heroData: {
-                    dna: project.dna,
-                    image: heroImage,
-                    seed: project.seed
-                }
+        try {
+            let base64Data = heroImage;
+            let mimeType = 'image/png';
+
+            // Convert URL to base64 if needed (signed R2 URLs won't work directly in Studio)
+            if (!heroImage.startsWith('data:')) {
+                toast.info('Preparing hero for Studio...', '⏳');
+                const response = await fetch(heroImage);
+                if (!response.ok) throw new Error('Failed to fetch hero image');
+                const blob = await response.blob();
+                mimeType = blob.type || 'image/png';
+                base64Data = await new Promise<string>((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result as string);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+            } else {
+                // Extract mimeType from data URL
+                const match = heroImage.match(/^data:([^;]+);/);
+                if (match) mimeType = match[1];
             }
-        });
-    }, [project, navigate]);
+
+            navigate('/studio', {
+                state: {
+                    heroData: {
+                        dna: project.dna,
+                        imageBase64: base64Data,
+                        mimeType,
+                        styleLock: project.dna.styleLock,
+                        seed: project.seed
+                    }
+                }
+            });
+        } catch (err) {
+            console.error('Failed to prepare hero for studio:', err);
+            toast.error('Failed to load hero image for Studio');
+        }
+    }, [project, navigate, toast]);
 
     const handleImageUpload = useCallback((file: File) => {
         // This is for the CharacterView upload - saves as base image

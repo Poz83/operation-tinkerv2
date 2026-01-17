@@ -78,58 +78,59 @@
 }
 
 [data-theme="light"] {
-  /* Light Mode Overrides: High Contrast */
-  --background: 240 10% 98%;
-  --foreground: 222 47% 2%;
-  /* Slate-950 (Almost Black) */
+  /* Light Mode Overrides: Soft Professional Silver */
+  --background: 240 15% 92%;
+  /* Soft Cool Silver/Grey */
+  --foreground: 222 47% 10%;
+  /* Softer Dark Blue-Grey */
 
-  --card: 0 0% 100%;
-  --card-foreground: 222 47% 2%;
+  --card: 240 10% 96%;
+  /* Very Light Silver */
+  --card-foreground: 222 47% 10%;
 
-  --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 2%;
+  --popover: 240 10% 98%;
+  --popover-foreground: 222 47% 10%;
 
-  --primary: 222 47% 2%;
+  --primary: 222 47% 10%;
   --primary-foreground: 0 0% 98%;
 
-  --secondary: 240 4.8% 95.9%;
-  --secondary-foreground: 222 47% 2%;
+  --secondary: 240 10% 90%;
+  --secondary-foreground: 222 47% 10%;
 
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215 25% 27%;
-  /* Slate-700 (Dark Gray) */
+  --muted: 240 10% 88%;
+  --muted-foreground: 215 20% 40%;
 
-  --accent: 240 4.8% 95.9%;
-  --accent-foreground: 240 5.9% 10%;
+  --accent: 240 10% 88%;
+  --accent-foreground: 222 47% 10%;
 
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 0 0% 98%;
 
-  --border: 215 20% 65%;
-  /* Slate-400 (Much Darker) */
-  --input: 215 20% 65%;
+  --border: 240 10% 82%;
+  /* Darker border for contrast against gray bg */
+  --input: 240 10% 85%;
   --ring: 215 27% 20%;
 
-  /* Glass Overrides for Light Mode */
-  /* Glass Overrides for Light Mode */
-  --glass-border: rgba(0, 0, 0, 0.25);
-  /* Stronger glass border */
-  --glass-highlight: rgba(255, 255, 255, 0.9);
-  --glass-bg: rgba(255, 255, 255, 0.85);
-  /* More opaque */
-  --glass-panel: rgba(255, 255, 255, 0.95);
+  /* Glass Overrides for Light Mode - Adjusted for gray background */
+  --glass-border: rgba(0, 0, 0, 0.1);
+  --glass-highlight: rgba(255, 255, 255, 0.6);
+  --glass-bg: rgba(255, 255, 255, 0.6);
+  /* More transparent to show gray bg */
+  --glass-panel: rgba(255, 255, 255, 0.7);
 
-  --glass-input-bg: rgba(0, 0, 0, 0.08);
-  --tile-bg: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
-  --tile-border: rgba(0, 0, 0, 0.2);
+  --glass-input-bg: rgba(0, 0, 0, 0.04);
 
-  --tile-hover-bg: linear-gradient(180deg, #ffffff 0%, #e2e8f0 100%);
-  --tile-hover-border: rgba(0, 0, 0, 0.25);
-  --gradient-sleek: linear-gradient(135deg, #020617 0%, #334155 100%);
-  /* Nearly black gradient */
+  /* Gradual gradients instead of stark white */
+  --tile-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.4) 100%);
+  --tile-border: rgba(255, 255, 255, 0.5);
+
+  --tile-hover-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.6) 100%);
+  --tile-hover-border: rgba(255, 255, 255, 0.8);
+
+  --gradient-sleek: linear-gradient(135deg, #1e293b 0%, #475569 100%);
 
   /* Shadows - Softer & Diffuse */
-  --shadow-strong: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+  --shadow-strong: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
 
   color-scheme: light;
 }

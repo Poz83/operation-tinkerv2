@@ -358,7 +358,27 @@ export const Setup: React.FC<ToolbarProps> = (props) => {
                 <label className="block w-full cursor-pointer group">
                   <div className="w-full h-32 rounded-xl border border-dashed border-[hsl(var(--border))] hover:border-[hsl(var(--ring))] bg-[hsl(var(--card))]/30 flex flex-col items-center justify-center transition-all relative overflow-hidden">
                     {props.heroImage ? (
-                      <img src={`data:${props.heroImage.mimeType};base64,${props.heroImage.base64}`} className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity" alt="Hero Ref" />
+                      <>
+                        <img src={`data:${props.heroImage.mimeType};base64,${props.heroImage.base64}`} className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity" alt="Hero Ref" />
+                        {/* Hero Lab Badge */}
+                        <div className="absolute top-2 left-2 z-10 flex items-center gap-1 px-2 py-1 rounded-full bg-purple-500/90 text-white text-[10px] font-medium backdrop-blur-sm">
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" /></svg>
+                          Hero DNA
+                        </div>
+                        {/* Clear button */}
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            props.setHeroImage(null);
+                            props.setHasHeroRef(false);
+                          }}
+                          className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-red-500/80 hover:bg-red-500 text-white transition-colors opacity-0 group-hover:opacity-100"
+                          title="Remove hero reference"
+                        >
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                        </button>
+                      </>
                     ) : (
                       <div className="text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--foreground))] transition-colors flex flex-col items-center gap-2">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>

@@ -37,13 +37,33 @@ const App: React.FC = () => {
   useEffect(() => {
     if (location.state && (location.state as any).heroData) {
       const { heroData } = location.state as any;
-      // setHasHeroRef and Image
-      project.setHasHeroRef(true);
-      project.setHeroImage({ base64: heroData.image, mimeType: 'image/png' }); // Assuming it's a URL/Base64 string
+
+      // Parse image data - handle both old format (image) and new format (imageBase64)
+      let base64 = heroData.imageBase64 || heroData.image || '';
+      let mimeType = heroData.mimeType || 'image/png';
+
+      // Extract pure base64 from data URL format
+      if (base64.startsWith('data:')) {
+        const match = base64.match(/^data:([^;]+);base64,(.+)$/);
+        if (match) {
+          mimeType = match[1];
+          base64 = match[2];
+        }
+      }
+
+      if (base64) {
+        project.setHasHeroRef(true);
+        project.setHeroImage({ base64, mimeType });
+      }
 
       // Store the full DNA for consistency injection
       const dna = heroData.dna;
       project.setCharacterDNA(dna);
+
+      // Sync visual style from hero's styleLock
+      if (heroData.styleLock) {
+        project.setVisualStyle(heroData.styleLock);
+      }
 
       // Set a simpler prompt for the Book Plan (not the full DNA dump)
       const dnaPrompt = `A coloring book starring ${dna.name}, ${dna.role}. Feature their signature look and adventures.`;
