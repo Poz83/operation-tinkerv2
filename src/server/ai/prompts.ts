@@ -501,8 +501,8 @@ You MUST maintain absolute visual consistency with this character throughout:
 - Signature Features: ${characterDNA.signatureFeatures || 'None'}
 - Outfit: ${characterDNA.outfitCanon || 'Not specified'}
 
-CRITICAL: Every detail above MUST appear consistently on every page. Do not omit or alter signature features.
-` : '';
+CRITICAL: Every detail above MUST appear consistently on every page.
+CONFLICT RESOLUTION: If the provided reference image conflicts with the Text DNA above (e.g. image shows different clothing), strictly follow the TEXT DNA. The text description is the source of truth for the outfit and signature features.` : '';
 
   // Override line weight instruction when StyleDNA is present
   const effectiveLineWeight = styleDNA

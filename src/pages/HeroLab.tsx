@@ -45,6 +45,21 @@ OUTPUT: 5-angle turnaround maintaining perfect consistency with reference.
 `.trim();
     }
 
+    // Filter out empty fields to give the model a cleaner signal
+    const dnaFields = [
+        dna.name && `- Name: ${dna.name}`,
+        dna.role && `- Role: ${dna.role}`,
+        dna.age && `- Age: ${dna.age}`,
+        dna.face && `- Face: ${dna.face}`,
+        dna.eyes && `- Eyes: ${dna.eyes}`,
+        dna.hair && `- Hair: ${dna.hair}`,
+        dna.skin && `- Skin: ${dna.skin}`,
+        dna.body && `- Body: ${dna.body}`,
+        dna.signatureFeatures && `- Signature Features: ${dna.signatureFeatures}`,
+        dna.outfitCanon && `- Outfit: ${dna.outfitCanon}`,
+        dna.styleLock && `- Style: ${dna.styleLock}`
+    ].filter(Boolean).join('\n');
+
     return `
 CHARACTER TURNAROUND SHEET - 5-ANGLE REFERENCE
 
@@ -52,24 +67,24 @@ Create a professional character reference sheet showing the SAME character from 
 
 ${layoutInstructions}
 
-${referenceImage ? 'Use the provided image as CREATIVE INSPIRATION. Capture the essence and vibe, but feel free to interpret and enhance based on the DNA below.' : ''}
+${referenceImage ? `
+REFERENCE IMAGE INSTRUCTIONS:
+Use the provided image as CREATIVE INSPIRATION for the vibe and general look.
+HOWEVER, you must STRICTLY ADHERE to the text DNA below.
+
+CONFLICT RESOLUTION:
+If the Reference Image contradicts the text DNA (especially for Outfit, Role, or specific features), the TEXT DNA TAKES PRECEDENCE.
+- If DNA says "Spacesuit" and image shows "T-shirt", user MUST see a Spacesuit.
+- If DNA says "Blue eyes" and image shows "Brown eyes", user MUST see Blue eyes.
+- You MUST change the outfit/features to match the 'Outfit' and 'DNA' fields if they differ from the image.
+` : ''}
 
 CHARACTER DNA:
-- Name: ${dna.name}
-- Role: ${dna.role}
-- Age: ${dna.age}
-- Face: ${dna.face}
-- Eyes: ${dna.eyes}
-- Hair: ${dna.hair}
-- Skin: ${dna.skin}
-- Body: ${dna.body}
-- Signature Features: ${dna.signatureFeatures}
-- Outfit: ${dna.outfitCanon}
-- Style: ${dna.styleLock}
+${dnaFields}
 
 CRITICAL RULES:
 1. ALL 5 views must show the EXACT SAME character with IDENTICAL features
-2. Signature features (${dna.signatureFeatures}) must appear in EVERY view where visible
+2. Signature features must appear in EVERY view where visible
 3. Outfit must be consistent across all angles
 4. Use T-pose or relaxed standing pose for clear silhouette
 5. Plain white background for each view

@@ -95,7 +95,7 @@ export const useHeroProject = ({ showToast, isGenerating }: UseHeroProjectProps)
 
             return saved;
         },
-        enabled: !!(projectName || dna.name) && !!(profileSheetUrl || baseImageUrl) && !isGenerating,
+        enabled: !!(projectName || dna.name) && !isGenerating,
         interval: 5000
     });
 
