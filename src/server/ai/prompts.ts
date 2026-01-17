@@ -305,6 +305,18 @@ export const COMPLEXITY_RULES: Record<string, ComplexityRule> = {
 // 4. System Prompt & Construction Helpers
 // ============================================================================
 
+export const CHARACTER_KEYWORDS = [
+  'person', 'human', 'man', 'woman', 'child', 'kid', 'boy', 'girl', 'baby',
+  'animal', 'cat', 'dog', 'bird', 'bunny', 'rabbit', 'bear', 'fox', 'owl',
+  'dragon', 'unicorn', 'creature', 'monster', 'fairy', 'mermaid', 'character',
+  'princess', 'prince', 'knight', 'witch', 'wizard', 'elf', 'dwarf',
+  'dinosaur', 'elephant', 'lion', 'tiger', 'horse', 'cow', 'pig', 'sheep',
+  'fish', 'dolphin', 'whale', 'octopus', 'crab', 'turtle', 'frog',
+  'monkey', 'gorilla', 'penguin', 'panda', 'koala', 'kangaroo',
+  'squirrel', 'hedgehog', 'mouse', 'rat', 'hamster', 'guinea pig',
+  'people', 'family', 'friends', 'couple'
+];
+
 export const SYSTEM_INSTRUCTION = `
 You are a MASTERFUL Coloring Book Illustrator with decades of experience creating bestselling coloring books.
 Your goal is to generate high-quality, black-and-white line art that is BEAUTIFUL, INVITING, and a JOY to color.
@@ -375,19 +387,6 @@ export const buildPrompt = (
   const style = STYLE_RULES[styleKey] || STYLE_RULES['default'];
   const complexity = COMPLEXITY_RULES[complexityKey] || COMPLEXITY_RULES['Moderate'];
 
-  // === SMART ANATOMY DETECTION ===
-  const CHARACTER_KEYWORDS = [
-    'person', 'human', 'man', 'woman', 'child', 'kid', 'boy', 'girl', 'baby',
-    'animal', 'cat', 'dog', 'bird', 'bunny', 'rabbit', 'bear', 'fox', 'owl',
-    'dragon', 'unicorn', 'creature', 'monster', 'fairy', 'mermaid', 'character',
-    'princess', 'prince', 'knight', 'witch', 'wizard', 'elf', 'dwarf',
-    'dinosaur', 'elephant', 'lion', 'tiger', 'horse', 'cow', 'pig', 'sheep',
-    'fish', 'dolphin', 'whale', 'octopus', 'crab', 'turtle', 'frog',
-    'monkey', 'gorilla', 'penguin', 'panda', 'koala', 'kangaroo',
-    'squirrel', 'hedgehog', 'mouse', 'rat', 'hamster', 'guinea pig',
-    'people', 'family', 'friends', 'couple'
-  ];
-
   const lowerSubject = userSubject.toLowerCase();
   const hasCharacter = CHARACTER_KEYWORDS.some(keyword => lowerSubject.includes(keyword));
   const shouldApplyAnatomy = hasCharacter;
@@ -436,31 +435,31 @@ ${style.organicLineQuality ? '6. HAND-DRAWN FEEL: Lines must have subtle wobble 
   const styleDNASection = styleDNA ? `
   [STYLE_MATCHING - CRITICAL]: 
 You MUST match the exact visual style of the provided reference image:
-${ styleDNA.promptFragment }
-  - Line Weight: ${ styleDNA.lineWeightMm } (${ styleDNA.lineWeight }, ${ styleDNA.lineConsistency })
-  - Line Style: ${ styleDNA.lineStyle }
-  - Shading: ${ styleDNA.shadingTechnique === 'none' ? 'NO shading - pure black lines on white only' : styleDNA.shadingTechnique + ' shading technique' }
-  - Density: ${ styleDNA.density } (${ styleDNA.whiteSpaceRatio } white space)
-${ styleDNA.hasBorder ? `- Border: ${styleDNA.borderStyle} border frame required` : '- Border: None - no border frame' }
+${styleDNA.promptFragment}
+  - Line Weight: ${styleDNA.lineWeightMm} (${styleDNA.lineWeight}, ${styleDNA.lineConsistency})
+  - Line Style: ${styleDNA.lineStyle}
+  - Shading: ${styleDNA.shadingTechnique === 'none' ? 'NO shading - pure black lines on white only' : styleDNA.shadingTechnique + ' shading technique'}
+  - Density: ${styleDNA.density} (${styleDNA.whiteSpaceRatio} white space)
+${styleDNA.hasBorder ? `- Border: ${styleDNA.borderStyle} border frame required` : '- Border: None - no border frame'}
   ` : '';
 
   // Character DNA Reference - for hero consistency
   const characterDNASection = characterDNA && characterDNA.name ? `
-  [CHARACTER REFERENCE: ${ characterDNA.name }]
+  [CHARACTER REFERENCE: ${characterDNA.name}]
   [REFERENCE UTILIZATION]: The attached image is a 5 - angle Character Sheet.
 1. DO NOT COPY THE LAYOUT.
 2. Use the Reference Image to understand the character's 3D structure, features, and costume details.
   3. POSE THE CHARACTER in the new scene described below, maintaining perfect fidelity to their design.
 
 [CHARACTER DNA]:
-  - Role: ${ characterDNA.role || 'Not specified' }
-  - Age: ${ characterDNA.age || 'Not specified' }
-  - Face: ${ characterDNA.face || 'Not specified' }
-  - Eyes: ${ characterDNA.eyes || 'Not specified' }
-  - Hair: ${ characterDNA.hair || 'Not specified' }
-  - Body: ${ characterDNA.body || 'Not specified' }
-  - Signature Features: ${ characterDNA.signatureFeatures || 'None' }
-  - Outfit: ${ characterDNA.outfitCanon || 'Not specified' }
+  - Role: ${characterDNA.role || 'Not specified'}
+  - Age: ${characterDNA.age || 'Not specified'}
+  - Face: ${characterDNA.face || 'Not specified'}
+  - Eyes: ${characterDNA.eyes || 'Not specified'}
+  - Hair: ${characterDNA.hair || 'Not specified'}
+  - Body: ${characterDNA.body || 'Not specified'}
+  - Signature Features: ${characterDNA.signatureFeatures || 'None'}
+  - Outfit: ${characterDNA.outfitCanon || 'Not specified'}
 
 CRITICAL CONSISTENCY RULES:
   1. Every detail above MUST appear consistently on every page.
@@ -473,53 +472,52 @@ CRITICAL CONSISTENCY RULES:
 
   // Override line weight instruction when StyleDNA is present
   const effectiveLineWeight = styleDNA
-    ? `${ styleDNA.lineWeightMm }(${ styleDNA.lineWeight }, ${ styleDNA.lineConsistency } - FROM REFERENCE IMAGE)`
+    ? `${styleDNA.lineWeightMm}(${styleDNA.lineWeight}, ${styleDNA.lineConsistency} - FROM REFERENCE IMAGE)`
     : complexity.lineWeightInstruction;
 
   // Construct the narrative prompt using Gemini 3 Pro's deep visual reasoning
   const fullPrompt = `
-  [SCENE_INTENT]: ${ style.sceneIntent }
+  [SCENE_INTENT]: ${style.sceneIntent}
 
   [ROLE]: Professional Vector Illustrator creating a coloring book page.
-    ${ characterDNASection }
-  [SUBJECT]: ${ userSubject }
+    ${characterDNASection}
+  [SUBJECT]: ${userSubject}
 
-  [AUDIENCE_GUIDANCE]: ${ audiencePrompt || 'General audience - balanced approach.'}
+  [AUDIENCE_GUIDANCE]: ${audiencePrompt || 'General audience - balanced approach.'}
 
-[STYLE]: ${ style.label }
-${ style.positivePrompt }
-${ styleDNASection }
-[COMPLEXITY]: ${ complexity.label }
-${ complexity.objectDensityInstruction }
+[STYLE]: ${style.label}
+${style.positivePrompt}
+${styleDNASection}
+[COMPLEXITY]: ${complexity.label}
+${complexity.objectDensityInstruction}
 
 [TECHNICAL_SPECS]:
-- Line Weight: ${ effectiveLineWeight }
-- Rendering: ${ style.technicalDirectives }
-- Background: ${ complexity.backgroundInstruction }
-- Topology: Closed Paths(Watertight)${ style.allowsTextureShading ? '' : '; no hatching, stippling, or open sketch lines' }.
+- Line Weight: ${effectiveLineWeight}
+- Rendering: ${style.technicalDirectives}
+- Background: ${complexity.backgroundInstruction}
+- Topology: Closed Paths(Watertight)${style.allowsTextureShading ? '' : '; no hatching, stippling, or open sketch lines'}.
 - Separation: Maintain 3 - 5mm minimum gap between unrelated elements to prevent tangent confusion and sliver regions.
 - Edge Safety: Leave an 8 - 10 % blank margin on all sides; no elements may touch or cross the border.
-  ${ restAreasInstruction ? `- Rest Areas: ${restAreasInstruction}` : '' }
-${ bordersInstruction ? `- Borders: ${bordersInstruction}` : '' }
+  ${restAreasInstruction ? `- Rest Areas: ${restAreasInstruction}` : ''}
+${bordersInstruction ? `- Borders: ${bordersInstruction}` : ''}
 - Scale: All objects must have realistic proportions relative to each other.Anchor scene with primary subject, scale everything else appropriately.
-  ${
-    (shouldApplyAnatomy && style.anatomyGuidance) ? `
+  ${(shouldApplyAnatomy && style.anatomyGuidance) ? `
 [ANATOMY_GUIDANCE]: ${style.anatomyGuidance}` : ''
-}
+    }
 
-${ typographyInstruction }
+${typographyInstruction}
 
-${ STRICT_CONSTRAINTS }
+${STRICT_CONSTRAINTS}
 
-${ CREATIVE_SPARK }
+${CREATIVE_SPARK}
 
 [OUTPUT_FORMAT]: High - resolution line art, 300 DPI, Vector style, Black Ink on White Paper.
 `.trim();
 
   // Reduced negative prompt - relying more on Affirmative Constraints in STRICT_CONSTRAINTS
   const negativePrompts = `
-    ${ style.negativePrompt },
-    ${ complexity.negativePrompt },
+    ${style.negativePrompt},
+    ${complexity.negativePrompt},
 color, coloured, colorful, photography, 3d render,
   gradient, shadow, gray, grey,
   blurry, pixelated,

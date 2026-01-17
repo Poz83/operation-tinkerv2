@@ -30,7 +30,7 @@ export const useProject = (
     const [visibility, setVisibility] = useState<'private' | 'unlisted' | 'public'>('private');
     const [characterDNA, setCharacterDNA] = useState<CharacterDNA | null>(null);
     const [autoConsistency, setAutoConsistency] = useState(false);
-    const [heroPresence, setHeroPresence] = useState(100);
+    const [heroPresence, setHeroPresence] = useState<number | undefined>(undefined);
     const [cinematics, setCinematics] = useState('dynamic');
 
     // --- Persistence State ---
@@ -119,7 +119,7 @@ export const useProject = (
         setCurrentProjectId(project.id);
         setCharacterDNA(project.characterDNA || null);
         setVisibility(project.visibility || 'private');
-        setHeroPresence(project.heroPresence ?? 100);
+        setHeroPresence(project.heroPresence);
         setCinematics(project.cinematics || 'dynamic');
 
         if (project.pages) {
@@ -144,7 +144,7 @@ export const useProject = (
         setPages([]);
         setVisibility('private');
         setCharacterDNA(null);
-        setHeroPresence(100);
+        setHeroPresence(undefined);
         setCinematics('dynamic');
     }, [setPages]);
 

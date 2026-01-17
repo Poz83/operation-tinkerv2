@@ -216,17 +216,51 @@ export const processGeneration = async (
     let audiencePrompt = audienceConfig?.prompt || '';
 
     // ADVANCED HERO LOGIC: Check if this page should have the hero
-    // Logic: If heroPresence is 100, always yes.
-    // If not, check if the prompt explicitly mentions the hero (by name or role).
     let shouldIncludeHero = params.hasHeroRef;
-    if (params.hasHeroRef && params.heroPresence !== undefined && params.heroPresence < 100) {
+
+    // SMART MODE (heroPresence is undefined): Auto-detect conflicts
+    if (params.hasHeroRef && params.characterDNA && params.heroPresence === undefined) {
+      const name = params.characterDNA.name.toLowerCase();
+      const role = params.characterDNA.role.toLowerCase();
+      const promptLower = item.prompt.toLowerCase();
+
+      // 1. Explicit Inclusion: Does prompt mention the hero?
+      const mentionsHero = promptLower.includes(name) ||
+        promptLower.includes('the hero') ||
+        promptLower.includes('main character');
+
+      // 2. Conflict Detection: Does prompt mention other subjects?
+      // We check for "Character Keywords" that suggest a DIFFERENT subject
+      // unless the hero is explicitly mentioned.
+      const CHARACTER_KEYWORDS = [
+        'person', 'human', 'man', 'woman', 'child', 'kid', 'boy', 'girl', 'baby',
+        'animal', 'cat', 'dog', 'bird', 'bunny', 'rabbit', 'bear', 'fox', 'owl',
+        'dragon', 'unicorn', 'creature', 'monster', 'fairy', 'mermaid',
+        'princess', 'prince', 'knight', 'witch', 'wizard', 'elf', 'dwarf',
+        'dinosaur', 'elephant', 'lion', 'tiger', 'horse', 'cow', 'pig', 'sheep',
+        'fish', 'dolphin', 'whale', 'octopus', 'crab', 'turtle', 'frog',
+        'monkey', 'gorilla', 'penguin', 'panda', 'koala', 'kangaroo',
+        'squirrel', 'hedgehog', 'mouse', 'rat', 'hamster', 'guinea pig',
+        'people', 'family', 'friends', 'couple'
+      ];
+
+      const mentionsOtherSubject = CHARACTER_KEYWORDS.some(kw => promptLower.includes(kw));
+
+      if (mentionsHero) {
+        shouldIncludeHero = true; // Explicitly requested
+      } else if (mentionsOtherSubject) {
+        shouldIncludeHero = false; // Conflicting subject found (e.g. "Sloth couple")
+      } else {
+        shouldIncludeHero = true; // Ambiguous/Scenic (e.g. "Walking in park") -> Include Hero
+      }
+    }
+    // MANUAL MODE: Partial Presence (e.g. 50%) - Legacy logic
+    else if (params.hasHeroRef && params.heroPresence !== undefined && params.heroPresence < 100) {
       if (params.characterDNA) {
         const name = params.characterDNA.name.toLowerCase();
-        const role = params.characterDNA.role.toLowerCase();
         const promptLower = item.prompt.toLowerCase();
-        // Check mentions
         const mentionsHero = promptLower.includes(name) || promptLower.includes('the hero') || promptLower.includes('main character');
-        shouldIncludeHero = mentionsHero;
+        shouldIncludeHero = mentionsHero; // Only if mentioned
       }
     }
 
