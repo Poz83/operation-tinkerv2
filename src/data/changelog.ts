@@ -15,11 +15,11 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
     {
-        id: 'update-2026-01-17',
+        id: 'release-v1.0.0',
         date: '2026-01-17',
-        title: 'Development Update',
-        version: 'v2.1.x',
-        description: 'Latest changes and improvements based on recent development.',
+        title: 'Official Release v1.0.0',
+        version: 'v1.0.0',
+        description: 'First official release of the myjoe Creative Suite. Includes Hero Lab, Book Studio, and Gemini 3 Pro integration.',
         changes: [
             'Optimize Prompts for Gemini 3 Pro & Improve AI Editors',
             'Refine Hero Lab flow and DNA extraction logic',
