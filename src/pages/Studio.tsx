@@ -33,10 +33,13 @@ const App: React.FC = () => {
   const [pages, setPages] = useState<ColoringPage[]>([]);
   const location = useLocation();
 
-  // Handle incoming Hero Lab Data
+  // Handle incoming Hero Lab Data - now supports both inline heroData and heroProjectId
   useEffect(() => {
-    if (location.state && (location.state as any).heroData) {
-      const { heroData } = location.state as any;
+    const state = location.state as { heroData?: any; heroProjectId?: string } | null;
+
+    // Option 1: Inline hero data (legacy)
+    if (state?.heroData) {
+      const { heroData } = state;
 
       // Parse image data - handle both old format (image) and new format (imageBase64)
       let base64 = heroData.imageBase64 || heroData.image || '';
@@ -73,6 +76,61 @@ const App: React.FC = () => {
       window.history.replaceState({}, document.title);
 
       toast.success(`Loaded hero: ${dna.name}`, '🧬');
+    }
+
+    // Option 2: Hero project ID - fetch from vault (new approach)
+    if (state?.heroProjectId) {
+      (async () => {
+        try {
+          const { fetchProject } = await import('../services/projectsService');
+          const heroProject = await fetchProject(state.heroProjectId!);
+
+          if (heroProject && (heroProject as any).toolType === 'hero_lab') {
+            const hp = heroProject as any;
+
+            // Apply DNA
+            if (hp.dna) {
+              project.setCharacterDNA(hp.dna);
+            }
+
+            // Apply style lock
+            if (hp.dna?.styleLock) {
+              project.setVisualStyle(hp.dna.styleLock);
+            }
+
+            // Set hero reference image from vault
+            if (hp.baseImageUrl) {
+              // Fetch and convert to base64 for hero reference
+              try {
+                const response = await fetch(hp.baseImageUrl);
+                const blob = await response.blob();
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                  const base64 = (reader.result as string).split(',')[1];
+                  project.setHasHeroRef(true);
+                  project.setHeroImage({ base64, mimeType: blob.type || 'image/png' });
+                };
+                reader.readAsDataURL(blob);
+              } catch (imgErr) {
+                console.error('Failed to load hero image:', imgErr);
+                // Continue without image - DNA still useful
+              }
+            }
+
+            // Set prompt
+            const dnaPrompt = `A coloring book starring ${hp.dna?.name || 'the hero'}, ${hp.dna?.role || 'a character'}. Feature their signature look and adventures.`;
+            project.setUserPrompt(dnaPrompt);
+
+            toast.success(`Loaded hero: ${hp.projectName}`, '🧬');
+          }
+        } catch (err) {
+          console.error('Failed to fetch hero project:', err);
+          toast.error('Failed to load hero from vault');
+        }
+
+        // Clear state
+        window.history.replaceState({}, document.title);
+      })();
     }
   }, [location.state]);
 

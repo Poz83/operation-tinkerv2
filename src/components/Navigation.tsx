@@ -22,7 +22,7 @@ export const Navigation: React.FC = () => {
         {/* Left: Logo/Brand */}
         <div className="flex items-center gap-2">
           <Link to={isAuthenticated ? "/dashboard" : "/"} className="block hover:scale-105 transition-transform duration-300">
-            <BrandLogo className="h-10 w-32" />
+            <BrandLogo className="h-14 w-44" />
           </Link>
         </div>
 

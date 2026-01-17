@@ -190,14 +190,14 @@ export const Dashboard: React.FC = () => {
             <div className="aurora-veil opacity-50 dark:opacity-100 transition-opacity duration-500" />
 
             <header className="dashboard-header">
-                <div className="flex justify-center mb-2">
+                <div className="flex justify-center mb-0">
                     <BrandLogo className="h-40 w-[32rem]" />
                 </div>
                 {/* <h1 className="dashboard-title">
                     <span className="text-gradient-sleek">Myjoe</span> Creative Suite
                 </h1> */}
-                <p className="dashboard-subtitle">
-                    Professional AI-Powered Design Tools
+                <p className="dashboard-subtitle text-2xl mt-0">
+                    Creative Suite
                 </p>
             </header>
 
