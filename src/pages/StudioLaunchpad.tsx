@@ -58,7 +58,7 @@ export const StudioLaunchpad: React.FC = () => {
             <Navigation />
 
             <main className="container mx-auto px-6 pt-24 pb-12 relative z-10 max-w-6xl">
-                <div className="text-center mb-16 space-y-4">
+                <div className="text-center mb-8 space-y-4">
                     <div className="inline-flex p-3 rounded-2xl bg-white/5 border border-white/10 mb-4 shadow-2xl shadow-purple-500/10 backdrop-blur-sm">
                         <img src={coloringStudioIcon} alt="Studio" className="w-16 h-16 object-contain" />
                     </div>
@@ -71,31 +71,31 @@ export const StudioLaunchpad: React.FC = () => {
                 </div>
 
                 {/* Main Actions */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
                     {/* Create New Card */}
                     <button
                         onClick={handleCreateNew}
-                        className="group relative h-64 rounded-3xl bg-gradient-to-br from-purple-600/20 to-blue-600/20 border border-white/10 overflow-hidden hover:scale-[1.02] transition-all duration-300 flex flex-col items-center justify-center text-center p-8 hover:shadow-2xl hover:shadow-purple-500/20"
+                        className="group relative h-48 rounded-3xl bg-gradient-to-br from-purple-600/20 to-blue-600/20 border border-white/10 overflow-hidden hover:scale-[1.02] transition-all duration-300 flex flex-col items-center justify-center text-center p-6 hover:shadow-2xl hover:shadow-purple-500/20"
                     >
                         <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <div className="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500 border border-white/20 shadow-inner">
-                            <span className="text-4xl">✨</span>
+                        <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-500 border border-white/20 shadow-inner">
+                            <span className="text-3xl">✨</span>
                         </div>
-                        <h2 className="text-3xl font-bold text-white mb-2">Create New Project</h2>
-                        <p className="text-zinc-300">Start from scratch with a fresh canvas</p>
+                        <h2 className="text-2xl font-bold text-white mb-1">Create New Project</h2>
+                        <p className="text-zinc-300 text-sm">Start from scratch with a fresh canvas</p>
                     </button>
 
                     {/* Open Vault Card (or Browse) */}
                     <button
                         onClick={() => navigate('/vault')}
-                        className="group relative h-64 rounded-3xl bg-[#131314] border border-white/10 overflow-hidden hover:scale-[1.02] transition-all duration-300 flex flex-col items-center justify-center text-center p-8 hover:border-purple-500/30"
+                        className="group relative h-48 rounded-3xl bg-[#131314] border border-white/10 overflow-hidden hover:scale-[1.02] transition-all duration-300 flex flex-col items-center justify-center text-center p-6 hover:border-purple-500/30"
                     >
                         <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <div className="w-20 h-20 rounded-full bg-zinc-800/50 flex items-center justify-center mb-6 border border-white/10 group-hover:bg-purple-500/10 group-hover:border-purple-500/30 transition-all">
-                            <span className="text-4xl grayscale group-hover:grayscale-0 transition-all">📂</span>
+                        <div className="w-16 h-16 rounded-full bg-zinc-800/50 flex items-center justify-center mb-4 border border-white/10 group-hover:bg-purple-500/10 group-hover:border-purple-500/30 transition-all">
+                            <span className="text-3xl grayscale group-hover:grayscale-0 transition-all">📂</span>
                         </div>
-                        <h2 className="text-3xl font-bold text-zinc-300 group-hover:text-white transition-colors">Open Vault</h2>
-                        <p className="text-zinc-500 group-hover:text-zinc-400 transition-colors">Browse all your saved collections</p>
+                        <h2 className="text-2xl font-bold text-zinc-300 group-hover:text-white transition-colors mb-1">Open Vault</h2>
+                        <p className="text-zinc-500 group-hover:text-zinc-400 transition-colors text-sm">Browse all your saved collections</p>
                     </button>
                 </div>
 
