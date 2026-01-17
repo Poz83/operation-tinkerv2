@@ -95,17 +95,47 @@ export function useImageEditChat(
     }, []);
 
     /**
-     * Convert data URL to base64 and mimeType
+     * Convert image URL (data, blob, or http) to base64 and mimeType
      */
-    const dataUrlToImageData = (dataUrl: string): { base64: string; mimeType: string } => {
-        const matches = dataUrl.match(/^data:(.+);base64,(.+)$/);
-        if (!matches) {
-            throw new Error('Invalid data URL format');
+    const processImageData = async (url: string): Promise<{ base64: string; mimeType: string }> => {
+        // Handle Data URLs directly
+        if (url.startsWith('data:')) {
+            const matches = url.match(/^data:(.+);base64,(.+)$/);
+            if (!matches) {
+                throw new Error('Invalid data URL format');
+            }
+            return {
+                mimeType: matches[1],
+                base64: matches[2]
+            };
         }
-        return {
-            mimeType: matches[1],
-            base64: matches[2]
-        };
+
+        // Handle Blob or HTTP URLs by fetching
+        try {
+            const response = await fetch(url);
+            const blob = await response.blob();
+
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const result = reader.result as string;
+                    const matches = result.match(/^data:(.+);base64,(.+)$/);
+                    if (matches) {
+                        resolve({
+                            mimeType: matches[1],
+                            base64: matches[2]
+                        });
+                    } else {
+                        reject(new Error('Failed to convert blob to base64'));
+                    }
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        } catch (error) {
+            console.error('Failed to process image URL:', error);
+            throw new Error(`Failed to load image: ${url.slice(0, 30)}...`);
+        }
     };
 
     const sendEdit = useCallback(async (prompt: string) => {
@@ -129,8 +159,8 @@ export function useImageEditChat(
         setIsLoading(true);
 
         try {
-            const sourceImageData = dataUrlToImageData(selectedImage.url);
-            const maskImageData = currentMask ? dataUrlToImageData(currentMask) : undefined;
+            const sourceImageData = await processImageData(selectedImage.url);
+            const maskImageData = currentMask ? await processImageData(currentMask) : undefined;
 
             const result: EditImageResult = await editImageWithGemini({
                 sourceImage: sourceImageData,

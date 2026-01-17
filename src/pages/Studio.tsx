@@ -580,14 +580,17 @@ const App: React.FC = () => {
             {/* Magic Edit Button */}
             <button
               onClick={() => {
-                if (pages.some(p => !p.isLoading)) {
-                  const firstCompletePage = pages.find(p => !p.isLoading);
-                  if (firstCompletePage) {
-                    handleImageSelect(firstCompletePage.imageUrl, firstCompletePage.pageIndex);
-                  }
+                // Get the currently viewed page first, fallback to first complete page
+                const currentPage = pages[currentSheetIndex];
+                const targetPage = (currentPage && !currentPage.isLoading && currentPage.imageUrl)
+                  ? currentPage
+                  : pages.find(p => !p.isLoading && p.imageUrl);
+
+                if (targetPage && targetPage.imageUrl) {
+                  handleImageSelect(targetPage.imageUrl, targetPage.pageIndex);
                 }
               }}
-              disabled={!pages.some(p => !p.isLoading)}
+              disabled={!pages.some(p => !p.isLoading && p.imageUrl)}
               className="w-12 h-12 rounded-xl flex flex-col items-center justify-center gap-1 transition-all border border-[hsl(var(--border))] hover:border-[hsl(var(--ring))] hover:bg-[hsl(var(--muted))]/20 disabled:opacity-40 disabled:cursor-not-allowed group"
               title="Magic Edit"
             >

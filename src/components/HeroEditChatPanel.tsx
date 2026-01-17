@@ -6,7 +6,7 @@
  * A centered popup modal for AI-powered character editing.
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { HeroChatMessage, UseHeroEditChatReturn } from '../hooks/useHeroEditChat';
 import { PaintbrushMaskCanvas } from './PaintbrushMaskCanvas';
 import { CharacterDNA } from '../types';
@@ -41,6 +41,49 @@ export const HeroEditChatPanel: React.FC<HeroEditChatPanelProps> = ({
     const [isMaskMode, setIsMaskMode] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
+    const imageRef = useRef<HTMLImageElement>(null);
+    const [imageBounds, setImageBounds] = useState<{ width: number; height: number; left: number; top: number } | null>(null);
+
+    // Calculate actual rendered image bounds within container
+    const updateImageBounds = useCallback(() => {
+        const img = imageRef.current;
+        if (!img || !img.complete) return;
+
+        const container = img.parentElement;
+        if (!container) return;
+
+        const containerRect = container.getBoundingClientRect();
+        const imgNaturalWidth = img.naturalWidth;
+        const imgNaturalHeight = img.naturalHeight;
+
+        if (!imgNaturalWidth || !imgNaturalHeight) return;
+
+        const containerAspect = containerRect.width / containerRect.height;
+        const imageAspect = imgNaturalWidth / imgNaturalHeight;
+
+        let renderedWidth: number;
+        let renderedHeight: number;
+
+        if (imageAspect > containerAspect) {
+            renderedWidth = containerRect.width;
+            renderedHeight = containerRect.width / imageAspect;
+        } else {
+            renderedHeight = containerRect.height;
+            renderedWidth = containerRect.height * imageAspect;
+        }
+
+        const left = (containerRect.width - renderedWidth) / 2;
+        const top = (containerRect.height - renderedHeight) / 2;
+
+        setImageBounds({ width: renderedWidth, height: renderedHeight, left, top });
+    }, []);
+
+    // Update bounds when image loads or changes
+    useEffect(() => {
+        updateImageBounds();
+        window.addEventListener('resize', updateImageBounds);
+        return () => window.removeEventListener('resize', updateImageBounds);
+    }, [selectedImage?.url, updateImageBounds]);
 
     // Auto-scroll to bottom when new messages arrive
     useEffect(() => {
@@ -97,22 +140,33 @@ export const HeroEditChatPanel: React.FC<HeroEditChatPanelProps> = ({
                 <div className="bg-[#18181b] border border-[hsl(var(--border))] rounded-2xl shadow-2xl w-full max-w-[95vw] h-[90vh] flex overflow-hidden pointer-events-auto">
 
                     {/* Left Column: Character Canvas */}
-                    <div className="flex-1 relative bg-black/40 flex items-center justify-center overflow-hidden p-2 group/canvas">
+                    <div className="flex-1 relative bg-black/40 flex items-center justify-center overflow-hidden p-4 group/canvas">
                         <div className="relative w-full h-full flex items-center justify-center">
                             <img
+                                ref={imageRef}
                                 src={selectedImage.url}
                                 alt={selectedImage.name}
-                                className="max-w-full max-h-full object-contain shadow-2xl rounded-sm"
+                                className="max-w-full max-h-full object-contain shadow-2xl rounded-lg"
+                                onLoad={updateImageBounds}
                             />
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                <div className="relative w-full h-full max-w-full max-h-full pointer-events-auto">
+                            {/* Mask canvas positioned exactly over the rendered image */}
+                            {imageBounds && (
+                                <div
+                                    className="absolute pointer-events-auto"
+                                    style={{
+                                        width: imageBounds.width,
+                                        height: imageBounds.height,
+                                        left: imageBounds.left,
+                                        top: imageBounds.top,
+                                    }}
+                                >
                                     <PaintbrushMaskCanvas
                                         imageUrl={selectedImage.url}
                                         isActive={isMaskMode}
                                         onMaskGenerated={setMask}
                                     />
                                 </div>
-                            </div>
+                            )}
                         </div>
 
                         {/* Canvas Overlays */}
