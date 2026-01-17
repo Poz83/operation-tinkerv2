@@ -416,14 +416,15 @@ export const buildPrompt = (
     ? 'Include a thick, rounded decorative border frame. Border thickness must match main outlines. Soft rounded corners. 5-8% internal padding.'
     : '';
 
-  [STRICT VISUAL CONSTRAINTS]:
-  1. LINEARITY: The image must be composed of LINES ONLY.No solids, no fills.
-2. PURITY: The background must be 100 % white(#FFFFFF).
-3. INTEGRITY: Every shape must be closed(watertight).
-4. STRICTLY BLACK AND WHITE: NO COLOR.PURE BLACK INK ON WHITE PAPER.
-    ${ !style.allowsTextureShading ? '5. NO TEXTURE: Do not use stippling, hatching, or shading pixels. Use clean, empty space to suggest form.' : '' }
-${ style.organicLineQuality ? '6. HAND-DRAWN FEEL: Lines must have subtle wobble and organic variation, avoiding mechanical perfection.' : '' }
-  7. MARGINS: Maintain a clear 8 - 10 % empty margin on all sides.
+  const STRICT_CONSTRAINTS = `
+[STRICT VISUAL CONSTRAINTS]:
+1. LINEARITY: The image must be composed of LINES ONLY. No solids, no fills.
+2. PURITY: The background must be 100% white (#FFFFFF).
+3. INTEGRITY: Every shape must be closed (watertight).
+4. STRICTLY BLACK AND WHITE: NO COLOR. PURE BLACK INK ON WHITE PAPER.
+${!style.allowsTextureShading ? '5. NO TEXTURE: Do not use stippling, hatching, or shading pixels. Use clean, empty space to suggest form.' : ''}
+${style.organicLineQuality ? '6. HAND-DRAWN FEEL: Lines must have subtle wobble and organic variation, avoiding mechanical perfection.' : ''}
+7. MARGINS: Maintain a clear 8-10% empty margin on all sides.
 `;
 
   // Creative Spark - encourage one delightful detail
