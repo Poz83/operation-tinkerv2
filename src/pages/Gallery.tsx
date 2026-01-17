@@ -67,7 +67,7 @@ export const Gallery: React.FC = () => {
     const activeFilterCount = Object.values(filters).filter(Boolean).length + (searchTerm ? 1 : 0);
 
     return (
-        <div className="min-h-screen bg-[hsl(var(--background))] text-white font-sans selection:bg-purple-500/30">
+        <div className="h-screen overflow-y-auto no-scrollbar bg-[hsl(var(--background))] text-white font-sans selection:bg-purple-500/30">
             <div className="aurora-veil" />
             <Navigation />
 
