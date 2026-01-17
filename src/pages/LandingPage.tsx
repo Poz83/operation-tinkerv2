@@ -74,7 +74,7 @@ const LandingPage: React.FC = () => {
                             transition={{ delay: 0.2 }}
                             className="flex justify-center mb-4"
                         >
-                            <BrandLogo className="h-24 w-72" />
+                            <BrandLogo className="h-40 w-[32rem]" />
                         </motion.div>
                         <p className="text-[hsl(var(--muted-foreground))] text-sm tracking-wide uppercase">Private Access</p>
                     </div>

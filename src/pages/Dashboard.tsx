@@ -191,7 +191,7 @@ export const Dashboard: React.FC = () => {
 
             <header className="dashboard-header">
                 <div className="flex justify-center mb-2">
-                    <BrandLogo className="h-20 w-64" />
+                    <BrandLogo className="h-40 w-[32rem]" />
                 </div>
                 {/* <h1 className="dashboard-title">
                     <span className="text-gradient-sleek">Myjoe</span> Creative Suite
