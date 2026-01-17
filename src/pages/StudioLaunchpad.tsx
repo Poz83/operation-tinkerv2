@@ -53,7 +53,7 @@ export const StudioLaunchpad: React.FC = () => {
     const getStyleLabel = (id: string) => VISUAL_STYLES.find(s => s.id === id)?.label || id;
 
     return (
-        <div className="min-h-screen bg-[hsl(var(--background))] text-white font-sans selection:bg-purple-500/30">
+        <div className="h-screen overflow-y-auto bg-[hsl(var(--background))] text-white font-sans selection:bg-purple-500/30 no-scrollbar">
             <div className="aurora-veil" />
             <Navigation />
 
