@@ -8,68 +8,68 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 export const STYLE_TIPS: Record<string, { title: string; tip: string }> = {
     'Cozy Hand-Drawn': {
-        title: 'Felt-Tip Marker Style',
-        tip: 'Use chunky felt-tip markers or brush pens! The slightly wobbly lines are designed to embrace imperfection - let your strokes be organic and playful.'
+        title: 'Prompting Tip',
+        tip: 'Mention specific small details (like "steam rising" or "scattered crumbs") to enhance the hand-drawn charm.'
     },
     'Bold & Easy': {
-        title: 'Beginner Friendly',
-        tip: 'Use markers or crayons! The thick lines are forgiving and perfect for solid color fills.'
+        title: 'Less is More',
+        tip: 'Keep your prompt simple! Single subjects without complex backgrounds work best with these thick lines.'
     },
     'Kawaii': {
-        title: 'Color Palette Tip',
-        tip: 'Try pastel colors (pinks, baby blues, mint greens) to enhance the cute aesthetic.'
+        title: 'Cuteness Overload',
+        tip: 'Add words like "chibi", "happy", "round", or "sparkles" to your prompt to maximize the cute factor.'
     },
     'Whimsical': {
-        title: 'Soft Touch',
-        tip: 'Watercolor pencils work great here. Blend colors gently to match the storybook feel.'
+        title: 'Storytelling',
+        tip: 'Describe a mood or a story moment (e.g., "frog reading a book") rather than just listing objects.'
     },
     'Cartoon': {
-        title: 'High Energy',
-        tip: 'Use bright, saturated contrasting colors to make the characters pop off the page.'
+        title: 'Action Poses',
+        tip: 'Use active verbs like "running", "jumping", or "flying" to get dynamic character poses.'
     },
     'Botanical': {
-        title: 'Tonal Depth',
-        tip: 'Try a tonal palette (e.g., light blue to dark blue) on a single flower petal to add realistic depth.'
+        title: 'Scientific Detail',
+        tip: 'Using specific plant names (e.g., "Monstera Deliciosa" instead of "plant") yields much better results.'
     },
     'Mandala': {
-        title: 'Inside Out',
-        tip: 'Start coloring from the center and move outward to maintain symmetry and focus.'
+        title: 'Thematic Focus',
+        tip: 'Symmetry is automatic. Focus your prompt on the *theme* (e.g., "Fire", "Ocean") to influence the shapes.'
     },
     'Zentangle': {
-        title: 'No Mistakes',
-        tip: 'There is no "up" or "down". Rotate the page as you color. If you go outside the lines, turn it into a new pattern!'
+        title: 'Abstract Concepts',
+        tip: 'Abstract prompts work great here. Try describing a feeling or sound, like "Jazz Music" or "Calm Waves".'
     },
     'Fantasy': {
-        title: 'Magical Glow',
-        tip: 'Leave some areas white to represent glowing magic or shiny armor reflections.'
+        title: 'Texture cues',
+        tip: 'Mention materials like "plate armor", "dragon scales", or "rough stone" to get detailed line textures.'
     },
     'Gothic': {
         title: 'Stained Glass',
-        tip: 'Use jewel tones (deep reds, purples, emeralds) to mimic the look of illuminated glass.'
+        tip: 'This style thrives on structure. Try prompting for "rose window" or "cathedral arch" frames.'
     },
     'Cozy': {
-        title: 'Warmth',
-        tip: 'Stick to warm earth tones (browns, oranges, creams) to maximize the hygge vibe.'
+        title: 'Hygge Creator',
+        tip: 'Focus on texture words in your prompt: "knitted", "wooden", "soft", or "wooly" help define the scene.'
     },
     'Geometric': {
-        title: 'Color Blocking',
-        tip: 'Try a checkerboard pattern: color alternating shapes with the same color for a striking 3D effect.'
+        title: 'Low Poly',
+        tip: 'Try combining organic subjects with this style. "Geometric Bear" or "Faceted Mountain" creates cool contrasts.'
     },
     'Wildlife': {
-        title: 'Fur Texture',
-        tip: 'Follow the direction of the lines with your strokes to enhance the realistic fur texture.'
+        title: 'Habitat Context',
+        tip: 'Always specify the background habitat (e.g., "in a dense jungle") to give your animal context.'
     },
     'Floral': {
-        title: 'Organic Flow',
-        tip: 'Don\'t worry about symmetry. Nature is random! Use varied shades of green for leaves.'
+        title: 'Pattern Design',
+        tip: 'This creates repeating patterns. Great for making your own wrapping paper or fabric designs!'
     },
     'Abstract': {
-        title: 'Go with the Flow',
-        tip: 'Listen to music while coloring this. Let the rhythm guide your color choices.'
+        title: 'Flow & Motion',
+        tip: 'Focus on movement words. "Swirling", "Exploding", or "Meandering" give the best abstract compositions.'
     },
     'Realistic': {
-        title: 'Light Source',
-        tip: 'Decide where the light is coming from (e.g., top right) and keep your shadows consistent.'
+        title: 'Detail Level',
+        tip: 'Great for portraits. Mentioning "fine details" or "intricate background" pushes the AI to add more lines.'
     }
 };
 

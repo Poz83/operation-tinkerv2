@@ -44,7 +44,7 @@ export interface FeatureFlags {
         enabled: boolean;
     };
 
-    // Paint by Numbers
+    // Color by Numbers
     paintByNumbers: {
         enabled: boolean;
     };
@@ -98,7 +98,7 @@ export const featureFlags: FeatureFlags = {
         enabled: false, // Coming soon
     },
 
-    // Paint by Numbers - Number art generation
+    // Color by Numbers - Number art generation
     paintByNumbers: {
         enabled: false, // Coming soon
     },

@@ -114,7 +114,7 @@ const AppContent: React.FC = () => {
                 } />
                 <Route path="/paint-by-numbers" element={
                     <ProtectedRoute>
-                        <ComingSoon title="Paint by Numbers" />
+                        <ComingSoon title="Color by Numbers" />
                     </ProtectedRoute>
                 } />
                 <Route path="/vault" element={

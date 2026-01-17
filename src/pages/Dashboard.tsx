@@ -93,7 +93,7 @@ const tiles = [
         gradient: 'gradient-orange',
     },
     {
-        title: 'Paint by Numbers',
+        title: 'Color by Numbers',
         description: 'Transform photos into paint-by-number art',
         icon: paintByNumbersIcon,
         to: '/paint-by-numbers',
