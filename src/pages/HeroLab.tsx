@@ -393,13 +393,31 @@ export const HeroLab: React.FC = () => {
                     projectName={project.projectName || project.dna.name}
                     onImageUpload={handleImageUpload}
                     onUseInStudio={handleUseInStudio}
-                    onMagicEdit={handleMagicEdit}
+                // onMagicEdit removed - moved to sidebar
                 />
+
+                {/* Right Toolbar - Always Visible */}
+                <div className="w-16 flex-shrink-0 flex flex-col items-center py-6 gap-4 bg-[hsl(var(--card))]/30 backdrop-blur-xl border-l border-[hsl(var(--border))] z-20">
+                    {/* Magic Edit Button */}
+                    <button
+                        onClick={handleMagicEdit}
+                        disabled={!project.profileSheetUrl && !project.baseImageUrl}
+                        className="w-12 h-12 rounded-xl flex flex-col items-center justify-center gap-1 transition-all border border-[hsl(var(--border))] hover:border-[hsl(var(--ring))] hover:bg-[hsl(var(--muted))]/20 disabled:opacity-40 disabled:cursor-not-allowed group"
+                        title="Magic Edit"
+                    >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--foreground))] transition-colors">
+                            <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"></path>
+                            <circle cx="7.5" cy="14.5" r="1.5"></circle>
+                            <circle cx="16.5" cy="14.5" r="1.5"></circle>
+                        </svg>
+                        <span className="text-[8px] font-medium text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--foreground))]">Magic Edit</span>
+                    </button>
+                </div>
             </div>
 
             {/* Save Status Indicator */}
             {project.saveStatus && project.saveStatus !== 'saved' && (
-                <div className="fixed bottom-4 right-4 px-3 py-1.5 rounded-full text-xs font-medium bg-[hsl(var(--card))]/80 backdrop-blur border border-[hsl(var(--border))]">
+                <div className="fixed bottom-4 right-24 px-3 py-1.5 rounded-full text-xs font-medium bg-[hsl(var(--card))]/80 backdrop-blur border border-[hsl(var(--border))] z-50">
                     {project.saveStatus === 'saving' && '💾 Saving...'}
                     {project.saveStatus === 'unsaved' && '○ Unsaved changes'}
                     {project.saveStatus === 'error' && '⚠️ Save failed'}

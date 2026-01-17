@@ -127,6 +127,8 @@ export interface SavedProject {
   pages?: ColoringPage[];
   visibility?: 'private' | 'unlisted' | 'public'; // Gallery visibility
   characterDNA?: CharacterDNA; // Hero character DNA for consistency across pages
+  heroPresence?: number; // 0-100 percentage of hero appearance
+  cinematics?: CinematicOption; // Camera framing preference
 }
 
 export const VISIBILITY_OPTIONS = [
@@ -134,6 +136,16 @@ export const VISIBILITY_OPTIONS = [
   { id: 'unlisted' as const, label: 'Unlisted', description: 'Anyone with the link can view' },
   { id: 'public' as const, label: 'Public', description: 'Visible in the community gallery' },
 ];
+
+export const CINEMATIC_OPTIONS = [
+  { id: 'dynamic' as const, label: 'Dynamic (AI Choice)', prompt: '' },
+  { id: 'close_up' as const, label: 'Close-Up (Portrait)', prompt: 'Close-up portrait shot, detailed facial features, shallow depth of field.' },
+  { id: 'mid_shot' as const, label: 'Mid Shot (Action)', prompt: 'Mid-shot framing, waist-up view, capturing gesture and movement.' },
+  { id: 'wide_shot' as const, label: 'Wide Shot (Scenery)', prompt: 'Wide establishing shot, full body visible, environmental context.' },
+  { id: 'pov' as const, label: 'POV (Immersive)', prompt: 'First-person POV perspective, immersive angle, looking at the scene.' },
+  { id: 'low_angle' as const, label: 'Low Angle (Heroic)', prompt: 'Low angle shot looking up, heroic perspective, imposing statur.' },
+];
+export type CinematicOption = typeof CINEMATIC_OPTIONS[number]['id'];
 
 // ============================================================================
 // Style DNA - Forensic Analysis Results for Reference Images

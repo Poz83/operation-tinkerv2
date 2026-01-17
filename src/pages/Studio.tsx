@@ -400,8 +400,11 @@ const App: React.FC = () => {
       hasHeroRef: project.hasHeroRef,
       heroImage: project.heroImage,
       includeText: project.includeText,
+      autoConsistency: project.autoConsistency,
       creativeVariation: project.creativeVariation,
-      characterDNA: project.characterDNA
+      characterDNA: project.characterDNA,
+      heroPresence: project.heroPresence,
+      cinematics: project.cinematics
     });
   };
 
@@ -501,6 +504,12 @@ const App: React.FC = () => {
                 toggleDarkMode={toggleTheme}
                 includeText={project.includeText}
                 setIncludeText={project.setIncludeText}
+                autoConsistency={project.autoConsistency}
+                setAutoConsistency={project.setAutoConsistency}
+                heroPresence={project.heroPresence}
+                setHeroPresence={project.setHeroPresence}
+                cinematics={project.cinematics}
+                setCinematics={project.setCinematics}
                 onSaveProject={project.handleSaveProject}
                 onLoadProject={() => { }} // Vault handles this
                 onClear={project.handleClear}

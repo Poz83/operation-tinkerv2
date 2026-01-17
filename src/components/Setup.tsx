@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { PAGE_SIZES, VISUAL_STYLES, TARGET_AUDIENCES, COMPLEXITY_LEVELS, CreativeVariation, VISIBILITY_OPTIONS } from '../types';
+import { PAGE_SIZES, VISUAL_STYLES, TARGET_AUDIENCES, COMPLEXITY_LEVELS, CREATIVE_VARIATION_OPTIONS, CINEMATIC_OPTIONS, VISIBILITY_OPTIONS, CreativeVariation } from '../types';
 import joeMascot from '../assets/joe-mascot.png';
 import magicWandIcon from '../assets/magic-wand.png';
 import saveIcon from '../assets/save-icon.png';
@@ -41,6 +41,12 @@ interface ToolbarProps {
   toggleDarkMode: () => void;
   includeText: boolean;
   setIncludeText: (v: boolean) => void;
+  autoConsistency: boolean;
+  setAutoConsistency: (enabled: boolean) => void;
+  heroPresence: number; // 0-100
+  setHeroPresence: (v: number) => void;
+  cinematics: string;
+  setCinematics: (v: string) => void;
   onSaveProject: () => void;
   onLoadProject: () => void;
   onClear?: () => void;
@@ -434,16 +440,108 @@ export const Setup: React.FC<ToolbarProps> = (props) => {
               </select>
             </div>
 
-            {/* Custom Toggles */}
-            <div className="flex items-center justify-between py-1">
-              <span className="text-xs font-medium text-[hsl(var(--muted-foreground))]">Add Text & Labels</span>
+            {/* Text Toggle */}
+            <div className="flex items-center justify-between p-3 rounded-xl bg-[hsl(var(--card))]/50 border border-[hsl(var(--border))]">
+              <span className="text-sm font-medium">Add text to pages?</span>
               <button
                 onClick={() => props.setIncludeText(!props.includeText)}
-                className={`w-10 h-6 rounded-full transition-colors relative ${props.includeText ? 'bg-[hsl(var(--foreground))]' : 'bg-[hsl(var(--muted))]'}`}
+                className={`relative w-11 h-6 transition-colors rounded-full ${props.includeText ? 'bg-emerald-500' : 'bg-[hsl(var(--muted))]'}`}
               >
-                <div className={`absolute top-1 left-1 w-4 h-4 rounded-full shadow-md transform transition-transform ${props.includeText ? 'translate-x-4 bg-[hsl(var(--background))]' : 'translate-x-0 bg-[hsl(var(--muted-foreground))]'}`} />
+                <span className={`absolute left-1 top-1 w-4 h-4 transition-transform rounded-full bg-white ${props.includeText ? 'translate-x-5' : 'translate-x-0'}`} />
               </button>
             </div>
+
+            {/* Consistency Toggle */}
+            <div className={`flex items-center justify-between p-3 rounded-xl border transition-all ${props.hasHeroRef
+              ? 'bg-[hsl(var(--muted))]/10 border-[hsl(var(--border))] opacity-50 cursor-not-allowed'
+              : props.autoConsistency
+                ? 'bg-purple-500/10 border-purple-500/30'
+                : 'bg-[hsl(var(--card))]/50 border-[hsl(var(--border))]'
+              }`}>
+              <div className="flex flex-col">
+                <span className="text-sm font-medium flex items-center gap-2">
+                  Auto-Consistency
+                  {props.autoConsistency && <span className="text-[10px] bg-purple-500/20 text-purple-300 px-1.5 py-0.5 rounded-full">Beta</span>}
+                </span>
+                <span className="text-xs text-[hsl(var(--muted-foreground))]">
+                  {props.hasHeroRef
+                    ? 'Disabled: Hero Reference is active'
+                    : 'Use Page 1 style for the whole batch'}
+                </span>
+              </div>
+              <button
+                onClick={() => !props.hasHeroRef && props.setAutoConsistency(!props.autoConsistency)}
+                disabled={props.hasHeroRef}
+                className={`relative w-11 h-6 transition-colors rounded-full ${props.hasHeroRef
+                  ? 'bg-[hsl(var(--muted))]'
+                  : props.autoConsistency
+                    ? 'bg-purple-500'
+                    : 'bg-[hsl(var(--muted))]'
+                  }`}
+              >
+                <span className={`absolute left-1 top-1 w-4 h-4 transition-transform rounded-full bg-white ${!props.hasHeroRef && props.autoConsistency ? 'translate-x-5' : 'translate-x-0'}`} />
+              </button>
+            </div>
+
+            {/* Hero Controls (Advanced) */}
+            {props.hasHeroRef && (
+              <div className="space-y-4 pt-2 border-t border-[hsl(var(--border))] animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-purple-400 tracking-wider uppercase">Hero Controls</span>
+                </div>
+
+                {/* Presence Slider */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-[hsl(var(--muted-foreground))]">Hero Presence</span>
+                    <span className="font-medium text-[hsl(var(--foreground))]">{props.heroPresence}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="5"
+                    value={props.heroPresence}
+                    onChange={(e) => props.setHeroPresence(Number(e.target.value))}
+                    className="w-full h-1.5 bg-[hsl(var(--muted))] rounded-full appearance-none cursor-pointer accent-purple-500 hover:accent-purple-400 transition-all"
+                  />
+                  <div className="flex justify-between text-[10px] text-[hsl(var(--muted-foreground))]">
+                    <span>Style Only</span>
+                    <span>Cameo</span>
+                    <span>Balanced</span>
+                    <span>Star</span>
+                  </div>
+                </div>
+
+                {/* Cinematics Dropdown */}
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-[hsl(var(--muted-foreground))]">Camera Framing</span>
+                  </div>
+                  <div className="relative">
+                    <select
+                      value={props.cinematics || 'dynamic'}
+                      onChange={(e) => props.setCinematics(e.target.value)}
+                      className="w-full p-2 text-sm rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--foreground))] focus:ring-2 focus:ring-purple-500 outline-none transition-all appearance-none"
+                    >
+                      {CINEMATIC_OPTIONS.map((opt) => (
+                        <option key={opt.id} value={opt.id} className="bg-[hsl(var(--card))] text-[hsl(var(--foreground))]">
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                    {/* Custom Arrow */}
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-[hsl(var(--muted-foreground))]">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6" /></svg>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-[hsl(var(--muted-foreground))]">
+                    {CINEMATIC_OPTIONS.find(o => o.id === props.cinematics)?.prompt || "AI adapts camera to the scene action."}
+                  </p>
+                </div>
+              </div>
+            )}
+
           </div>
 
           <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>

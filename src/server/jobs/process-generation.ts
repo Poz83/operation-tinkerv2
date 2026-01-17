@@ -22,6 +22,9 @@ export interface ProcessGenerationParams {
   includeText: boolean;
   creativeVariation: CreativeVariation; // 'auto' | 'precision' | 'balanced' | 'freedom'
   characterDNA?: CharacterDNA; // Character DNA for hero consistency
+  autoConsistency?: boolean; // Use first generated image as reference for batch
+  heroPresence?: number;
+  cinematics?: string;
   signal?: AbortSignal;
 }
 
@@ -116,6 +119,10 @@ export const processGeneration = async (
 
   // 0. Forensic Style Analysis (if reference image provided)
   let styleDNA: import('../../types').StyleDNA | null = null;
+  // Session Consistency State
+  let sessionReferenceImage: { base64: string; mimeType: string } | null = null;
+  let sessionStyleDNA: import('../../types').StyleDNA | null = null;
+
   if (params.hasHeroRef && params.heroImage) {
     console.log('🔬 Analyzing reference image style...');
     try {
@@ -144,6 +151,7 @@ export const processGeneration = async (
     params.hasHeroRef,
     params.includeText,
     params.complexity,
+    params.heroPresence,
     params.signal
   );
 
@@ -205,7 +213,30 @@ export const processGeneration = async (
 
     // Get audience-specific prompt guidance for injection
     const audienceConfig = TARGET_AUDIENCES.find(a => a.label === params.audience);
-    const audiencePrompt = audienceConfig?.prompt || '';
+    let audiencePrompt = audienceConfig?.prompt || '';
+
+    // ADVANCED HERO LOGIC: Check if this page should have the hero
+    // Logic: If heroPresence is 100, always yes.
+    // If not, check if the prompt explicitly mentions the hero (by name or role).
+    let shouldIncludeHero = params.hasHeroRef;
+    if (params.hasHeroRef && params.heroPresence !== undefined && params.heroPresence < 100) {
+      if (params.characterDNA) {
+        const name = params.characterDNA.name.toLowerCase();
+        const role = params.characterDNA.role.toLowerCase();
+        const promptLower = item.prompt.toLowerCase();
+        // Check mentions
+        const mentionsHero = promptLower.includes(name) || promptLower.includes('the hero') || promptLower.includes('main character');
+        shouldIncludeHero = mentionsHero;
+      }
+    }
+
+    // CINEMATICS LOGIC: Inject camera angle if specified
+    const cinematicPrompt = (params.cinematics && params.cinematics !== 'dynamic')
+      ? ` [CAMERA: ${params.cinematics.replace(/-/g, ' ')} view]`
+      : '';
+
+    // Inject cinematics into the item prompt before building full prompt
+    const enhancedPrompt = item.prompt + cinematicPrompt;
 
     // PACING: Adaptive cool-down based on resolution tier
     const coolDown = targetResolution === '4K' ? 12000 :
@@ -245,18 +276,28 @@ export const processGeneration = async (
     }
 
     const { fullPrompt, fullNegativePrompt } = buildPrompt(
-      item.prompt,
+      enhancedPrompt,
       params.style,
       params.complexity,
       item.requiresText,
       audiencePrompt,
       params.audience, // Pass the raw audience label for border calibration
-      styleDNA, // Pass StyleDNA for style matching
-      params.characterDNA // Pass CharacterDNA for hero consistency
+      styleDNA || sessionStyleDNA, // Prefer Hero Ref DNA, fallback to Session DNA (Style is always applied)
+      shouldIncludeHero ? params.characterDNA : undefined // ONLY pass CharacterDNA if we decided to include the hero
     );
 
+    // Determine effective reference image based on logic
+    // Reference Image Hierarchy:
+    // 1. Hero Image (ONLY if shouldIncludeHero is TRUE)
+    // 2. Session Reference (Auto-Consistency) - Used as fallback style anchor if Hero is absent
+    const effectiveReferenceImage = (params.hasHeroRef && params.heroImage && shouldIncludeHero)
+      ? params.heroImage
+      : (params.autoConsistency && sessionReferenceImage)
+        ? sessionReferenceImage
+        : undefined;
+
     // Compute temperature - StyleDNA overrides if available
-    const temperature = styleDNA?.temperature ?? computeTemperature(
+    const temperature = (styleDNA || sessionStyleDNA)?.temperature ?? computeTemperature(
       params.style,
       params.complexity,
       params.audience,
@@ -278,6 +319,10 @@ export const processGeneration = async (
       fullNegativePrompt,
     });
 
+    if (effectiveReferenceImage) {
+      console.log(`🎨 Using reference image for Page ${item.pageNumber} (${shouldIncludeHero ? 'Hero' : 'Session/Style'})`);
+    }
+
     // Trigger generation (per-page) after cool-down
     const result = await generateWithGemini({
       prompt: fullPrompt,
@@ -286,7 +331,7 @@ export const processGeneration = async (
       resolution: targetResolution,
       width: finalWidth,
       height: finalHeight,
-      referenceImage: params.hasHeroRef && params.heroImage ? params.heroImage : undefined,
+      referenceImage: effectiveReferenceImage,
       signal: params.signal,
       temperature: temperature
     });
@@ -460,6 +505,34 @@ export const processGeneration = async (
       });
 
       // Save output buffer/base64 to your database/storage (simulated by callback)
+
+      // Session Consistency Logic: Capture Page 1 output
+      if (item.pageNumber === 1 && currentImageUrl && params.autoConsistency && !params.hasHeroRef) {
+        console.log('🔄 Session Consistency: Capturing Page 1 as style reference...');
+        try {
+          // Convert data URL to clean base64/mime
+          const matches = currentImageUrl.match(/^data:(.+);base64,(.+)$/);
+          if (matches) {
+            sessionReferenceImage = { mimeType: matches[1], base64: matches[2] };
+
+            // Forensic Feedback Loop: Analyze the just-generated image
+            console.log('🔬 Session Consistency: Extracting Style DNA from Page 1...');
+            const extractedDna = await coloringService.analyzeReferenceStyle(
+              matches[2],
+              matches[1],
+              params.signal
+            );
+
+            if (extractedDna) {
+              sessionStyleDNA = extractedDna;
+              console.log('✅ Session Style DNA locked:', sessionStyleDNA.styleFamily);
+            }
+          }
+        } catch (err) {
+          console.warn('Failed to capture session reference:', err);
+        }
+      }
+
       onPageComplete(item.pageNumber, currentImageUrl);
     } else if (result.error) {
       console.error(`Failed to generate page ${item.pageNumber}:`, result.error);

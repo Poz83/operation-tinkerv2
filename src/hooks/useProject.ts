@@ -29,6 +29,9 @@ export const useProject = (
     const [creativeVariation, setCreativeVariation] = useState<CreativeVariation>('auto');
     const [visibility, setVisibility] = useState<'private' | 'unlisted' | 'public'>('private');
     const [characterDNA, setCharacterDNA] = useState<CharacterDNA | null>(null);
+    const [autoConsistency, setAutoConsistency] = useState(false);
+    const [heroPresence, setHeroPresence] = useState(100);
+    const [cinematics, setCinematics] = useState('dynamic');
 
     // --- Persistence State ---
     const { projectId: urlProjectId } = useParams<{ projectId?: string }>();
@@ -53,11 +56,15 @@ export const useProject = (
         thumbnail: pages.find(p => p.imageUrl)?.imageUrl,
         pages, // Pass pages for persistence
         visibility,
-        characterDNA: characterDNA || undefined
+        characterDNA: characterDNA || undefined,
+        heroPresence,
+        cinematics: cinematics as any, // Cast to avoid strict type issues locally only
+        // autoConsistency - consider adding to type if needed, but for now treating as session state mixed in
+        // actually, let's keep it purely session-based for "Lite" mode unless requested
     }), [
         currentProjectId, projectName, pageAmount, pageSizeId, visualStyle,
         complexity, targetAudienceId, userPrompt, hasHeroRef, heroImage,
-        includeText, pages, visibility, characterDNA
+        includeText, pages, visibility, characterDNA, heroPresence, cinematics
     ]);
 
     const { status: saveStatus, lastSavedAt } = useAutosave({
@@ -112,6 +119,8 @@ export const useProject = (
         setCurrentProjectId(project.id);
         setCharacterDNA(project.characterDNA || null);
         setVisibility(project.visibility || 'private');
+        setHeroPresence(project.heroPresence ?? 100);
+        setCinematics(project.cinematics || 'dynamic');
 
         if (project.pages) {
             setPages(project.pages);
@@ -135,6 +144,8 @@ export const useProject = (
         setPages([]);
         setVisibility('private');
         setCharacterDNA(null);
+        setHeroPresence(100);
+        setCinematics('dynamic');
     }, [setPages]);
 
     // Load project on mount if URL ID exists
@@ -171,6 +182,9 @@ export const useProject = (
         creativeVariation, setCreativeVariation,
         visibility, setVisibility,
         characterDNA, setCharacterDNA,
+        autoConsistency, setAutoConsistency,
+        heroPresence, setHeroPresence,
+        cinematics, setCinematics,
 
         currentProjectId,
         saveStatus,

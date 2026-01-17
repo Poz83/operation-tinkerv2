@@ -66,6 +66,7 @@ export class ColoringStudioService {
         hasHeroRef: boolean,
         includeText: boolean,
         complexity: string,
+        heroPresence: number = 100,
         signal?: AbortSignal
     ): Promise<BookPlanItem[]> {
         this.ensureInitialized();
@@ -134,11 +135,17 @@ export class ColoringStudioService {
          - 'geometric': for buildings, mandalas, tech (Straight lines).
          - 'standard': for mixed scenes.
 
-      3. NARRATIVE VARIATION: 
-         - Don't just list objects. Give them a 'moment'. 
-         - Good: "A chubby cat sleeping inside a cardboard box." (Nostalgia/Cozy).
+       3. NARRATIVE VARIATION: 
+          - Don't just list objects. Give them a 'moment'. 
+          - Good: "A chubby cat sleeping inside a cardboard box." (Nostalgia/Cozy).
 
-      4. OUTPUT: Return a JSON array of ${pageCount} items.
+       4. HERO PRESENCE DIRECTIVE:
+          - The user wants the Main Hero to appear in approx ${heroPresence}% of the pages.
+          - IF heroPresence < 100%: Plan the narrative arc so that the hero enters/exits the scenes to match this frequency.
+          - Non-hero pages should focus on the SETTING, PROPS, or SECONDARY CHARACTERS, maintaining the same visual world but without the main character.
+          - IMPORTANT: If a page is INTENDED to have the hero, explicitly mention "The Hero" or the character's name in the prompt. If it is NOT, do not mention them.
+
+       5. OUTPUT: Return a JSON array of ${pageCount} items.
     `;
 
         try {

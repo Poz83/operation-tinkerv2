@@ -80,6 +80,9 @@ export const useGeneration = ({
         includeText: boolean;
         creativeVariation: CreativeVariation;
         characterDNA?: CharacterDNA | null;
+        autoConsistency?: boolean;
+        heroPresence?: number;
+        cinematics?: string;
     }) => {
         if (!apiKey) return;
 
@@ -197,6 +200,9 @@ export const useGeneration = ({
                     includeText: params.includeText,
                     creativeVariation: params.creativeVariation,
                     characterDNA: params.characterDNA || undefined,
+                    autoConsistency: params.autoConsistency,
+                    heroPresence: params.heroPresence,
+                    cinematics: params.cinematics,
                     signal: controller.signal
                 },
                 // 1. On Plan Generated

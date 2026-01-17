@@ -15,16 +15,29 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
     {
-        id: 'update-2026-01-17-magic-editor',
+        id: 'update-2026-01-17-consistency',
+        date: '2026-01-17',
+        title: 'Auto-Consistency Lite',
+        version: 'v2.1.3',
+        type: 'minor',
+        description: 'Added a lightweight consistency mode for sessions.',
+        changes: [
+            'Added "Auto-Consistency" toggle to Setup panel.',
+            'Automatically analyzes layout and style of the first page to guide subsequent pages.',
+            'Great for maintaining vibe without setting up a full Hero.'
+        ]
+    },
+    {
+        id: '2.1.2',
         date: '2026-01-17',
         title: 'Magic Editor & UX Polish',
         version: 'v2.1.2',
         description: 'Major usability upgrades for the Magic Editor across Studio and Hero Lab.',
         changes: [
-            'Unified Magic Editor design: Consistent full-screen experience in both Studio and Hero Lab',
-            'Added Navigation Controls: Cycle through Studio pages directly within the editor',
-            'Maximized canvas area for effortless editing on smaller screens',
-            'Improved modal backdrops and visual hierarchy'
+            'New "Auto-Consistency" mode: Uses the first generated page as a reference for the rest of the batch.',
+            'Magic Editor: Unified visual design between Studio and Hero Lab.',
+            'Magic Editor: Added Next/Previous navigation buttons for rapid editing.',
+            'Fixed legacy image URL bugs in Magic Editor.'
         ],
         type: 'patch'
     },
