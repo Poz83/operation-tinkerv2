@@ -78,6 +78,12 @@ export class ColoringStudioService {
       ROLE: Creative Director for a professional coloring book series.
       TASK: Create a coherent book plan based on the User's Idea.
 
+      [THINKING PROCESS DIRECTIVES]:
+      1. ANALYZE: First, think about the Audience and Complexity. What kind of scenes fit this demographic?
+      2. PLAN STAGES: Plan a narrative arc for the ${pageCount} pages. Ensure there is a start, middle, and end.
+      3. VARIETY CHECK: Verify that no two pages are too similar. Ensure a mix of close-ups, wide shots, and character moments.
+      4. GENERATE: Output the final plan as a JSON array.
+
       RESEARCH-BACKED DESIGN PHILOSOPHY:
       1. THE MANDALA EFFECT: For 'Very Simple' or 'Simple' complexity, the goal is ANXIETY REDUCTION. Use repetitive, symmetrical, or 'bounded' elements. Avoid chaotic scattering.
       2. FUNCTIONAL REALISM: Objects must make physical sense. A bicycle must have pedals. A clock must have numbers or hands. Avoid "AI Dream Logic" (e.g., stairs leading nowhere).
@@ -90,48 +96,35 @@ export class ColoringStudioService {
       - Style: ${style}
       - Complexity: ${complexity} (determines TECHNICAL SPECS: line weight, object density, background detail - these are independent of audience)
       - Pages: ${pageCount}
-
-      IMPORTANT: Audience and Complexity work TOGETHER, not in conflict:
-      - Audience controls WHAT subjects/themes to use and HOW to present them (tone)
-      - Complexity controls HOW MANY elements and HOW THICK the lines are (technical specs)
-      - Example: "Toddlers" audience + "Intricate" complexity = intricate detailed scenes with cute, child-friendly subjects
-      - Example: "Seniors" audience + "Very Simple" complexity = bold, simple shapes with nostalgic, dignified themes
+      
+      IMPORTANT: Audience and Complexity work TOGETHER:
+      - Audience controls WHAT subjects/themes to use.
+      - Complexity controls HOW MANY elements and HOW THICK the lines are.
 
       LOGIC MATRIX (COMPOSITION RULES):
       - COMPOSITION RULE: Ensure all essential details are described as being in the 'center' or 'middle-ground'. Leave a 10% empty margin around edges to prevent cropping during PDF assembly.
-      - REST AREAS: REST AREAS = empty white space OR simple solid shapes with minimal lines. NOT decorative motifs like clouds, flowers, or stars. For Moderate: include 4-6 REST AREAS. For Intricate: include 2-4 REST AREAS. Balance dense clusters with breathing space.
-      - SEPARATION: Ensure 3-5mm separation between unrelated lines to avoid tangents.
-      - SCALE: All objects must have realistic proportions relative to each other. A phone should not be larger than a lamp. Anchor scene with primary subject and scale everything else appropriately.
+      - REST AREAS: For Moderate: include 4-6 REST AREAS. For Intricate: include 2-4 REST AREAS. Balance dense clusters with breathing space.
+      - SCALE: All objects must have realistic proportions relative to each other.
 
       1. IF Complexity is 'Very Simple' (Level 1):
          - GOAL: "Bold and Easy" / Instant Gratification.
-         - COMPOSITION: Single, iconic subject. Centered. 
-         - BACKGROUND: Pure white void.
+         - COMPOSITION: Single, iconic subject. Centered. Pure white void background.
          - PROMPT TRICK: "A sticker design of [Subject]", "A die-cut vector of [Subject]".
-         - AVOID: "Scenes", "Backgrounds", "Perspective".
 
       2. IF Complexity is 'Simple' (Level 2):
          - GOAL: "Relaxed Flow".
-         - COMPOSITION: Main subject + 1 framing element (e.g., a window frame, a circle border).
-         - BACKGROUND: Minimal hints (e.g., "simple clouds").
+         - COMPOSITION: Main subject + 1 framing element. Minimal background hints.
          - PROMPT TRICK: "A clean line art illustration of [Subject] framed by [Element]".
 
       3. IF Complexity is 'Moderate' (Level 3):
          - GOAL: "Engagement".
-         - COMPOSITION: Standard scene with foreground/midground plus 4-6 REST AREAS. REST AREAS = empty white space or simple solid shapes, NOT decorative motifs like clouds/flowers/stars. Maintain 3-5mm separation.
-         - BACKGROUND: Stylized but present; avoid wall-to-wall micro texture. Keep some areas intentionally empty.
+         - COMPOSITION: Standard scene with foreground/midground plus 4-6 REST AREAS (empty white space).
+         - BACKGROUND: Stylized but present; avoid wall-to-wall micro texture.
 
       4. IF Complexity is 'Intricate'/'Extreme':
          - GOAL: "Mastery" / "Horror Vacui".
-         - COMPOSITION: High detail with patterns/objects AND 2-4 REST AREAS (empty white space or simple anchor shapes). Maintain clear separation between elements.
+         - COMPOSITION: High detail with patterns/objects AND 2-4 REST AREAS.
          - PROMPT TRICK: "An immersive, highly detailed [Subject] with 2-4 calm empty regions for coloring comfort."
-
-      AUDIENCE TUNING (TONE & THEMING ONLY - does NOT override complexity technical specs):
-      - IF Audience is 'Toddlers': Keep subjects cute, round, and friendly. Use child-appropriate themes.
-      - IF Audience is 'Seniors': Prioritize NOSTALGIA and DIGNITY. Use themes like 'Vintage Objects', 'Nature', 'Travel'. Avoid 'childish' cartoons.
-      - IF Audience is 'Adults': Subjects can be architectural, abstract, or realistic. Allow mature themes.
-      - IF Audience is 'S.E.N.' (Sensory Friendly): Use calming, predictable subjects. Avoid over-stimulating themes.
-      - Note: The Complexity setting still controls line weight, density, and technical details regardless of audience choice.
 
       GUIDELINES:
       1. ${textControlInstruction}
@@ -196,38 +189,43 @@ export class ColoringStudioService {
         const singlePageInstruction = `
       You are a Creative Director for bestselling coloring books, specializing in evocative scene descriptions.
       
+      [THINKING PROCESS DIRECTIVES]:
+      1. VISUALIZE: Imagine the scene in black and white line art.
+      2. PHYSICS CHECK: Are simple objects floating? Are liquids behaving correctly? Ensure physical logic.
+      3. SIMPLIFY: Remove any elements that rely on color to be understood (e.g. "a red apple" -> "a shiny apple with a leaf").
+      4. DESCRIBE: Write the final description.
+
       Take the user's simple idea and expand it into a captivating coloring book scene.
       
       YOUR GOALS:
-      1. ADD A VISUAL HOOK: What makes this image interesting to look at? A dramatic angle? An unusual setting? A heartwarming moment?
+      1. ADD A VISUAL HOOK: What makes this image interesting to look at?
       2. SET THE MOOD: Use adjectives that evoke feeling (cozy, majestic, playful, serene).
-      3. DESCRIBE A MOMENT: Instead of static objects, capture a narrative moment (a cat curling up for a nap, a flower unfolding at dawn).
-      4. SPECIFY SETTING: Ground the subject in an environment (on a mossy rock, beside a crackling fireplace, in a sun-dappled forest).
-      5. DIVERSIFY DETAILS: Mention specific, varied props. Avoid generic filler. If it's a coffee shop, include a vintage grinder, a stack of books, and a potted fern - not just coffee beans everywhere.
+      3. DESCRIBE A MOMENT: Capture a narrative moment.
+      4. SPECIFY SETTING: Ground the subject in an environment.
+      5. DIVERSIFY DETAILS: Mention specific, varied props.
       
       Keep it under 75 words.
       Focus on visual elements that translate well to black and white line art.
-      Do NOT include style instructions (like "line art" or "coloring page") - just describe the scene itself.
     `;
 
         const multiPageInstruction = `
       You are a Creative Director for bestselling coloring books, planning a cohesive ${pageCount}-page collection.
       
+      [THINKING PROCESS DIRECTIVES]:
+      1. THEME ANALYSIS: Identify the core theme and potential sub-themes.
+      2. ARC PLANNING: Plan a progression (e.g. season change, journey, or varying angles).
+      3. FORMATTING: Ensure the output matches the required format string exactly.
+
       Take the user's theme and create a NARRATIVE ARC across ${pageCount} pages. Each page should be a distinct scene that builds on the theme.
       
       YOUR GOALS:
       1. VARIETY: Each page should show a different aspect, angle, or moment of the theme.
-      2. PROGRESSION: Create a visual journey (e.g., morning to night, small to large, calm to exciting).
-      3. COHESION: All pages should feel like they belong together in the same book.
-      4. BALANCE: Mix close-up details with wider scenes. Include character moments and environmental scenes.
-      5. DIVERSIFY DETAILS: Ensure each scene has unique props. Avoid repeating the same icons (like hearts or stars) on every page.
+      2. PROGRESSION: Create a visual journey.
+      3. COHESION: All pages should feel like they belong together.
+      4. BALANCE: Mix close-up details with wider scenes.
       
       FORMAT YOUR RESPONSE AS:
       "A ${pageCount}-page collection exploring [theme]: Page 1 - [brief scene]. Page 2 - [brief scene]. ..." etc.
-      
-      Keep each page description to 10-15 words.
-      Focus on visual elements that translate well to black and white line art.
-      Do NOT include style instructions - just describe the scenes.
     `;
 
         const systemInstruction = pageCount > 1 ? multiPageInstruction : singlePageInstruction;

@@ -9,6 +9,8 @@ import { useToast } from '../hooks/useToast';
 import { ToastContainer } from '../components/Toast';
 import { useHeroProject } from '../hooks/useHeroProject';
 import { HeroLabService } from '../services/HeroLabService';
+import { useHeroEditChat } from '../hooks/useHeroEditChat';
+import { HeroEditChatPanel } from '../components/HeroEditChatPanel';
 
 /**
  * Build a profile sheet prompt from DNA
@@ -17,9 +19,15 @@ import { HeroLabService } from '../services/HeroLabService';
 const buildProfileSheetPrompt = (dna: CharacterDNA, referenceImage?: boolean, replicateMode?: boolean): string => {
     const layoutInstructions = `
 ARRANGEMENT:
-Arrange the 5 views in a clean landscape layout, preferably a single horizontal row or two balanced rows:
-[ FRONT ] [ 3/4 VIEW ] [ SIDE ] [ BACK ] [ ACTION POSE ]
-Ensure clear separation between each character view.
+Strictly arrange the 5 views in a SINGLE HORIZONTAL ROW with equal spacing:
+(Front)  (3/4 View)  (Side)  (Back)  (Action Pose)
+--|--------|--------|--------|--------|--
+
+CRITICAL LAYOUT RULES:
+1. NO TEXT, NO NUMBERS, NO LABELS. The image must be purely visual.
+2. Perfect alignment: All feet must form a straight horizontal line.
+3. Equal sizing: The character must be the same height in every view.
+4. Clean separation: Use whitespace between figures. No dividing lines or boxes.
 `;
 
     if (replicateMode && referenceImage) {
@@ -31,17 +39,20 @@ Analyze the provided character image and create a 5-angle reference sheet showin
 ${layoutInstructions}
 
 CRITICAL RULES:
-1. EXACTLY replicate the character's appearance from the reference
-2. Maintain all details: outfit, accessories, hairstyle, proportions
-3. Infer unseen angles logically (what does the back look like?)
-4. Keep the SAME art style as the reference
-5. Each view must show the SAME character - perfect consistency
+1. PURELY VISUAL: Do not add any text, name, bio, or numbers [1][2] etc.
+2. EXACTLY replicate the character's appearance from the reference.
+3. Maintain all details: outfit, accessories, hairstyle, proportions.
+4. Infer unseen angles logically (what does the back look like?).
+5. Keep the SAME art style as the reference.
+6. Each view must show the SAME character - perfect consistency.
+
+MATERIAL CONSISTENCY RULES:
+- TRANSPARENCY: If a material is transparent (e.g., glass visor), it MUST be transparent in ALL ANGLES.
+- BACK VIEW LOGIC: Show the back of the head through transparent helmets. Do NOT render as opaque.
 
 TECHNICAL STYLE:
 Coloring book line art, clean monoline black outlines, bold thick lines, no shading, no gradients, no gray tones.
-White background, high contrast. All 5 views clearly separated.
-
-OUTPUT: 5-angle turnaround maintaining perfect consistency with reference.
+White background, high contrast. All 5 views clearly separated in a row.
 `.trim();
     }
 
@@ -75,20 +86,22 @@ HOWEVER, you must STRICTLY ADHERE to the text DNA below.
 CONFLICT RESOLUTION:
 If the Reference Image contradicts the text DNA (especially for Outfit, Role, or specific features), the TEXT DNA TAKES PRECEDENCE.
 - If DNA says "Spacesuit" and image shows "T-shirt", user MUST see a Spacesuit.
-- If DNA says "Blue eyes" and image shows "Brown eyes", user MUST see Blue eyes.
-- You MUST change the outfit/features to match the 'Outfit' and 'DNA' fields if they differ from the image.
 ` : ''}
 
 CHARACTER DNA:
 ${dnaFields}
 
 CRITICAL RULES:
-1. ALL 5 views must show the EXACT SAME character with IDENTICAL features
-2. Signature features must appear in EVERY view where visible
-3. Outfit must be consistent across all angles
-4. Use T-pose or relaxed standing pose for clear silhouette
-5. Plain white background for each view
-6. Clear visual separation between views (thin lines or white space)
+1. STRICT NO-TEXT POLICY: Do not write the name, do not number the views ([1]), no labels.
+2. ALL 5 views must show the EXACT SAME character with IDENTICAL features.
+3. Signature features must appear in EVERY view where visible.
+4. Outfit must be consistent across all angles.
+5. Use T-pose or relaxed standing pose for clear silhouette.
+
+MATERIAL CONSISTENCY RULES:
+- TRANSPARENCY: If a material is transparent (e.g., glass visor), it MUST be transparent in ALL ANGLES.
+- BACK VIEW LOGIC: Show the back of the head through transparent helmets. Do NOT render as opaque.
+- SOLIDITY: If a material is solid (e.g., metal armor), it must remain solid in all views.
 
 TECHNICAL STYLE:
 Coloring book line art, clean monoline black outlines, bold thick lines matching "${dna.styleLock}" style.
@@ -112,12 +125,28 @@ export const HeroLab: React.FC = () => {
 
     const [isExtracting, setIsExtracting] = useState(false);
     const [dummyPages, setDummyPages] = useState<any[]>([]);
+    const [showHeroEditor, setShowHeroEditor] = useState(false);
 
     // Use the new hook
     const project = useHeroProject({
         showToast,
         isGenerating: false // Will be updated
     });
+
+    // Hero edit chat hook
+    const handleHeroImageEdited = useCallback((newImageUrl: string, isNewVersion: boolean) => {
+        if (isNewVersion) {
+            // Save as a copy (don't replace current)
+            toast.success('Edit saved as copy!', '📋');
+        } else {
+            // Replace current image
+            project.setProfileSheetUrl(newImageUrl);
+            project.setBaseImageUrl(newImageUrl);
+            toast.success('Hero updated!', '✨');
+        }
+    }, [project, toast]);
+
+    const heroEditChat = useHeroEditChat(handleHeroImageEdited, project.dna);
 
     // Generation hook
     const { isGenerating, startGeneration } = useGeneration({
@@ -231,18 +260,35 @@ export const HeroLab: React.FC = () => {
         }
     }, [project, toast]);
 
-    const handleUseInStudio = useCallback(() => {
-        // Ensure project is saved first (has a valid project ID)
-        if (!project.currentProjectId) {
-            toast.warning('Please wait for hero to save first...', '⏳');
-            return;
+    const handleUseInStudio = useCallback(async () => {
+        let projectId = project.currentProjectId;
+
+        // If no project ID yet, force a save first
+        if (!projectId) {
+            toast.info('Finalizing hero for Studio...', '⏳');
+            try {
+                const saved = await project.saveNow();
+                if (saved?.id) {
+                    projectId = saved.id;
+                }
+            } catch (err) {
+                console.error('Failed to save hero:', err);
+                toast.error('Failed to save hero. Please try again.');
+                return;
+            }
+
+            // If still no ID after save, something went wrong
+            if (!projectId) {
+                toast.error('Could not save hero. Please add a name first.');
+                return;
+            }
         }
 
         // Pass project ID instead of inline data - Studio will fetch from vault
         navigate('/studio', {
-            state: { heroProjectId: project.currentProjectId }
+            state: { heroProjectId: projectId }
         });
-    }, [project.currentProjectId, navigate, toast]);
+    }, [project.currentProjectId, project.saveNow, navigate, toast]);
 
     const handleImageUpload = useCallback((file: File) => {
         // This is for the CharacterView upload - saves as base image
@@ -255,6 +301,17 @@ export const HeroLab: React.FC = () => {
         };
         reader.readAsDataURL(file);
     }, [project]);
+
+    // Open hero editor with current image
+    const handleMagicEdit = useCallback(() => {
+        const imageUrl = project.profileSheetUrl || project.baseImageUrl || dummyPages[0]?.imageUrl;
+        if (!imageUrl) {
+            toast.warning('Generate or upload an image first', '🖼️');
+            return;
+        }
+        heroEditChat.setSelectedImage(imageUrl, project.projectName || project.dna.name || 'Hero');
+        setShowHeroEditor(true);
+    }, [project.profileSheetUrl, project.baseImageUrl, project.projectName, project.dna.name, dummyPages, heroEditChat, toast]);
 
     const handleGeneration = useCallback(async () => {
         if (!project.dna.name && !project.referenceImage) return;
@@ -332,6 +389,7 @@ export const HeroLab: React.FC = () => {
                     projectName={project.projectName || project.dna.name}
                     onImageUpload={handleImageUpload}
                     onUseInStudio={handleUseInStudio}
+                    onMagicEdit={handleMagicEdit}
                 />
             </div>
 
@@ -342,6 +400,15 @@ export const HeroLab: React.FC = () => {
                     {project.saveStatus === 'unsaved' && '○ Unsaved changes'}
                     {project.saveStatus === 'error' && '⚠️ Save failed'}
                 </div>
+            )}
+
+            {/* Hero Edit Chat Panel */}
+            {showHeroEditor && (
+                <HeroEditChatPanel
+                    onClose={() => setShowHeroEditor(false)}
+                    heroEditChat={heroEditChat}
+                    characterDNA={project.dna}
+                />
             )}
         </div>
     );

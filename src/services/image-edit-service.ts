@@ -4,6 +4,7 @@
  */
 
 import { GoogleGenAI, Part } from '@google/genai';
+import { getStoredApiKey } from '../lib/crypto';
 
 const GEMINI_IMAGE_MODEL = 'gemini-3-pro-image-preview';
 
@@ -40,41 +41,37 @@ STRICT RULES:
  * Edit an image using Gemini's image generation capabilities.
  * Supports optional masking for targeted edits.
  */
-export async function editImageWithGemini(options: EditImageOptions): Promise<EditImageResult> {
+export async function editImageWithGemini(options: EditImageOptions & { subject?: string }): Promise<EditImageResult> {
     try {
-        // Check if aborted before starting
         if (options.signal?.aborted) {
             throw new Error('Aborted');
         }
 
-        // Initialize with current API key
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const apiKey = await getStoredApiKey();
+        if (!apiKey) throw new Error('API Key not found');
 
-        // Construct the edit prompt
+        const ai = new GoogleGenAI({ apiKey });
+        const subject = options.subject || "a coloring book image";
+
+        // Google-recommended template for editing:
+        // "Using the provided image of [subject], please [add/remove/modify] [element]..."
+        // We wrap the user's specific request (options.editPrompt) into this structure.
         let promptText = '';
 
         if (options.maskImage) {
-            promptText = `Edit this coloring book image. I have marked specific regions with a blue highlight mask.
-      
-EDIT INSTRUCTION: ${options.editPrompt}
-
-IMPORTANT: 
-- Focus your edits on the masked/highlighted regions
-- Preserve all unmasked areas exactly as they are
-- Maintain the same line art style and weight
-- Keep the output as clean black and white line art suitable for coloring`;
+            promptText = `Using the provided image of ${subject}, please perform this edit: ${options.editPrompt}.
+            
+Focus ONLY on the masked (blue) regions. Preserve the unmasked areas exactly.`;
         } else {
-            promptText = `Edit this coloring book image according to the following instruction:
-
-EDIT INSTRUCTION: ${options.editPrompt}
-
-IMPORTANT:
-- Maintain the same overall style and line weight
-- Keep the output as clean black and white line art suitable for coloring
-- Make the edit blend naturally with the existing artwork`;
+            promptText = `Using the provided image of ${subject}, please perform this edit: ${options.editPrompt}.`;
         }
 
-        // Build the parts array with source image
+        // Add style enforcement to the prompt to ensure consistency even in micro-edits
+        promptText += `\n\nSTYLE RULES:
+- Maintain the original line art style (black and white, no shading).
+- Ensure the edit blends seamlessly with the existing drawing.
+- Do not introduce colors or grayscales.`;
+
         const parts: Part[] = [
             { text: promptText },
             {
@@ -85,7 +82,6 @@ IMPORTANT:
             },
         ];
 
-        // Add mask image if provided
         if (options.maskImage) {
             parts.push({
                 inlineData: {
@@ -100,35 +96,30 @@ IMPORTANT:
             contents: { parts },
             config: {
                 systemInstruction: EDIT_SYSTEM_INSTRUCTION,
-                temperature: 0.8, // Balanced for edits
+                temperature: 0.8,
             },
         });
 
-        // Extract the generated image
         const part = response.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
         if (part?.inlineData?.data) {
             const mimeType = part.inlineData.mimeType || 'image/png';
-            const base64Data = part.inlineData.data;
-            return { imageUrl: `data:${mimeType};base64,${base64Data}` };
+            return { imageUrl: `data:${mimeType};base64,${part.inlineData.data}` };
         }
 
         return { imageUrl: null, error: 'No image data returned from API.' };
 
     } catch (error: any) {
-        // Handle abort
         if (error.name === 'AbortError' || error.message === 'Aborted' || options.signal?.aborted) {
             throw new Error('Aborted');
         }
 
         console.error('Image Edit API Error:', error);
-
         let message = error instanceof Error ? error.message : 'Unknown error';
 
-        // Friendly error messages
-        if (message.includes('403')) message = 'Access Denied (403): Please check your API Key.';
-        if (message.includes('400')) message = 'Bad Request (400): The model could not process this edit.';
-        if (message.includes('429')) message = 'Rate Limited (429): Please wait a moment before trying again.';
-        if (message.includes('503')) message = 'Service Unavailable (503): Gemini is temporarily unavailable.';
+        if (message.includes('403')) message = 'Access Denied (403): Check API Key.';
+        if (message.includes('400')) message = 'Bad Request (400): Model rejected edit.';
+        if (message.includes('429')) message = 'Rate Limited (429): Please wait.';
+        if (message.includes('503')) message = 'Service Unavailable (503).';
 
         return { imageUrl: null, error: message };
     }

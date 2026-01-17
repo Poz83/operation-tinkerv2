@@ -300,6 +300,7 @@ export const COMPLEXITY_RULES: Record<string, ComplexityRule> = {
   }
 };
 
+
 // ============================================================================
 // 4. System Prompt & Construction Helpers
 // ============================================================================
@@ -308,10 +309,16 @@ export const SYSTEM_INSTRUCTION = `
 You are a MASTERFUL Coloring Book Illustrator with decades of experience creating bestselling coloring books.
 Your goal is to generate high-quality, black-and-white line art that is BEAUTIFUL, INVITING, and a JOY to color.
 
-ARTISTIC GUIDELINES & CONSTRAINTS:
+[THINKING PROCESS DIRECTIVES]:
+1. PLAN: First, mentally gaze at the blank page. Plan the composition to ensure the main subject is centered with adequate margins.
+2. SIMPLIFY: Verify that every object is physically representable in pure black and white lines. If an object relies on color (e.g., a rainbow), redesign it to use pattern or shape instead.
+3. VERIFY: Check if any text, labels, or numbers have crept into the plan. If so, DO NOT RENDER THEM.
+4. EXECUTE: Draw the final image with confident, continuous strokes.
+
+[ARTISTIC GUIDELINES & CONSTRAINTS]:
 
 == CORE QUALITY ==
-1.  OUTPUT: Pure black lines (#000000) on pure white (#FFFFFF) background. NO gray, NO gradients, NO texture.
+1.  OUTPUT: The image must be strictly BINARY: Pure black lines (#000000) on a pure white (#FFFFFF) background.
 2.  LINE QUALITY: Thick, rounded, confident strokes. Lines should feel hand-drawn with natural organic variation - NOT vector-clean or computer-perfect. Think felt-tip pen aesthetic with gentle wobble.
 3.  COMPOSITION: Main subject must fit the canvas with 8-10% margin on all edges. Nothing touches the border.
 
@@ -331,12 +338,12 @@ ARTISTIC GUIDELINES & CONSTRAINTS:
 
 == TECHNICAL CONSTRAINTS ==
 11. TOPOLOGY: Closed, watertight paths for digital flood fill. All regions must be clearly bounded.
-12. NO BLACK FILLS: All distinct regions must be white/empty for the user to color. No solid black areas.
-13. NO SHADING TEXTURES: Absolutely no stippling, hatching, cross-hatching, halftone, dithering, dots-for-shading, texture strokes, or sketch lines.
+12. NO BLACK FILLS: All distinct regions must be white/empty for the user to color. The image is a wireframe for color.
+13. NO SHADING TEXTURES: The image must be FREE of stippling, hatching, cross-hatching, halftone, dithering, dots-for-shading, texture strokes, or sketch lines. Use PURE OUTLINES only.
 14. NO THIN DETAILS: Avoid thin lines, fine details, or tiny repeating patterns. Keep everything large and readable.
 15. SEPARATION: Maintain 3-5mm minimum gap between unrelated lines. Avoid tangents (near-touching lines).
 16. SCALE & PROPORTION: Objects must have realistic relative proportions. Anchor scene with primary subject and scale everything else appropriately.
-17. NO TEXT OR WATERMARKS (unless explicitly requested).
+17. NO TEXT: The image must be purely visual. No words, letters, numbers, signatures, or watermarks.
 
 == THE ARTIST'S TOUCH ==
 18. MOOD: Cute, playful, cozy, joyful. The illustration should feel warm and inviting.
@@ -344,23 +351,15 @@ ARTISTIC GUIDELINES & CONSTRAINTS:
 20. DELIGHTFUL DETAILS: Add one small, surprising, or charming detail that fits the theme and rewards close inspection.
 
 == ANATOMICAL INTEGRITY ==
-21. CORRECT LIMB COUNT: Humans have exactly 2 arms and 2 legs. Animals match their species (dogs: 4 legs, birds: 2 wings, octopus: 8 tentacles).
-22. HANDS & FEET: Unless stylized (mitten hands, paws), humans have 5 fingers per hand and 5 toes per foot.
+21. CORRECT LIMB COUNT: Humans have 2 arms/2 legs. Animals match their species.
+22. HANDS & FEET: Unless stylized (mitten hands, paws), humans have 5 fingers per hand.
 23. FACIAL FEATURES: Faces are symmetric with 2 eyes, 1 nose, 1 mouth in anatomically correct positions.
-24. NO MUTATIONS: No extra limbs, fused body parts, floating appendages, or distorted anatomy.
-
-== PHYSICAL COHERENCE ==
-25. NATURAL POSES: Limbs must be in physically possible positions. Joints bend in correct directions only.
-26. CLEAR BOUNDARIES: Bodies do NOT merge into objects, furniture, or backgrounds. A character sits ON a chair, not fused with it.
-27. PROPER LAYERING: When objects overlap, one is clearly in front with logical occlusion - and BOTH resulting visible regions remain closed colorable shapes.
-28. GROUNDED ELEMENTS: Objects and characters appear grounded unless intentionally floating (flying birds, balloons).
 
 == LINE AESTHETIC SUMMARY ==
-The illustration should look like it was drawn with a FELT-TIP PEN by a skilled artist:
-- Thick, rounded, slightly wiggly outlines
-- Hand-drawn and imperfect, NEVER vector-clean
-- Gentle natural line variation
-- Confident but organic strokes
+The illustration should look like it was drawn with a THICK FELT-TIP PEN:
+- Confident, continuous black strokes
+- No sketching, no feathering
+- No shading or gray tones
 `;
 
 export const buildPrompt = (
@@ -377,7 +376,6 @@ export const buildPrompt = (
   const complexity = COMPLEXITY_RULES[complexityKey] || COMPLEXITY_RULES['Moderate'];
 
   // === SMART ANATOMY DETECTION ===
-  // Detect if the subject involves characters (humans, animals) or just objects
   const CHARACTER_KEYWORDS = [
     'person', 'human', 'man', 'woman', 'child', 'kid', 'boy', 'girl', 'baby',
     'animal', 'cat', 'dog', 'bird', 'bunny', 'rabbit', 'bear', 'fox', 'owl',
@@ -396,40 +394,7 @@ export const buildPrompt = (
 
   const typographyInstruction = includeText
     ? `[TYPOGRAPHY RULES]: Include the text "${userSubject}" or related words styled as HOLLOW OUTLINES (bubble letters). Never fill with black.`
-    : ``;
-
-  // Build negative prompts
-  let negativePrompts = `
-    ${style.negativePrompt},
-    ${complexity.negativePrompt},
-    color, coloured, colorful, photography, photorealistic, 3d render,
-    gradient, shadow, ambient occlusion, greyscale, gray,
-    color, coloured, colorful, photography, photorealistic, 3d render,
-    gradient, shadow, ambient occlusion, greyscale, gray,
-    blurry, low resolution, jpeg artifacts, pixelated,
-    blurry, low resolution, jpeg artifacts, pixelated,
-    cropped, out of frame, cut off,
-    messy, smudge, dirt, noise,
-    double lines, loose sketch, rough draft,
-    extra limbs, extra arms, extra legs, extra fingers, extra toes, missing limbs, missing fingers,
-    fused limbs, fused fingers, merged body parts, bad anatomy, malformed hands, malformed feet,
-    distorted face, asymmetric eyes, floating limbs, disconnected body parts,
-    impossible pose, backwards joints, merged with object, body fused with furniture,
-    artifacts, stray marks, broken lines, dangling lines
-  `;
-
-  if (!style.allowsTextureShading) {
-    negativePrompts += `, hatching, cross-hatching, stippling, halftone, dithering, dots used for shading, engraving texture, etching texture, scratchy shading, scribble shading, texture used as shading, micro-texture, microscopic details, ultra fine noise, texture strokes, sketch lines`;
-  }
-
-  // Apply organic line quality constraints for non-vector styles
-  if (style.organicLineQuality) {
-    negativePrompts += `, vector-clean lines, computer-perfect strokes, mechanical precision, ruler-straight lines, sterile digital look`;
-  }
-
-  if (!includeText) {
-    negativePrompts += `, text, words, alphabet, kanji, signage, signboards, branding, numbers, numerals, digits, alphanumeric`;
-  }
+    : `[STRICT CONSTRAINT]: DO NOT INCLUDE TEXT. The image must be purely visual.`;
 
   // Construct Rest Areas instruction
   let restAreasInstruction = '';
@@ -442,33 +407,24 @@ export const buildPrompt = (
   }
 
   // --- BORDER CALIBRATION LOGIC ---
-  // A border is FORCED if:
-  // 1. Audience is young (Toddlers, Preschool, Kids) - "Containment Rule"
-  // 2. Complexity is low (Very Simple, Simple) and style allows it - "Anchor Rule"
   const isYoungAudience = ['Toddlers', 'Preschool', 'Kids'].some(a => audienceLabel.includes(a));
   const isLowComplexity = ['Very Simple', 'Simple'].includes(complexityKey);
   const kidFriendlyStyles = ['Cozy Hand-Drawn', 'Bold & Easy', 'Kawaii', 'Cartoon', 'Whimsical', 'Cozy'];
-
-  // Logic: Young audience GETS a border. Low complexity GETS a border (if style fits). 
-  // We expand the "kid friendly" check to strict audience check.
   const shouldHaveBorder = isYoungAudience || (isLowComplexity && kidFriendlyStyles.includes(styleKey));
 
   const bordersInstruction = shouldHaveBorder
     ? 'Include a thick, rounded decorative border frame. Border thickness must match main outlines. Soft rounded corners. 5-8% internal padding.'
     : '';
 
-  // Positive reinforcements for critical constraints (helps model follow rules)
-  const POSITIVE_REINFORCEMENTS = `
-LINE STYLE: Thick, rounded, slightly wiggly outlines - hand-drawn felt-tip pen aesthetic, NEVER vector-clean.
-TEXTURE BAN: No shading, no crosshatching, no stippling, no texture strokes, no sketch lines.
-CLOSURE RULE: All shapes fully enclosed and colorable. Overlapping elements must still form closed areas.
-SHAPE QUALITY: Rounded soft forms only. Large readable shapes for easy coloring. NO thin details or tiny patterns.
-DRAW WITH: Closed watertight paths suitable for digital flood fill.
-PRESERVE: 8-10% blank margin on all edges - nothing touches the border.
-BACKGROUND: Pure white paper (#FFFFFF) - no cream, beige, or texture.
-COMPOSITION: Connect elements visually to avoid floating object syndrome.
-SATISFACTION: Include a mix of large anchor shapes and medium detail areas. Avoid microscopic elements.
-MOOD: Cute, playful, cozy, joyful.
+  // Positive reinforcements for critical constraints (Semantic Negative Prompts)
+  const STRICT_CONSTRAINTS = `
+[STRICT VISUAL CONSTRAINTS]:
+1. LINEARITY: The image must be composed of LINES ONLY. No solids, no fills.
+2. PURITY: The background must be 100% white (#FFFFFF).
+3. INTEGRITY: Every shape must be closed (watertight).
+${!style.allowsTextureShading ? '4. NO TEXTURE: Do not use stippling, hatching, or shading pixels. Use clean, empty space to suggest form.' : ''}
+${style.organicLineQuality ? '5. HAND-DRAWN FEEL: Lines must have subtle wobble and organic variation, avoiding mechanical perfection.' : ''}
+6. MARGINS: Maintain a clear 8-10% empty margin on all sides.
 `;
 
   // Creative Spark - encourage one delightful detail
@@ -476,7 +432,7 @@ MOOD: Cute, playful, cozy, joyful.
 [ARTIST'S TOUCH]: Add ONE small, delightful, or surprising detail that fits the theme. This could be a hidden element, a charming expression, an unexpected texture, or a tiny narrative moment. Make it rewarding to discover.
 `;
 
-  // StyleDNA Override - when reference image was analyzed
+  // StyleDNA Override
   const styleDNASection = styleDNA ? `
 [STYLE_MATCHING - CRITICAL]: 
 You MUST match the exact visual style of the provided reference image:
@@ -488,10 +444,15 @@ ${styleDNA.promptFragment}
 ${styleDNA.hasBorder ? `- Border: ${styleDNA.borderStyle} border frame required` : '- Border: None - no border frame'}
 ` : '';
 
-  // Character DNA Reference - for hero consistency across multiple pages
+  // Character DNA Reference - for hero consistency
   const characterDNASection = characterDNA && characterDNA.name ? `
 [CHARACTER REFERENCE: ${characterDNA.name}]
-You MUST maintain absolute visual consistency with this character throughout:
+[REFERENCE UTILIZATION]: The attached image is a 5-angle Character Sheet. 
+1. DO NOT COPY THE LAYOUT. 
+2. Use the Reference Image to understand the character's 3D structure, features, and costume details.
+3. POSE THE CHARACTER in the new scene described below, maintaining perfect fidelity to their design.
+
+[CHARACTER DNA]:
 - Role: ${characterDNA.role || 'Not specified'}
 - Age: ${characterDNA.age || 'Not specified'}
 - Face: ${characterDNA.face || 'Not specified'}
@@ -502,7 +463,8 @@ You MUST maintain absolute visual consistency with this character throughout:
 - Outfit: ${characterDNA.outfitCanon || 'Not specified'}
 
 CRITICAL: Every detail above MUST appear consistently on every page.
-CONFLICT RESOLUTION: If the provided reference image conflicts with the Text DNA above (e.g. image shows different clothing), strictly follow the TEXT DNA. The text description is the source of truth for the outfit and signature features.` : '';
+CONFLICT RESOLUTION: If the provided reference image conflicts with the Text DNA above (e.g. image shows different clothing), strictly follow the TEXT DNA.
+` : '';
 
   // Override line weight instruction when StyleDNA is present
   const effectiveLineWeight = styleDNA
@@ -510,7 +472,6 @@ CONFLICT RESOLUTION: If the provided reference image conflicts with the Text DNA
     : complexity.lineWeightInstruction;
 
   // Construct the narrative prompt using Gemini 3 Pro's deep visual reasoning
-  // Note: Preserving newlines for better tokenization (removed .replace(/\s+/g, ' '))
   const fullPrompt = `
 [SCENE_INTENT]: ${style.sceneIntent}
 
@@ -541,15 +502,23 @@ ${(shouldApplyAnatomy && style.anatomyGuidance) ? `
 
 ${typographyInstruction}
 
-[CRITICAL_REQUIREMENTS]:
-${POSITIVE_REINFORCEMENTS}
+${STRICT_CONSTRAINTS}
 
 ${CREATIVE_SPARK}
 
 [OUTPUT_FORMAT]: High-resolution line art, 300 DPI, Vector style, Black Ink on White Paper.
 `.trim();
 
-  // Clean up negative prompt (preserve structure but remove excessive whitespace)
+  // Reduced negative prompt - relying more on Affirmative Constraints in STRICT_CONSTRAINTS
+  const negativePrompts = `
+    ${style.negativePrompt},
+    ${complexity.negativePrompt},
+    color, coloured, colorful, photography, 3d render,
+    gradient, shadow, gray, grey,
+    blurry, pixelated,
+    text, watermark, signature
+  `;
+
   const fullNegativePrompt = negativePrompts
     .split('\n')
     .map(line => line.trim())

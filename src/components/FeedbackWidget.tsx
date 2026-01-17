@@ -61,6 +61,34 @@ if (typeof window !== 'undefined' && !(window as any).__consoleInterceptorsAttac
     // };
 }
 
+// Storage key for widget position
+const POSITION_STORAGE_KEY = 'feedback-widget-position';
+
+interface WidgetPosition {
+    x: number;
+    y: number;
+}
+
+const getStoredPosition = (): WidgetPosition | null => {
+    try {
+        const stored = localStorage.getItem(POSITION_STORAGE_KEY);
+        if (stored) {
+            return JSON.parse(stored);
+        }
+    } catch (e) {
+        // Ignore
+    }
+    return null;
+};
+
+const storePosition = (pos: WidgetPosition) => {
+    try {
+        localStorage.setItem(POSITION_STORAGE_KEY, JSON.stringify(pos));
+    } catch (e) {
+        // Ignore
+    }
+};
+
 export const FeedbackWidget: React.FC = () => {
     const { userEmail } = useAuth();
     const [isOpen, setIsOpen] = useState(false);
@@ -70,6 +98,170 @@ export const FeedbackWidget: React.FC = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Draggable position state
+    const [position, setPosition] = useState<WidgetPosition>(() => {
+        const stored = getStoredPosition();
+        // Default to bottom-right (will be calculated on mount)
+        return stored || { x: -1, y: -1 };
+    });
+    const [isDragging, setIsDragging] = useState(false);
+    const dragStartRef = useRef<{ x: number; y: number; posX: number; posY: number } | null>(null);
+    const buttonRef = useRef<HTMLButtonElement>(null);
+
+    // Initialize position on mount
+    useEffect(() => {
+        if (position.x === -1 && position.y === -1) {
+            // Set default position (bottom-right with 24px margin)
+            const defaultPos = {
+                x: window.innerWidth - 56 - 24, // button width + margin
+                y: window.innerHeight - 56 - 24 // button height + margin
+            };
+            setPosition(defaultPos);
+        }
+    }, []);
+
+    // Clamp position to viewport bounds
+    const clampPosition = useCallback((pos: WidgetPosition): WidgetPosition => {
+        const buttonSize = 56;
+        const margin = 8;
+        return {
+            x: Math.max(margin, Math.min(pos.x, window.innerWidth - buttonSize - margin)),
+            y: Math.max(margin, Math.min(pos.y, window.innerHeight - buttonSize - margin))
+        };
+    }, []);
+
+    // Handle drag start
+    const handleDragStart = useCallback((clientX: number, clientY: number) => {
+        dragStartRef.current = {
+            x: clientX,
+            y: clientY,
+            posX: position.x,
+            posY: position.y
+        };
+        setIsDragging(true);
+    }, [position]);
+
+    // Handle drag move
+    const handleDragMove = useCallback((clientX: number, clientY: number) => {
+        if (!dragStartRef.current) return;
+
+        const deltaX = clientX - dragStartRef.current.x;
+        const deltaY = clientY - dragStartRef.current.y;
+
+        const newPos = clampPosition({
+            x: dragStartRef.current.posX + deltaX,
+            y: dragStartRef.current.posY + deltaY
+        });
+
+        setPosition(newPos);
+    }, [clampPosition]);
+
+    // Handle drag end
+    const handleDragEnd = useCallback(() => {
+        if (dragStartRef.current) {
+            const deltaX = Math.abs(position.x - dragStartRef.current.posX);
+            const deltaY = Math.abs(position.y - dragStartRef.current.posY);
+
+            // Only save if actually moved (not just a click)
+            if (deltaX > 5 || deltaY > 5) {
+                storePosition(position);
+            }
+        }
+        dragStartRef.current = null;
+        setIsDragging(false);
+    }, [position]);
+
+    // Mouse event handlers
+    const handleMouseDown = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        handleDragStart(e.clientX, e.clientY);
+    }, [handleDragStart]);
+
+    // Touch event handlers
+    const handleTouchStart = useCallback((e: React.TouchEvent) => {
+        if (e.touches.length === 1) {
+            handleDragStart(e.touches[0].clientX, e.touches[0].clientY);
+        }
+    }, [handleDragStart]);
+
+    // Global move/end handlers
+    useEffect(() => {
+        if (!isDragging) return;
+
+        const handleMouseMove = (e: MouseEvent) => {
+            handleDragMove(e.clientX, e.clientY);
+        };
+
+        const handleMouseUp = () => {
+            handleDragEnd();
+        };
+
+        const handleTouchMove = (e: TouchEvent) => {
+            if (e.touches.length === 1) {
+                handleDragMove(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        };
+
+        const handleTouchEnd = () => {
+            handleDragEnd();
+        };
+
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseup', handleMouseUp);
+        window.addEventListener('touchmove', handleTouchMove);
+        window.addEventListener('touchend', handleTouchEnd);
+
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+            window.removeEventListener('touchmove', handleTouchMove);
+            window.removeEventListener('touchend', handleTouchEnd);
+        };
+    }, [isDragging, handleDragMove, handleDragEnd]);
+
+    // Handle click (only open if not dragging)
+    const handleClick = useCallback(() => {
+        if (dragStartRef.current) {
+            const deltaX = Math.abs(position.x - dragStartRef.current.posX);
+            const deltaY = Math.abs(position.y - dragStartRef.current.posY);
+            // If moved more than 5px, it was a drag not a click
+            if (deltaX > 5 || deltaY > 5) return;
+        }
+        setIsOpen(true);
+    }, [position]);
+
+    // Recalculate position on window resize
+    useEffect(() => {
+        const handleResize = () => {
+            setPosition(prev => clampPosition(prev));
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, [clampPosition]);
+
+    // Calculate panel position based on button position
+    const getPanelStyle = useCallback(() => {
+        const panelWidth = 384; // w-96
+        const panelHeight = 500; // approximate
+        const margin = 16;
+
+        // Determine if panel should be above or below button
+        const spaceBelow = window.innerHeight - position.y - 56;
+        const spaceAbove = position.y;
+        const showAbove = spaceBelow < panelHeight && spaceAbove > spaceBelow;
+
+        // Determine if panel should be left or right of button
+        const spaceRight = window.innerWidth - position.x;
+        const showLeft = spaceRight < panelWidth + margin;
+
+        return {
+            position: 'fixed' as const,
+            left: showLeft ? Math.max(margin, position.x + 56 - panelWidth) : position.x,
+            top: showAbove ? position.y - panelHeight - margin : position.y + 56 + margin,
+            zIndex: 100
+        };
+    }, [position]);
 
     const handleScreenshotUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -230,10 +422,21 @@ export const FeedbackWidget: React.FC = () => {
 
     return (
         <>
-            {/* Floating Button */}
+            {/* Floating Button - Draggable */}
             <button
-                onClick={() => setIsOpen(true)}
-                className={`fixed bottom-6 right-6 z-[100] w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg shadow-purple-500/30 flex items-center justify-center text-white hover:scale-110 hover:shadow-xl hover:shadow-purple-500/40 transition-all duration-300 ${isOpen ? 'scale-0 opacity-0' : 'scale-100 opacity-100'}`}
+                ref={buttonRef}
+                onMouseDown={handleMouseDown}
+                onTouchStart={handleTouchStart}
+                onClick={handleClick}
+                style={{
+                    position: 'fixed',
+                    left: position.x,
+                    top: position.y,
+                    zIndex: 100,
+                    cursor: isDragging ? 'grabbing' : 'grab',
+                    touchAction: 'none'
+                }}
+                className={`w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg shadow-purple-500/30 flex items-center justify-center text-white hover:shadow-xl hover:shadow-purple-500/40 transition-shadow duration-300 ${isOpen ? 'scale-0 opacity-0' : 'scale-100 opacity-100'} ${isDragging ? 'scale-105' : 'hover:scale-110'}`}
                 aria-label="Send Feedback"
             >
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -241,8 +444,11 @@ export const FeedbackWidget: React.FC = () => {
                 </svg>
             </button>
 
-            {/* Feedback Panel */}
-            <div className={`fixed bottom-6 right-6 z-[100] w-96 max-w-[calc(100vw-3rem)] transition-all duration-300 ${isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
+            {/* Feedback Panel - Positioned relative to button */}
+            <div
+                style={getPanelStyle()}
+                className={`w-96 max-w-[calc(100vw-3rem)] transition-all duration-300 ${isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}
+            >
                 <div className="bg-[#131314] border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
                     {/* Header */}
                     <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between bg-gradient-to-r from-purple-500/10 to-pink-500/10">

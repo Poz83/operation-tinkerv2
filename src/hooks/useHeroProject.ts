@@ -82,7 +82,7 @@ export const useHeroProject = ({ showToast, isGenerating }: UseHeroProjectProps)
     ]);
 
     // --- Autosave Logic ---
-    const { status: saveStatus, lastSavedAt } = useAutosave({
+    const { status: saveStatus, lastSavedAt, saveNow } = useAutosave({
         project: currentProjectState,
         onSave: async (proj) => {
             const { saveProject } = await import('../services/projectsService');
@@ -167,6 +167,7 @@ export const useHeroProject = ({ showToast, isGenerating }: UseHeroProjectProps)
         currentProjectId,
         saveStatus,
         lastSavedAt,
+        saveNow,
 
         // Actions
         loadProject,
