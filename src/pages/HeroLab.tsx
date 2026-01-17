@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Navigation } from '../components/Navigation';
 import { CharacterSetup } from '../components/CharacterSetup';
 import { CharacterView } from '../components/CharacterView';
@@ -124,6 +124,33 @@ export const HeroLab: React.FC = () => {
         setPages: setDummyPages,
         setUserPrompt: () => { }
     });
+
+    // Handle incoming reference URL from Vault
+    const location = useLocation();
+    React.useEffect(() => {
+        const state = location.state as { referenceUrl?: string } | null;
+        if (state?.referenceUrl) {
+            fetch(state.referenceUrl)
+                .then(res => res.blob())
+                .then(blob => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        const result = reader.result as string;
+                        project.setReferenceImage({ base64: result, mimeType: blob.type });
+                        project.setReferenceMode('inspiration');
+                        showToast('success', 'Reference loaded from Vault', '🖼️');
+
+                        // Clear state
+                        window.history.replaceState({}, document.title);
+                    };
+                    reader.readAsDataURL(blob);
+                })
+                .catch(err => {
+                    console.error('Failed to load reference:', err);
+                    showToast('error', 'Failed to load reference image');
+                });
+        }
+    }, [location.state]);
 
     // Handle reference image upload with DNA extraction
     const handleReferenceImageUpload = useCallback(async (file: File) => {

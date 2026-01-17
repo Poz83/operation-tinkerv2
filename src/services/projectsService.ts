@@ -281,35 +281,61 @@ export async function saveProject(project: SavedProject): Promise<SavedProject> 
         publicId = result.public_id;
     }
 
-    // Handle Hero Lab Image Upload (Base64 -> R2)
-    // If baseImageUrl is a data URL, we need to upload it and update the reference
-    let heroBaseImageKey = (project as any).baseImageUrl;
-    if ((project as any).toolType === 'hero_lab' && heroBaseImageKey && heroBaseImageKey.startsWith('data:image/')) {
-        try {
-            const imageUuid = crypto.randomUUID();
-            const uploadResult = await uploadProjectImage(projectId, imageUuid, heroBaseImageKey);
-            heroBaseImageKey = uploadResult.key;
+    // Handle Hero Lab Image Uploads (Base64 -> R2)
+    if ((project as any).toolType === 'hero_lab') {
+        const p = project as any;
+        const updates: any = {};
 
-            // Also track in images table for consistency (optional but good for cleanup)
-            await supabase.from('images').insert({
-                id: imageUuid,
-                project_id: projectId,
-                storage_path: heroBaseImageKey,
-                type: 'hero_base',
-                mime_type: 'image/png',
-                user_id: user.id
-            });
+        // Helper to process image upload
+        const processHeroImage = async (dataUrl: string | undefined, type: 'hero_base' | 'reference' | 'profile_sheet') => {
+            if (dataUrl && dataUrl.startsWith('data:image/')) {
+                try {
+                    const imageUuid = crypto.randomUUID();
+                    const result = await uploadProjectImage(projectId, imageUuid, dataUrl);
 
-            // Update the hero_lab_data record with the new KEY
+                    // Track in images table
+                    await supabase.from('images').insert({
+                        id: imageUuid,
+                        project_id: projectId,
+                        storage_path: result.key,
+                        type: type,
+                        mime_type: 'image/png', // Assumption
+                        user_id: user.id
+                    });
+
+                    return result.key;
+                } catch (err) {
+                    console.error(`Failed to upload ${type}:`, err);
+                    return dataUrl; // Keep original on failure
+                }
+            }
+            return dataUrl; // Return as-is if not a data URL (already a key or undefined)
+        };
+
+        // 1. Base Image
+        const newBaseKey = await processHeroImage(p.baseImageUrl, 'hero_base');
+        if (newBaseKey && newBaseKey !== p.baseImageUrl) {
+            updates.base_image_url = newBaseKey;
+        }
+
+        // 2. Reference Image (Uploaded by user)
+        const newRefKey = await processHeroImage(p.referenceImageUrl, 'reference');
+        if (newRefKey && newRefKey !== p.referenceImageUrl) {
+            updates.reference_image_url = newRefKey;
+        }
+
+        // 3. Profile Sheet
+        const newProfileKey = await processHeroImage(p.profileSheetUrl, 'profile_sheet');
+        if (newProfileKey && newProfileKey !== p.profileSheetUrl) {
+            updates.profile_sheet_url = newProfileKey;
+        }
+
+        // Update DB if we have new keys
+        if (Object.keys(updates).length > 0) {
             await supabase
                 .from('hero_lab_data')
-                .update({ base_image_url: heroBaseImageKey } as any)
+                .update(updates)
                 .eq('project_id', projectId);
-
-        } catch (err) {
-            console.error('Failed to upload hero base image:', err);
-            // If upload fails, we might still return the object, 
-            // but the DB record will have the old value or be missing data.
         }
     }
 
@@ -462,6 +488,72 @@ export async function deleteProject(publicId: string): Promise<void> {
         console.error('Error deleting project:', error);
         throw error;
     }
+}
+
+export interface ReferenceImage {
+    id: string;
+    url: string;
+    projectId: string;
+    createdAt: string;
+    type: 'hero_base' | 'reference' | 'uploaded';
+}
+
+/**
+ * Fetch all reference images (hero bases, uploads) for the user
+ */
+export async function fetchUserReferences(): Promise<ReferenceImage[]> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    // Fetch images where type is 'hero_base' or 'reference'
+    const { data, error } = await supabase
+        .from('images')
+        .select(`
+            id,
+            storage_path,
+            project_id,
+            created_at,
+            type
+        `)
+        .eq('user_id', user.id)
+        .in('type', ['hero_base', 'reference']);
+
+    if (error) {
+        console.error('Error fetching references:', error);
+        return [];
+    }
+
+    // Sign URLs
+    const references: ReferenceImage[] = await Promise.all(
+        data.map(async (img) => {
+            const signedUrl = await getSignedUrl(img.storage_path);
+            return {
+                id: img.id,
+                url: signedUrl,
+                projectId: img.project_id,
+                createdAt: img.created_at,
+                type: img.type as any
+            };
+        })
+    );
+
+    // Sort by recent
+    return references.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
+/**
+ * Delete a reference image
+ */
+export async function deleteReference(id: string): Promise<void> {
+    const { error } = await supabase
+        .from('images')
+        .delete()
+        .eq('id', id);
+
+    if (error) throw error;
+    // Note: R2 file cleanup could be handled by a trigger or separate job, 
+    // or we could add specific R2 delete logic here if needed.
+    // For now, removing the DB record effectively hides it.
 }
 
 /**
