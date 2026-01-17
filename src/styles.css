@@ -677,15 +677,15 @@ body {
 
 /* Dashboard Styles */
 .dashboard-container {
-  min-height: 100vh;
+  height: 100vh;
   width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  padding: 8rem 2rem 2rem 2rem;
+  padding: 8rem 2rem 4rem 2rem;
   position: relative;
-  overflow: auto;
+  overflow-y: auto;
 }
 
 .dashboard-header {
