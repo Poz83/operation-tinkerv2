@@ -20,12 +20,27 @@ interface ProjectWithColoringData {
     visibility: string;
     created_at: string;
     updated_at: string;
+    tool_type: string;
     coloring_studio_data: {
         style: string | null;
         audience: string | null;
         complexity: string | null;
         page_count: number | null;
-    } | null;
+    } | {
+        style: string | null;
+        audience: string | null;
+        complexity: string | null;
+        page_count: number | null;
+    }[] | null;
+    hero_lab_data: {
+        dna: any;
+        base_image_url: string | null;
+        seed: number | null;
+    } | {
+        dna: any;
+        base_image_url: string | null;
+        seed: number | null;
+    }[] | null;
 }
 
 // Type for image record in DB
@@ -94,7 +109,7 @@ export async function fetchUserProjects(): Promise<SavedProject[]> {
     }
 
     // Map without pages (list view doesn't need full pages)
-    return (data as ProjectWithColoringData[]).map(r => mapDbToSavedProject(r));
+    return (data as unknown as ProjectWithColoringData[]).map(r => mapDbToSavedProject(r));
 }
 
 /**
@@ -141,13 +156,13 @@ export async function fetchProject(publicId: string): Promise<SavedProject | nul
     const { data: imagesData, error: imagesError } = await supabase
         .from('images')
         .select('*')
-        .eq('project_id', (projectData as ProjectWithColoringData).id)
+        .eq('project_id', (projectData as unknown as ProjectWithColoringData).id)
         .eq('type', 'page');
 
     if (imagesError) {
         console.error('Error fetching project images:', imagesError);
         // Fallback: return project without pages
-        return mapDbToSavedProject(projectData as ProjectWithColoringData);
+        return mapDbToSavedProject(projectData as unknown as ProjectWithColoringData);
     }
 
     // 3. Convert DB Images to ColoringPages & Get Signed URLs
@@ -173,7 +188,7 @@ export async function fetchProject(publicId: string): Promise<SavedProject | nul
 
     // 4. Combine and return
     // 4. Combine and return
-    const project = mapDbToSavedProject(projectData as ProjectWithColoringData);
+    const project = mapDbToSavedProject(projectData as unknown as ProjectWithColoringData);
     project.pages = pages;
 
     // Hydrate Hero Logic: If we have a base_image_url that looks like a key (no http), sign it
@@ -453,8 +468,11 @@ export async function deleteProject(publicId: string): Promise<void> {
  * Map database record to frontend SavedProject type
  */
 function mapDbToSavedProject(record: any): SavedProject {
-    const coloringData = record.coloring_studio_data;
-    const heroData = record.hero_lab_data;
+    // Safely unwrap joined data (Supabase might return array or object)
+    const unwrap = (data: any) => Array.isArray(data) ? data[0] : data;
+
+    const coloringData = unwrap(record.coloring_studio_data);
+    const heroData = unwrap(record.hero_lab_data);
 
     const baseProject = {
         id: record.public_id,
