@@ -9,6 +9,7 @@ export const PAGE_SIZES = [
 ];
 
 export const VISUAL_STYLES = [
+  { id: 'Cozy Hand-Drawn', label: 'Cozy Hand-Drawn ✨' },
   { id: 'Bold & Easy', label: 'Bold & Easy' },
   { id: 'Kawaii', label: 'Kawaii (Cute Mascot)' },
   { id: 'Whimsical', label: 'Whimsical (Storybook)' },

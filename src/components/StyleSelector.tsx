@@ -18,6 +18,7 @@ import floral from '../assets/styles/floral.png';
 import abstract from '../assets/styles/abstract.png';
 
 const THUMBNAILS: Record<string, string> = {
+    'Cozy Hand-Drawn': cozy, // Reuses cozy thumbnail - shares similar warm aesthetic
     'Bold & Easy': boldEasy,
     'Kawaii': kawaii,
     'Whimsical': whimsical,

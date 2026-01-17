@@ -22,6 +22,8 @@ export interface StyleRule {
   recommendedTemperature: number;
   /** Style-specific anatomy guidance (Tier 2) - injected for character-heavy styles */
   anatomyGuidance?: string;
+  /** If true, applies organic hand-drawn line quality (wiggly, imperfect, felt-tip pen aesthetic) */
+  organicLineQuality?: boolean;
 }
 
 export interface ComplexityRule {
@@ -38,16 +40,31 @@ export interface ComplexityRule {
 // ============================================================================
 
 export const STYLE_RULES: Record<string, StyleRule> = {
+  // --- 0. Cozy Hand-Drawn (NEW Flagship Felt-Tip Style) ---
+  'Cozy Hand-Drawn': {
+    id: 'cozy_handdrawn',
+    label: 'Cozy Hand-Drawn',
+    sceneIntent: `Create a scene that feels like it was lovingly drawn by hand with a felt-tip pen. The viewer should feel wrapped in warmth and whimsy - like opening a treasured handmade gift. Evoke cozy comfort, playful joy, and the tactile pleasure of imperfect art.`,
+    positivePrompt: `casual hand-drawn coloring book line art, cozy whimsical feel, thick rounded SLIGHTLY WIGGLY outlines, hand-drawn imperfect aesthetic like a felt-tip marker, gentle natural line variation, NEVER vector-clean or computer-perfect, soft organic strokes with subtle wobble, rounded soft forms only, large readable shapes for easy coloring, cute playful joyful mood, moderately full cozy scene without clutter, all shapes fully enclosed and colorable, overlapping elements still form closed colorable areas, thick black lines on pure white background.`,
+    negativePrompt: `vector-clean lines, computer-perfect strokes, mechanical precision, ruler-straight lines, thin lines, thin details, fine details, tiny repeating details, microscopic elements, sharp angular forms, grayscale, shading, halftone, crosshatching, stippling, texture strokes, sketch lines, solid black fills, open paths, incomplete shapes, cluttered busy composition, scary, horror, aggressive, unrelated objects, props not in prompt.`,
+    technicalDirectives: `Stroke width: 3-4px with natural variation. Lines should look HAND-DRAWN with felt-tip pen - slightly wiggly, organic, imperfect but confident. All shapes must be FULLY ENCLOSED for flood-fill coloring. Large readable regions (minimum 5mm) favored over tiny details. Overlapping elements must each form closed colorable areas. Rounded corners on all shapes. Gap size: 4mm minimum.`,
+    isFloodFillFriendly: true,
+    organicLineQuality: true,
+    recommendedTemperature: 0.85, // Balanced warmth with some organic variety
+    anatomyGuidance: `COZY ANATOMY: Soft rounded forms, slightly simplified. Mitten hands or 4 fingers OK. Chunky proportions preferred. Bean-shaped bodies with stubby limbs are charming. Faces should be simple and friendly.`,
+  },
+
   // --- 1. Bold & Easy (Flagship Marker-Safe Style) ---
   'Bold & Easy': {
     id: 'kawaii_bold',
     label: 'Bold & Easy',
     sceneIntent: `Create a scene that evokes nostalgia and comfort. The viewer should feel safe, satisfied, and instantly drawn to color. Like rediscovering a beloved childhood coloring book.`,
     // STREAMLINED: Clear priorities - thick borders, clean backgrounds. Focus ONLY on the requested subject.
-    positivePrompt: `bold and easy coloring page, friendly whimsical scene featuring ONLY the requested subject, chibi proportions with simple dot eyes, rounded chunky forms, soft curved edges, simplified perspective, thick rounded decorative border frame, heavy vector outlines (4px stroke), high-contrast line art, simple hollow shapes, clean white background in empty areas, alcohol marker friendly, minimal detail, joyous composition, thick uniform line weight.`,
-    negativePrompt: `shading, gradients, greyscale, hatching, cross-hatching, stippling, sharp angles, scary, horror, intricate detail, thin lines, thin borders, angular borders, scratchy lines, distorted anatomy, noise, dithering, realism, photorealistic, sketch, texture, fur texture, dirty lines, solid black fills, tiny gaps, microscopic details, fine detail, background filled with decorative elements, cluttered background, busy background, unrelated objects, props not mentioned in prompt.`,
-    technicalDirectives: `Stroke width: 4px (Very Bold). All shapes convex or simple concave. Gap size: 5mm minimum (Marker Safe). Closed paths only (Watertight). Thick rounded border frame with 5-8% internal padding. Include ONLY elements explicitly described in the subject prompt.`,
+    positivePrompt: `bold and easy coloring page, friendly whimsical scene featuring ONLY the requested subject, chibi proportions with simple dot eyes, rounded chunky forms, soft curved edges, simplified perspective, thick rounded decorative border frame, heavy outlines (4px stroke) with subtle organic variation, high-contrast line art, simple hollow shapes, clean white background in empty areas, alcohol marker friendly, minimal detail, joyous composition, thick line weight with gentle hand-drawn feel.`,
+    negativePrompt: `shading, gradients, greyscale, hatching, cross-hatching, stippling, sharp angles, scary, horror, intricate detail, thin lines, thin details, thin borders, angular borders, scratchy lines, distorted anatomy, noise, dithering, realism, photorealistic, sketch, texture, fur texture, dirty lines, solid black fills, tiny gaps, microscopic details, fine detail, tiny repeating details, background filled with decorative elements, cluttered background, busy background, unrelated objects, props not mentioned in prompt.`,
+    technicalDirectives: `Stroke width: 4px (Very Bold) with subtle organic variation - not vector-perfect. All shapes convex or simple concave. Gap size: 5mm minimum (Marker Safe). Closed paths only (Watertight). Thick rounded border frame with 5-8% internal padding. Include ONLY elements explicitly described in the subject prompt. Large readable shapes for easy coloring.`,
     isFloodFillFriendly: true,
+    organicLineQuality: true,
     recommendedTemperature: 0.7, // Requires precision for thick consistent lines
     anatomyGuidance: `SIMPLIFIED ANATOMY: Chibi/cartoon style allowed. Mitten hands (no individual fingers) OK. 3-4 fingers acceptable. Round paw feet OK. Exaggerated head-to-body ratio (big head, small body) is desirable.`,
   },
@@ -57,10 +74,11 @@ export const STYLE_RULES: Record<string, StyleRule> = {
     id: 'kawaii_classic',
     label: 'Kawaii',
     sceneIntent: `Trigger protective, nurturing instincts. The viewer should feel like they're looking at a beloved plush toy come to life - irresistibly cute and innocent.`,
-    positivePrompt: `Japanese Kawaii mascot style, chibi proportions (1:1 head body), shimmering anime eyes, floating sparkles and bubbles, soft rounded vector shapes, marshmallow aesthetic, extremely cute, innocent expression, thick smooth ink lines.`,
-    negativePrompt: `realistic anatomy, scary, sharp edges, rough sketch, hatching, shading, grime, dirty, serious, aggressive, solid black eyes, unrelated objects, props not in prompt.`,
-    technicalDirectives: `Use uniform rounded line caps. No sharp points. Eyes must be large and distinct.`,
+    positivePrompt: `Japanese Kawaii mascot style, chibi proportions (1:1 head body), shimmering anime eyes, floating sparkles and bubbles, soft rounded forms, marshmallow aesthetic, extremely cute, innocent expression, thick smooth ink lines with gentle organic quality, all shapes fully enclosed for coloring.`,
+    negativePrompt: `realistic anatomy, scary, sharp edges, rough sketch, hatching, shading, grime, dirty, serious, aggressive, solid black eyes, thin lines, thin details, tiny repeating patterns, unrelated objects, props not in prompt.`,
+    technicalDirectives: `Use uniform rounded line caps with subtle organic warmth. No sharp points. Eyes must be large and distinct. All shapes fully enclosed - overlapping elements must still form closed colorable areas. Large readable regions preferred.`,
     isFloodFillFriendly: true,
+    organicLineQuality: true,
     recommendedTemperature: 0.8, // Needs consistency for cute proportions
     anatomyGuidance: `PLUSH TOY ANATOMY: 1:1 head-to-body ratio. Stub limbs OK. Mitten hands preferred. Dot eyes or large shimmering anime eyes. No detailed fingers required. Bean-shaped bodies acceptable.`,
   },
@@ -70,10 +88,11 @@ export const STYLE_RULES: Record<string, StyleRule> = {
     id: 'whimsical_storybook',
     label: 'Whimsical',
     sceneIntent: `Spark wonder and imagination. A doorway into a magical world where physics gently bends and everything feels enchanted.`,
-    positivePrompt: `whimsical storybook illustration, hand-drawn dip pen style, playful distortion, floating elements, magical atmosphere, curling vines, swirling wind lines, soft organic shapes, fairy tale aesthetic, charming and gentle.`,
-    negativePrompt: `rigid geometry, mechanical lines, scary, horror, stiff, corporate vector, technical drawing, heavy black fills, unrelated objects, props not in prompt.`,
-    technicalDirectives: `Use variable line width (thick swells and thin tapers) to mimic a nib pen. Allow slight physics-defying placement of objects.`,
+    positivePrompt: `whimsical storybook illustration, hand-drawn dip pen style with organic imperfect strokes, playful distortion, floating elements, magical atmosphere, curling vines, swirling wind lines, soft organic rounded shapes, fairy tale aesthetic, charming and gentle, all shapes fully enclosed for coloring, large readable areas.`,
+    negativePrompt: `rigid geometry, mechanical lines, vector-perfect strokes, scary, horror, stiff, corporate vector, technical drawing, heavy black fills, thin details, tiny repeating elements, unrelated objects, props not in prompt.`,
+    technicalDirectives: `Use variable line width (thick swells and thin tapers) to mimic a nib pen with natural hand-drawn wobble. Allow slight physics-defying placement of objects. All shapes must be fully enclosed - overlapping elements must still form closed colorable areas. Favor large readable shapes over microscopic details.`,
     isFloodFillFriendly: true,
+    organicLineQuality: true,
     recommendedTemperature: 1.0, // Benefits from creative variety
     anatomyGuidance: `STORYBOOK ANATOMY: Gentle exaggeration allowed. Maintain readable human/animal forms. Limbs can be elongated or curved whimsically but must remain functional and attached properly.`,
   },
@@ -161,10 +180,11 @@ export const STYLE_RULES: Record<string, StyleRule> = {
     id: 'cozy_hygge',
     label: 'Cozy',
     sceneIntent: `Wrap the viewer in warm nostalgia. The feeling of safety, softness, and deep comfort.`,
-    positivePrompt: `hygge aesthetic line art, warm and inviting atmosphere, soft cozy mood, rounded organic shapes, gentle curved lines, intimate close-up perspective, comforting composition, relaxed peaceful feeling, nostalgic warmth, soft touchable textures implied through line weight variation, welcoming scene.`,
-    negativePrompt: `cold, sharp, industrial, scary, aggressive, high energy, dynamic action, empty space, modern tech, jagged lines, unrelated objects, tea cups, coffee mugs, books, blankets, reading materials, hot beverages.`,
-    technicalDirectives: `Use short curved strokes to suggest soft textures (wool, fur) but keep them sparse to allow coloring. Perspective should be intimate and close-up. Do NOT add unrelated cozy props - focus only on the subject.`,
+    positivePrompt: `hygge aesthetic line art, warm and inviting atmosphere, soft cozy mood, rounded organic shapes, gentle curved lines with hand-drawn organic quality, intimate close-up perspective, comforting composition, relaxed peaceful feeling, nostalgic warmth, soft touchable textures implied through natural line weight variation, welcoming scene, all shapes fully enclosed for coloring.`,
+    negativePrompt: `cold, sharp, industrial, scary, aggressive, high energy, dynamic action, empty space, modern tech, jagged lines, vector-perfect mechanical lines, thin details, tiny repeating patterns, unrelated objects, tea cups, coffee mugs, books, blankets, reading materials, hot beverages.`,
+    technicalDirectives: `Use short curved strokes to suggest soft textures (wool, fur) but keep them sparse to allow coloring. Lines should have organic hand-drawn warmth - never vector-clean. Perspective should be intimate and close-up. All shapes must be fully enclosed. Do NOT add unrelated cozy props - focus only on the subject. Large readable shapes for easy coloring.`,
     isFloodFillFriendly: true,
+    organicLineQuality: true,
     recommendedTemperature: 0.9, // Balanced warmth with consistency
   },
 
@@ -237,42 +257,42 @@ export const COMPLEXITY_RULES: Record<string, ComplexityRule> = {
   'Very Simple': {
     id: 'level_1',
     label: 'Level 1: Minimalist (Bold)',
-    objectDensityInstruction: `Generate EXACTLY ONE central object. It must occupy 60-80% of the canvas. NO background elements; pure white void. Ensure high white-space ratio. No solid black fills.`,
-    lineWeightInstruction: `Bold, clear outlines (1.5mm - 2mm). ALL shapes must be hollow.`,
+    objectDensityInstruction: `Generate EXACTLY ONE central object. It must occupy 60-80% of the canvas. NO background elements; pure white void. Ensure high white-space ratio. No solid black fills. LARGE READABLE SHAPES ONLY - no tiny details.`,
+    lineWeightInstruction: `Bold, clear outlines (1.5mm - 2mm). ALL shapes must be hollow. Thick rounded strokes.`,
     backgroundInstruction: 'White void. No patterns.',
-    negativePrompt: `background, texture, tiny details, complex patterns, multiple objects, text, hatching, solid black fills, filled shapes, heavy shadows, silhouette.`,
+    negativePrompt: `background, texture, tiny details, thin details, fine details, complex patterns, multiple objects, text, hatching, solid black fills, filled shapes, heavy shadows, silhouette, microscopic elements, tiny repeating patterns.`,
   },
   'Simple': {
     id: 'level_2',
     label: 'Level 2: Simple (Clear)',
-    objectDensityInstruction: `Simple scene, 1-3 primary subjects. Basic background hints only. Clear separation.`,
-    lineWeightInstruction: `Standard Bold outlines (1mm - 1.5mm).`,
-    backgroundInstruction: `Simple contextual background. No pattern fills.`,
-    negativePrompt: `intricate, hatching, tiny stars, excessive foliage, abstract noise, grayscale shading, solid black areas, filled regions.`,
+    objectDensityInstruction: `Simple scene, 1-3 primary subjects. Basic background hints only. Clear separation. Large readable shapes for easy coloring - avoid clutter and tiny repeating details.`,
+    lineWeightInstruction: `Standard Bold outlines (1mm - 1.5mm). Thick rounded strokes.`,
+    backgroundInstruction: `Simple contextual background. No pattern fills. Keep shapes large and readable.`,
+    negativePrompt: `intricate, hatching, tiny stars, tiny details, thin details, excessive foliage, abstract noise, grayscale shading, solid black areas, filled regions, microscopic elements, cluttered composition.`,
   },
   'Moderate': {
     id: 'level_3',
     label: 'Level 3: Moderate (Standard)',
-    objectDensityInstruction: `Full scene. Include 4-6 REST AREAS (empty white space OR simple solid shapes - NOT decorative motifs like clouds/flowers). Distribute across composition for breathing space. Avoid wall-to-wall detail.`,
-    lineWeightInstruction: `Standard line weight (0.8mm - 1mm). Min gap: 2mm.`,
-    backgroundInstruction: `Complete scene with intentional empty regions. Background can be stylized but must include white space.`,
-    negativePrompt: `vast empty spaces, messy sketch, blurry lines, background filled with decorative elements.`,
+    objectDensityInstruction: `Cozy, moderately full scene. Include 4-6 REST AREAS (empty white space OR simple solid shapes - NOT decorative motifs like clouds/flowers). Distribute across composition for breathing space. Avoid wall-to-wall detail. Large readable shapes - avoid clutter and tiny repeating details.`,
+    lineWeightInstruction: `Standard line weight (0.8mm - 1mm). Min gap: 2mm. Favor readable shapes over microscopic detail.`,
+    backgroundInstruction: `Complete scene with intentional empty regions. Background can be stylized but must include white space. All shapes large enough to color comfortably.`,
+    negativePrompt: `vast empty spaces, messy sketch, blurry lines, background filled with decorative elements, tiny repeating details, microscopic patterns, cluttered busy composition.`,
   },
   'Intricate': {
     id: 'level_4',
     label: 'Level 4: Intricate (Detailed)',
-    objectDensityInstruction: `High density with objects/patterned regions. Include 2-4 REST AREAS (empty white space or simple anchor shapes - NOT decorative motifs). Balance detail clusters with calm regions.`,
+    objectDensityInstruction: `High density with objects/patterned regions. Include 2-4 REST AREAS (empty white space or simple anchor shapes - NOT decorative motifs). Balance detail clusters with calm regions. Shapes should still be readable - favor medium closed regions over microscopic texture.`,
     lineWeightInstruction: `Fine line work (0.3mm - 0.5mm). Min gap: ~1-1.2mm. Favor medium/large closed regions over microscopic texture.`,
-    backgroundInstruction: `Detailed background with closed colorable regions (no stipple/hatching). Must include some empty white space.`,
-    negativePrompt: `simple shapes, thick lines, blurry details, wall-to-wall decorative motifs.`,
+    backgroundInstruction: `Detailed background with closed colorable regions (no stipple/hatching). Must include some empty white space. Shapes remain colorable.`,
+    negativePrompt: `simple shapes, thick lines, blurry details, wall-to-wall decorative motifs, unclosable microscopic areas.`,
   },
   'Extreme Detail': {
     id: 'level_5',
     label: 'Level 5: Masterwork (Micro)',
-    objectDensityInstruction: `Maximum density permitted. Hidden object style. Microscopic details. Include 1-2 larger simple shapes as visual anchors.`,
-    lineWeightInstruction: `Micro-fine lines (0.1mm - 0.2mm).`,
-    backgroundInstruction: `Fractal density. No white space larger than 1cm.`,
-    negativePrompt: `simple, easy, empty space, thick lines.`,
+    objectDensityInstruction: `Maximum density permitted. Hidden object style. Include 1-2 larger simple shapes as visual anchors. Even small details should remain colorable closed shapes.`,
+    lineWeightInstruction: `Micro-fine lines (0.1mm - 0.2mm). All regions still enclosed for coloring.`,
+    backgroundInstruction: `Fractal density. No white space larger than 1cm. All shapes closed and colorable.`,
+    negativePrompt: `simple, easy, empty space, thick lines, unclosed regions.`,
   }
 };
 
@@ -281,48 +301,62 @@ export const COMPLEXITY_RULES: Record<string, ComplexityRule> = {
 // ============================================================================
 
 export const SYSTEM_INSTRUCTION = `
-You are a MASTERFUL Coloring Book Illustrator and Vector Artist with decades of experience creating bestselling coloring books.
+You are a MASTERFUL Coloring Book Illustrator with decades of experience creating bestselling coloring books.
 Your goal is to generate high-quality, black-and-white line art that is BEAUTIFUL, INVITING, and a JOY to color.
 
 ARTISTIC GUIDELINES & CONSTRAINTS:
 
 == CORE QUALITY ==
-1.  OUTPUT: Pure black lines on pure white (#FFFFFF) background. No gray, no gradients, no texture.
-2.  LINE QUALITY: Crisp, confident, continuous lines. Emulate professional vector art with smooth curves and deliberate strokes.
+1.  OUTPUT: Pure black lines (#000000) on pure white (#FFFFFF) background. NO gray, NO gradients, NO texture.
+2.  LINE QUALITY: Thick, rounded, confident strokes. Lines should feel hand-drawn with natural organic variation - NOT vector-clean or computer-perfect. Think felt-tip pen aesthetic with gentle wobble.
 3.  COMPOSITION: Main subject must fit the canvas with 8-10% margin on all edges. Nothing touches the border.
 
+== SHAPE CLOSURE & OVERLAP RULES (CRITICAL) ==
+4.  ALL SHAPES FULLY ENCLOSED: Every visible area must be a closed, bounded region suitable for flood-fill coloring. No open paths, no incomplete shapes.
+5.  OVERLAP RULE: When elements overlap, each resulting visible region must STILL form a fully enclosed colorable area. The intersection creates new bounded shapes - each one must be closed.
+6.  ROUNDED SOFT FORMS: Use rounded, soft forms only. Avoid sharp angular shapes. Edges should be curved and friendly.
+
 == MARKETABILITY & COLORING APPEAL ==
-4.  INVITING SHAPES: Design shapes that BEG to be colored. Include a satisfying mix of:
+7.  LARGE READABLE SHAPES: Design shapes that BEG to be colored. Include a satisfying mix of:
     - 2-3 LARGE, simple anchor shapes for quick coloring wins.
     - Medium-sized shapes for engaging detail work.
-    - Small accents (but NOT microscopic) for finishing touches.
-5.  VISUAL FLOW: Guide the eye through the composition. Avoid "floating object syndrome" where elements feel randomly scattered. Connect elements visually (overlapping, proximity, shared ground lines).
-6.  MEANINGFUL OPEN SPACES: Instead of empty voids, make open areas part of the scene (e.g., clear sky, calm water, smooth tabletop, side of a building). These give the colorist rest areas that feel intentional.
-7.  THE "COLORING SATISFACTION FACTOR": Imagine someone coloring this with markers. Are there enough medium-large areas to feel productive? Are small areas still manageable? Optimize for this feeling.
+    - Avoid tiny details, microscopic elements, or cluttered repeating patterns.
+8.  VISUAL FLOW: Guide the eye through the composition. Avoid "floating object syndrome" where elements feel randomly scattered. Connect elements visually (overlapping, proximity, shared ground lines).
+9.  MEANINGFUL OPEN SPACES: Instead of empty voids, make open areas part of the scene (e.g., clear sky, calm water, smooth tabletop). These give the colorist rest areas that feel intentional.
+10. THE "COLORING SATISFACTION FACTOR": Imagine someone coloring this with markers. Are there enough medium-large areas to feel productive? Are shapes readable and easy to color? Optimize for this feeling.
 
 == TECHNICAL CONSTRAINTS ==
-8.  TOPOLOGY: Closed, watertight paths for digital flood fill. All regions must be clearly bounded.
-9.  NO BLACK FILLS: All distinct regions must be white/empty for the user to color.
-10. NO SHADING TEXTURES: Absolutely no stippling, hatching, cross-hatching, halftone, dithering, or dots-for-shading.
-11. SEPARATION: Maintain 3-5mm minimum gap between unrelated lines. Avoid tangents (near-touching lines).
-12. SCALE & PROPORTION: Objects must have realistic relative proportions. Anchor scene with primary subject and scale everything else appropriately.
-13. NO TEXT OR WATERMARKS (unless explicitly requested).
+11. TOPOLOGY: Closed, watertight paths for digital flood fill. All regions must be clearly bounded.
+12. NO BLACK FILLS: All distinct regions must be white/empty for the user to color. No solid black areas.
+13. NO SHADING TEXTURES: Absolutely no stippling, hatching, cross-hatching, halftone, dithering, dots-for-shading, texture strokes, or sketch lines.
+14. NO THIN DETAILS: Avoid thin lines, fine details, or tiny repeating patterns. Keep everything large and readable.
+15. SEPARATION: Maintain 3-5mm minimum gap between unrelated lines. Avoid tangents (near-touching lines).
+16. SCALE & PROPORTION: Objects must have realistic relative proportions. Anchor scene with primary subject and scale everything else appropriately.
+17. NO TEXT OR WATERMARKS (unless explicitly requested).
 
 == THE ARTIST'S TOUCH ==
-14. NARRATIVE MOMENT: Every page should capture a "moment" or tell a micro-story. A cat isn't just sitting; it's "napping in a sunbeam." A flower isn't just there; it's "swaying in a gentle breeze."
-15. DELIGHTFUL DETAILS: Add one small, surprising, or charming detail that fits the theme and rewards close inspection.
+18. MOOD: Cute, playful, cozy, joyful. The illustration should feel warm and inviting.
+19. NARRATIVE MOMENT: Every page should capture a "moment" or tell a micro-story. A cat isn't just sitting; it's "napping in a sunbeam."
+20. DELIGHTFUL DETAILS: Add one small, surprising, or charming detail that fits the theme and rewards close inspection.
 
 == ANATOMICAL INTEGRITY ==
-16. CORRECT LIMB COUNT: Humans have exactly 2 arms and 2 legs. Animals match their species (dogs: 4 legs, birds: 2 wings, octopus: 8 tentacles).
-17. HANDS & FEET: Unless stylized (mitten hands, paws), humans have 5 fingers per hand and 5 toes per foot.
-18. FACIAL FEATURES: Faces are symmetric with 2 eyes, 1 nose, 1 mouth in anatomically correct positions.
-19. NO MUTATIONS: No extra limbs, fused body parts, floating appendages, or distorted anatomy.
+21. CORRECT LIMB COUNT: Humans have exactly 2 arms and 2 legs. Animals match their species (dogs: 4 legs, birds: 2 wings, octopus: 8 tentacles).
+22. HANDS & FEET: Unless stylized (mitten hands, paws), humans have 5 fingers per hand and 5 toes per foot.
+23. FACIAL FEATURES: Faces are symmetric with 2 eyes, 1 nose, 1 mouth in anatomically correct positions.
+24. NO MUTATIONS: No extra limbs, fused body parts, floating appendages, or distorted anatomy.
 
 == PHYSICAL COHERENCE ==
-20. NATURAL POSES: Limbs must be in physically possible positions. Joints bend in correct directions only.
-21. CLEAR BOUNDARIES: Bodies do NOT merge into objects, furniture, or backgrounds. A character sits ON a chair, not fused with it.
-22. PROPER LAYERING: When objects overlap, one is clearly in front with logical occlusion.
-23. GROUNDED ELEMENTS: Objects and characters appear grounded unless intentionally floating (flying birds, balloons).
+25. NATURAL POSES: Limbs must be in physically possible positions. Joints bend in correct directions only.
+26. CLEAR BOUNDARIES: Bodies do NOT merge into objects, furniture, or backgrounds. A character sits ON a chair, not fused with it.
+27. PROPER LAYERING: When objects overlap, one is clearly in front with logical occlusion - and BOTH resulting visible regions remain closed colorable shapes.
+28. GROUNDED ELEMENTS: Objects and characters appear grounded unless intentionally floating (flying birds, balloons).
+
+== LINE AESTHETIC SUMMARY ==
+The illustration should look like it was drawn with a FELT-TIP PEN by a skilled artist:
+- Thick, rounded, slightly wiggly outlines
+- Hand-drawn and imperfect, NEVER vector-clean
+- Gentle natural line variation
+- Confident but organic strokes
 `;
 
 export const buildPrompt = (
@@ -379,7 +413,12 @@ export const buildPrompt = (
   `;
 
   if (!style.allowsTextureShading) {
-    negativePrompts += `, hatching, cross-hatching, stippling, halftone, dithering, dots used for shading, engraving texture, etching texture, scratchy shading, scribble shading, texture used as shading, micro-texture, microscopic details, ultra fine noise`;
+    negativePrompts += `, hatching, cross-hatching, stippling, halftone, dithering, dots used for shading, engraving texture, etching texture, scratchy shading, scribble shading, texture used as shading, micro-texture, microscopic details, ultra fine noise, texture strokes, sketch lines`;
+  }
+
+  // Apply organic line quality constraints for non-vector styles
+  if (style.organicLineQuality) {
+    negativePrompts += `, vector-clean lines, computer-perfect strokes, mechanical precision, ruler-straight lines, sterile digital look`;
   }
 
   if (!includeText) {
@@ -402,7 +441,7 @@ export const buildPrompt = (
   // 2. Complexity is low (Very Simple, Simple) and style allows it - "Anchor Rule"
   const isYoungAudience = ['Toddlers', 'Preschool', 'Kids'].some(a => audienceLabel.includes(a));
   const isLowComplexity = ['Very Simple', 'Simple'].includes(complexityKey);
-  const kidFriendlyStyles = ['Bold & Easy', 'Kawaii', 'Cartoon', 'Whimsical'];
+  const kidFriendlyStyles = ['Cozy Hand-Drawn', 'Bold & Easy', 'Kawaii', 'Cartoon', 'Whimsical', 'Cozy'];
 
   // Logic: Young audience GETS a border. Low complexity GETS a border (if style fits). 
   // We expand the "kid friendly" check to strict audience check.
@@ -414,13 +453,16 @@ export const buildPrompt = (
 
   // Positive reinforcements for critical constraints (helps model follow rules)
   const POSITIVE_REINFORCEMENTS = `
-USE ONLY: Solid clean lines with no texture or shading techniques.
+LINE STYLE: Thick, rounded, slightly wiggly outlines - hand-drawn felt-tip pen aesthetic, NEVER vector-clean.
+TEXTURE BAN: No shading, no crosshatching, no stippling, no texture strokes, no sketch lines.
+CLOSURE RULE: All shapes fully enclosed and colorable. Overlapping elements must still form closed areas.
+SHAPE QUALITY: Rounded soft forms only. Large readable shapes for easy coloring. NO thin details or tiny patterns.
 DRAW WITH: Closed watertight paths suitable for digital flood fill.
-MAINTAIN: Consistent line weight throughout the composition.
 PRESERVE: 8-10% blank margin on all edges - nothing touches the border.
 BACKGROUND: Pure white paper (#FFFFFF) - no cream, beige, or texture.
 COMPOSITION: Connect elements visually to avoid floating object syndrome.
-SATISFACTION: Include a mix of large anchor shapes, medium detail areas, and small accents.
+SATISFACTION: Include a mix of large anchor shapes and medium detail areas. Avoid microscopic elements.
+MOOD: Cute, playful, cozy, joyful.
 `;
 
   // Creative Spark - encourage one delightful detail

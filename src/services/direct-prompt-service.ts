@@ -266,7 +266,7 @@ OUTPUT FORMAT (JSON only, no markdown):
   "whiteSpaceRatio": "[percentage, e.g. '40%']",
   "hasBorder": [true|false],
   "borderStyle": "[thick-rounded|thin-rectangular|decorative|none]",
-  "styleFamily": "[Bold & Easy|Kawaii|Whimsical|Cartoon|Botanical|Mandala|Fantasy|Gothic|Cozy|Geometric|Wildlife|Floral|Abstract|Realistic]",
+  "styleFamily": "[Cozy Hand-Drawn|Bold & Easy|Kawaii|Whimsical|Cartoon|Botanical|Mandala|Fantasy|Gothic|Cozy|Geometric|Wildlife|Floral|Abstract|Realistic]",
   "temperature": [0.7-1.2],
   "promptFragment": "[2-3 sentences describing the exact visual style for prompt injection]"
 }
@@ -373,13 +373,13 @@ OUTPUT FORMAT (JSON only, no markdown):
   "body": "[Body type and proportions: athletic, slim, round, chibi, etc.]",
   "signatureFeatures": "[CRITICAL - List ALL distinctive features: scars, birthmarks, accessories, jewelry, tattoos, unique clothing elements that MUST appear in every image]",
   "outfitCanon": "[Detailed outfit description: main clothing, colors (described not shown), accessories, footwear]",
-  "styleLock": "[Art style: 'Bold & Easy', 'Kawaii', 'Realistic', 'Cartoon', etc.]"
+  "styleLock": "[Art style: 'Cozy Hand-Drawn', 'Bold & Easy', 'Kawaii', 'Realistic', 'Cartoon', etc.]"
 }
 
 ANALYSIS GUIDELINES:
 1. Be SPECIFIC about signature features - these are the anchors for consistency
 2. Describe what you SEE, not what you imagine
-3. For styleLock, match to the closest category: Bold & Easy, Kawaii, Whimsical, Cartoon, Botanical, Mandala, Fantasy, Gothic, Cozy, Geometric, Wildlife, Floral, Abstract, Realistic
+3. For styleLock, match to the closest category: Cozy Hand-Drawn, Bold & Easy, Kawaii, Whimsical, Cartoon, Botanical, Mandala, Fantasy, Gothic, Cozy, Geometric, Wildlife, Floral, Abstract, Realistic
 4. If the character has text/name visible, use it for the name field
 5. Focus on VISUAL elements that can be replicated in line art
 

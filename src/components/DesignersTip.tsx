@@ -7,6 +7,10 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const STYLE_TIPS: Record<string, { title: string; tip: string }> = {
+    'Cozy Hand-Drawn': {
+        title: 'Felt-Tip Marker Style',
+        tip: 'Use chunky felt-tip markers or brush pens! The slightly wobbly lines are designed to embrace imperfection - let your strokes be organic and playful.'
+    },
     'Bold & Easy': {
         title: 'Beginner Friendly',
         tip: 'Use markers or crayons! The thick lines are forgiving and perfect for solid color fills.'
