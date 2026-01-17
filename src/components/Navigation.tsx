@@ -42,6 +42,7 @@ export const Navigation: React.FC = () => {
               <Link to="/studio" className={`nav-link ${isActive('/studio') ? 'text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'}`}>Studio</Link>
               <Link to="/dashboard" className={`nav-link ${isActive('/dashboard') ? 'text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'}`}>Dashboard</Link>
               <Link to="/gallery" className="nav-link text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">Gallery</Link>
+              <Link to="/updates" className={`nav-link ${isActive('/updates') ? 'text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'}`}>Updates</Link>
               {/* Hide Resources and Help for the dev account */}
               {userEmail !== 'jamie@myjoe.app' && (
                 <>
