@@ -7,11 +7,12 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import joeMascot from '../assets/joe-mascot.png';
-import logoFull from '../assets/logo_full.png';
+// import logoFull from '../assets/logo_full.png'; // No longer used
+import { BrandLogo } from './BrandLogo';
 
 export const Navigation: React.FC = () => {
   const location = useLocation();
-  const { userEmail, isAdmin, logout, avatarUrl } = useAuth();
+  const { userEmail, isAdmin, logout, avatarUrl, isAuthenticated } = useAuth();
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -20,7 +21,9 @@ export const Navigation: React.FC = () => {
       <div className="h-full max-w-[1920px] mx-auto px-6 flex items-center justify-between">
         {/* Left: Logo/Brand */}
         <div className="flex items-center gap-2">
-          <img src={logoFull} alt="Myjoe Creative Suite" className="h-12 object-contain drop-shadow-md hover:scale-105 transition-transform duration-300" />
+          <Link to={isAuthenticated ? "/dashboard" : "/"} className="block hover:scale-105 transition-transform duration-300">
+            <BrandLogo className="h-10 w-32" />
+          </Link>
         </div>
 
         {/* Center: Nav Links */}

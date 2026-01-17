@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/settingsContext';
+import { BrandLogo } from '../components/BrandLogo';
 
 // Import floating assets
 
@@ -67,14 +68,14 @@ const LandingPage: React.FC = () => {
                     className="glass-panel p-8 rounded-2xl border border-[hsl(var(--glass-border))] shadow-2xl backdrop-blur-xl bg-[hsl(var(--glass-bg))]"
                 >
                     <div className="text-center mb-8">
-                        <motion.h1
+                        <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             transition={{ delay: 0.2 }}
-                            className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-[hsl(var(--foreground))] via-[hsl(var(--foreground))]/80 to-[hsl(var(--foreground))]/50 mb-2 font-display"
+                            className="flex justify-center mb-4"
                         >
-                            myjoe
-                        </motion.h1>
+                            <BrandLogo className="h-24 w-72" />
+                        </motion.div>
                         <p className="text-[hsl(var(--muted-foreground))] text-sm tracking-wide uppercase">Private Access</p>
                     </div>
 

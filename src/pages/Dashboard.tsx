@@ -6,6 +6,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Navigation } from '../components/Navigation';
+import { BrandLogo } from '../components/BrandLogo';
 
 // Import custom 3D icons
 import coloringStudioIcon from '../assets/coloring-studio.png';
@@ -51,7 +52,7 @@ import { useAuth } from '../context/AuthContext';
 
 const tiles = [
     {
-        title: 'Coloring Book Studio',
+        title: 'Book Studio',
         description: 'Create stunning AI-generated coloring pages',
         icon: coloringStudioIcon,
         to: '/studio',
@@ -189,9 +190,12 @@ export const Dashboard: React.FC = () => {
             <div className="aurora-veil opacity-50 dark:opacity-100 transition-opacity duration-500" />
 
             <header className="dashboard-header">
-                <h1 className="dashboard-title">
+                <div className="flex justify-center mb-2">
+                    <BrandLogo className="h-20 w-64" />
+                </div>
+                {/* <h1 className="dashboard-title">
                     <span className="text-gradient-sleek">Myjoe</span> Creative Suite
-                </h1>
+                </h1> */}
                 <p className="dashboard-subtitle">
                     Professional AI-Powered Design Tools
                 </p>
