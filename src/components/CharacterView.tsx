@@ -45,16 +45,6 @@ export const CharacterView: React.FC<CharacterViewProps> = ({
 
             <div className="relative z-10 w-full max-w-xl aspect-[3/4] bg-[hsl(var(--card))] rounded-2xl shadow-2xl border border-[hsl(var(--border))] overflow-hidden flex flex-col">
 
-                {/* Header/Title Bar */}
-                <div className="h-12 border-b border-[hsl(var(--border))] bg-[hsl(var(--muted))]/10 flex items-center px-6 justify-between">
-                    <span className="font-mono text-xs text-[hsl(var(--muted-foreground))] uppercase tracking-widest">
-                        HERO REFERENCE CARD
-                    </span>
-                    <span className="font-bold text-sm text-[hsl(var(--foreground))]">
-                        {projectName || "UNTITLED HERO"}
-                    </span>
-                </div>
-
                 {/* Image Area */}
                 <div className="flex-1 bg-white relative group flex items-center justify-center p-4">
                     {isGenerating ? (
@@ -100,12 +90,6 @@ export const CharacterView: React.FC<CharacterViewProps> = ({
                             <p className="text-xs max-w-xs text-center">Generate one or click to upload your own reference.</p>
                         </div>
                     )}
-                </div>
-
-                {/* Footer Info */}
-                <div className="h-10 border-t border-[hsl(var(--border))] bg-[hsl(var(--muted))]/10 flex items-center px-4 justify-between text-[10px] text-[hsl(var(--muted-foreground))] font-mono">
-                    <span>ID: {isGenerating ? 'GENERATING...' : (baseImageUrl ? 'HERO-001' : '---')}</span>
-                    <span>STATUS: {baseImageUrl ? 'READY' : 'WAITING'}</span>
                 </div>
             </div>
 

@@ -51,7 +51,9 @@ MATERIAL CONSISTENCY RULES:
 - BACK VIEW LOGIC: Show the back of the head through transparent helmets. Do NOT render as opaque.
 
 TECHNICAL STYLE:
-Coloring book line art, clean monoline black outlines, bold thick lines, no shading, no gradients, no gray tones.
+STRICTLY BLACK AND WHITE. NO COLOR.
+Coloring book line art, clean monoline black outlines, bold thick lines, no shading/gradients.
+NO GRAY TONES. PURE BLACK ON WHITE.
 White background, high contrast. All 5 views clearly separated in a row.
 `.trim();
     }
@@ -104,8 +106,10 @@ MATERIAL CONSISTENCY RULES:
 - SOLIDITY: If a material is solid (e.g., metal armor), it must remain solid in all views.
 
 TECHNICAL STYLE:
+STRICTLY BLACK AND WHITE. NO COLOR.
 Coloring book line art, clean monoline black outlines, bold thick lines matching "${dna.styleLock}" style.
-No shading, no gradients, no gray. White background, high contrast.
+NO SHADING, NO GRADIENTS, NO GRAY SCALES, NO COLOR FILLS.
+White background, high contrast.
 `.trim();
 };
 

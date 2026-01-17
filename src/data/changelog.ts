@@ -15,6 +15,20 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
     {
+        id: 'update-2026-01-17-hero-consistency',
+        date: '2026-01-17',
+        title: 'Hero Card Consistency & UI Polish',
+        version: 'v2.1.1',
+        description: 'Fixed critical consistency issues in hero generation and cleaned up the reference card UI.',
+        changes: [
+            'Refined Hero Card UI: Removed header and footer for a cleaner look',
+            'Enforced strict Black & White output for all hero generations',
+            'Implemented Material Consistency rules (solid helmets, transparent visors)',
+            'Fixed TypeScript syntax errors in prompt generation logic'
+        ],
+        type: 'patch'
+    },
+    {
         id: 'update-2026-01-17',
         date: '2026-01-17',
         title: 'Development Update',
