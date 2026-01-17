@@ -39,6 +39,10 @@ export interface ComplexityRule {
 // 2. The Ultimate Configuration Matrix (All 13 Styles)
 // ============================================================================
 
+// --- SHARED ANTI-REPETITION CONSTANTS ---
+const ANTI_REPETITION_NEGATIVE = `obsessive labeling, logos on every object, repetitive filler icons, floating random objects, text, watermark, signature, logo, copyright`;
+const ANTI_STAMPING_DIRECTIVE = `Avoid stamping the same motif (like a coffee bean or heart) on every single object.`;
+
 export const STYLE_RULES: Record<string, StyleRule> = {
   // --- 0. Cozy Hand-Drawn (NEW Flagship Felt-Tip Style) ---
   'Cozy Hand-Drawn': {
@@ -46,8 +50,8 @@ export const STYLE_RULES: Record<string, StyleRule> = {
     label: 'Cozy Hand-Drawn',
     sceneIntent: `Create a scene that feels like it was lovingly drawn by hand with a felt-tip pen. The viewer should feel wrapped in warmth and whimsy - like opening a treasured handmade gift. Evoke cozy comfort, playful joy, and the tactile pleasure of imperfect art.`,
     positivePrompt: `casual hand-drawn coloring book line art, cozy whimsical feel, thick rounded SLIGHTLY WIGGLY outlines, hand-drawn imperfect aesthetic like a felt-tip marker, gentle natural line variation, NEVER vector-clean or computer-perfect, soft organic strokes with subtle wobble, rounded soft forms only, large readable shapes for easy coloring, cute playful joyful mood, varied props and details, moderately full cozy scene without clutter, all shapes fully enclosed and colorable, overlapping elements still form closed colorable areas, thick black lines on pure white background.`,
-    negativePrompt: `vector-clean lines, computer-perfect strokes, mechanical precision, ruler-straight lines, thin lines, thin details, fine details, tiny repeating details, microscopic elements, sharp angular forms, grayscale, shading, halftone, crosshatching, stippling, texture strokes, sketch lines, solid black fills, open paths, incomplete shapes, cluttered busy composition, scary, horror, aggressive, unrelated objects, props not in prompt, obsessive labeling, logos on every object, repetitive filler icons, floating random objects.`,
-    technicalDirectives: `Stroke width: 3-4px with natural variation. Lines should look HAND-DRAWN with felt-tip pen - slightly wiggly, organic, imperfect but confident. All shapes must be FULLY ENCLOSED for flood-fill coloring. Large readable regions (minimum 5mm) favored over tiny details. Overlapping elements must each form closed colorable areas. Rounded corners on all shapes. Gap size: 4mm minimum. Avoid stamping the same motif (like a coffee bean or heart) on every single object.`,
+    negativePrompt: `vector-clean lines, computer-perfect strokes, mechanical precision, ruler-straight lines, thin lines, thin details, fine details, tiny repeating details, microscopic elements, sharp angular forms, grayscale, shading, halftone, crosshatching, stippling, texture strokes, sketch lines, solid black fills, open paths, incomplete shapes, cluttered busy composition, scary, horror, aggressive, unrelated objects, props not in prompt, ${ANTI_REPETITION_NEGATIVE}.`,
+    technicalDirectives: `Stroke width: 3-4px with natural variation. Lines should look HAND-DRAWN with felt-tip pen - slightly wiggly, organic, imperfect but confident. All shapes must be FULLY ENCLOSED for flood-fill coloring. Large readable regions (minimum 5mm) favored over tiny details. Overlapping elements must each form closed colorable areas. Rounded corners on all shapes. Gap size: 4mm minimum. ${ANTI_STAMPING_DIRECTIVE}`,
     isFloodFillFriendly: true,
     organicLineQuality: true,
     recommendedTemperature: 0.85, // Balanced warmth with some organic variety
@@ -61,8 +65,8 @@ export const STYLE_RULES: Record<string, StyleRule> = {
     sceneIntent: `Create a scene that evokes nostalgia and comfort. The viewer should feel safe, satisfied, and instantly drawn to color. Like rediscovering a beloved childhood coloring book.`,
     // STREAMLINED: Clear priorities - thick borders, clean backgrounds. Focus ONLY on the requested subject.
     positivePrompt: `bold and easy coloring page, friendly whimsical scene featuring ONLY the requested subject, chibi proportions with simple dot eyes, rounded chunky forms, soft curved edges, simplified perspective, thick rounded decorative border frame, heavy outlines (4px stroke) with subtle organic variation, high-contrast line art, simple hollow shapes, clean white background in empty areas, alcohol marker friendly, minimal detail, joyous composition, thick line weight with gentle hand-drawn feel.`,
-    negativePrompt: `shading, gradients, greyscale, hatching, cross-hatching, stippling, sharp angles, scary, horror, intricate detail, thin lines, thin details, thin borders, angular borders, scratchy lines, distorted anatomy, noise, dithering, realism, photorealistic, sketch, texture, fur texture, dirty lines, solid black fills, tiny gaps, microscopic details, fine detail, tiny repeating details, background filled with decorative elements, cluttered background, busy background, unrelated objects, props not mentioned in prompt.`,
-    technicalDirectives: `Stroke width: 4px (Very Bold) with subtle organic variation - not vector-perfect. All shapes convex or simple concave. Gap size: 5mm minimum (Marker Safe). Closed paths only (Watertight). Thick rounded border frame with 5-8% internal padding. Include ONLY elements explicitly described in the subject prompt. Large readable shapes for easy coloring.`,
+    negativePrompt: `shading, gradients, greyscale, hatching, cross-hatching, stippling, sharp angles, scary, horror, intricate detail, thin lines, thin details, thin borders, angular borders, scratchy lines, distorted anatomy, noise, dithering, realism, photorealistic, sketch, texture, fur texture, dirty lines, solid black fills, tiny gaps, microscopic details, fine detail, tiny repeating details, background filled with decorative elements, cluttered background, busy background, unrelated objects, props not mentioned in prompt, ${ANTI_REPETITION_NEGATIVE}.`,
+    technicalDirectives: `Stroke width: 4px (Very Bold) with subtle organic variation - not vector-perfect. All shapes convex or simple concave. Gap size: 5mm minimum (Marker Safe). Closed paths only (Watertight). Thick rounded border frame with 5-8% internal padding. Include ONLY elements explicitly described in the subject prompt. Large readable shapes for easy coloring. ${ANTI_STAMPING_DIRECTIVE}`,
     isFloodFillFriendly: true,
     organicLineQuality: true,
     recommendedTemperature: 0.7, // Requires precision for thick consistent lines
@@ -75,8 +79,8 @@ export const STYLE_RULES: Record<string, StyleRule> = {
     label: 'Kawaii',
     sceneIntent: `Trigger protective, nurturing instincts. The viewer should feel like they're looking at a beloved plush toy come to life - irresistibly cute and innocent.`,
     positivePrompt: `Japanese Kawaii mascot style, chibi proportions (1:1 head body), shimmering anime eyes, floating sparkles and bubbles, soft rounded forms, marshmallow aesthetic, extremely cute, innocent expression, thick smooth ink lines with gentle organic quality, all shapes fully enclosed for coloring.`,
-    negativePrompt: `realistic anatomy, scary, sharp edges, rough sketch, hatching, shading, grime, dirty, serious, aggressive, solid black eyes, thin lines, thin details, tiny repeating patterns, unrelated objects, props not in prompt.`,
-    technicalDirectives: `Use uniform rounded line caps with subtle organic warmth. No sharp points. Eyes must be large and distinct. All shapes fully enclosed - overlapping elements must still form closed colorable areas. Large readable regions preferred.`,
+    negativePrompt: `realistic anatomy, scary, sharp edges, rough sketch, hatching, shading, grime, dirty, serious, aggressive, solid black eyes, thin lines, thin details, tiny repeating patterns, unrelated objects, props not in prompt, ${ANTI_REPETITION_NEGATIVE}.`,
+    technicalDirectives: `Use uniform rounded line caps with subtle organic warmth. No sharp points. Eyes must be large and distinct. All shapes fully enclosed - overlapping elements must still form closed colorable areas. Large readable regions preferred. ${ANTI_STAMPING_DIRECTIVE}`,
     isFloodFillFriendly: true,
     organicLineQuality: true,
     recommendedTemperature: 0.8, // Needs consistency for cute proportions
@@ -89,8 +93,8 @@ export const STYLE_RULES: Record<string, StyleRule> = {
     label: 'Whimsical',
     sceneIntent: `Spark wonder and imagination. A doorway into a magical world where physics gently bends and everything feels enchanted.`,
     positivePrompt: `whimsical storybook illustration, hand-drawn dip pen style with organic imperfect strokes, playful distortion, floating elements, magical atmosphere, curling vines, swirling wind lines, soft organic rounded shapes, fairy tale aesthetic, charming and gentle, all shapes fully enclosed for coloring, large readable areas.`,
-    negativePrompt: `rigid geometry, mechanical lines, vector-perfect strokes, scary, horror, stiff, corporate vector, technical drawing, heavy black fills, thin details, tiny repeating elements, unrelated objects, props not in prompt.`,
-    technicalDirectives: `Use variable line width (thick swells and thin tapers) to mimic a nib pen with natural hand-drawn wobble. Allow slight physics-defying placement of objects. All shapes must be fully enclosed - overlapping elements must still form closed colorable areas. Favor large readable shapes over microscopic details.`,
+    negativePrompt: `rigid geometry, mechanical lines, vector-perfect strokes, scary, horror, stiff, corporate vector, technical drawing, heavy black fills, thin details, tiny repeating elements, unrelated objects, props not in prompt, ${ANTI_REPETITION_NEGATIVE}.`,
+    technicalDirectives: `Use variable line width (thick swells and thin tapers) to mimic a nib pen with natural hand-drawn wobble. Allow slight physics-defying placement of objects. All shapes must be fully enclosed - overlapping elements must still form closed colorable areas. Favor large readable shapes over microscopic details. ${ANTI_STAMPING_DIRECTIVE}`,
     isFloodFillFriendly: true,
     organicLineQuality: true,
     recommendedTemperature: 1.0, // Benefits from creative variety
@@ -103,8 +107,8 @@ export const STYLE_RULES: Record<string, StyleRule> = {
     label: 'Cartoon',
     sceneIntent: `Energize and excite. Capture the Saturday morning adventure feeling - dynamic, fun, and full of personality.`,
     positivePrompt: `classic Saturday morning cartoon style, dynamic action lines, squash and stretch deformation, exaggerated facial expressions, distinct character silhouettes, energetic pose, clear vector outlines, western animation style.`,
-    negativePrompt: `static, stiff, realistic proportions, anime style, sketchy, rough, dirty lines, excessive detail, cross-hatching, unrelated objects, props not in prompt.`,
-    technicalDirectives: `Prioritize silhouette readability. Use 'Speed Lines' for motion. Lines should be uniform thickness vector strokes.`,
+    negativePrompt: `static, stiff, realistic proportions, anime style, sketchy, rough, dirty lines, excessive detail, cross-hatching, unrelated objects, props not in prompt, ${ANTI_REPETITION_NEGATIVE}.`,
+    technicalDirectives: `Prioritize silhouette readability. Use 'Speed Lines' for motion. Lines should be uniform thickness vector strokes. ${ANTI_STAMPING_DIRECTIVE}`,
     isFloodFillFriendly: true,
     recommendedTemperature: 0.9, // Dynamic but consistent poses
     anatomyGuidance: `CLASSIC TOON ANATOMY: 4 fingers per hand is standard (like Mickey Mouse). Squash and stretch deformation OK. Exaggerated expressions and poses allowed but limbs must be clearly attached and functional.`,
@@ -116,8 +120,8 @@ export const STYLE_RULES: Record<string, StyleRule> = {
     label: 'Botanical',
     sceneIntent: `Inspire calm scholarly appreciation. Museum-quality study of nature's elegance - precise, educational, and beautiful.`,
     positivePrompt: `vintage scientific botanical illustration, lithograph style, detailed leaf veins, elegant floral composition, organic line art, accurate plant anatomy, fine ink pen style, nature study, contour drawing.`,
-    negativePrompt: `cartoon, heavy outlines, sticker border, messy roots, dirt, dead leaves, low resolution, pixelated, marker style, unrelated objects, props not in prompt.`,
-    technicalDirectives: `Use 'Contour Hatching' (fine parallel lines) to show petal curvature. Lines should be very fine (0.5mm).`,
+    negativePrompt: `cartoon, heavy outlines, sticker border, messy roots, dirt, dead leaves, low resolution, pixelated, marker style, unrelated objects, props not in prompt, ${ANTI_REPETITION_NEGATIVE}.`,
+    technicalDirectives: `Use 'Contour Hatching' (fine parallel lines) to show petal curvature. Lines should be very fine (0.5mm). ${ANTI_STAMPING_DIRECTIVE}`,
     isFloodFillFriendly: false, // Hatching breaks flood fills
     allowsTextureShading: true, // EXEMPT from global hatching ban
     recommendedTemperature: 0.8, // Scientific accuracy needed
@@ -129,7 +133,7 @@ export const STYLE_RULES: Record<string, StyleRule> = {
     label: 'Mandala',
     sceneIntent: `Induce meditative focus. Hypnotic symmetry draws the eye inward, calming the mind through repetitive, balanced patterns.`,
     positivePrompt: `complex mandala design, radial symmetry, sacred geometry, kaleidoscope pattern, zentangle style, precise vector geometry, mathematical patterns, tessellation, perfectly centered, circular composition, crisp architectural lines, meditative pattern.`,
-    negativePrompt: `asymmetry, organic chaos, broken lines, sketching, shading, grey fill, humans, faces, animals, text, signature, blurry lines, solid black fills, unrelated objects, props not in prompt.`,
+    negativePrompt: `asymmetry, organic chaos, broken lines, sketching, shading, grey fill, humans, faces, animals, text, signature, blurry lines, solid black fills, unrelated objects, props not in prompt, ${ANTI_REPETITION_NEGATIVE}.`,
     technicalDirectives: `Enforce strict 8-fold or 12-fold radial symmetry. Lines must be mechanically consistent weight. No solid black fills > 5%.`,
     isFloodFillFriendly: true,
     recommendedTemperature: 0.7, // Requires perfect symmetry
@@ -141,8 +145,8 @@ export const STYLE_RULES: Record<string, StyleRule> = {
     label: 'Fantasy',
     sceneIntent: `Evoke awe and reverence. Ancient legends made tangible - the feeling of discovering a forbidden tome or legendary artifact.`,
     positivePrompt: `epic fantasy RPG bestiary art, Dungeons and Dragons manual style, woodcut influence, dramatic lighting rendered in ink, stippling texture for scales/armor, magical smoke swirls, runes, ancient artifacts, legendary atmosphere.`,
-    negativePrompt: `cute, kawaii, modern, sci-fi, smooth vector, flat, minimal, blurry, low detail, sketch, unrelated modern objects, props not in prompt.`,
-    technicalDirectives: `Use 'Stippling' (dots) for shading. Use broken lines for battle damage/wear. High detail density.`,
+    negativePrompt: `cute, kawaii, modern, sci-fi, smooth vector, flat, minimal, blurry, low detail, sketch, unrelated modern objects, props not in prompt, ${ANTI_REPETITION_NEGATIVE}.`,
+    technicalDirectives: `Use 'Stippling' (dots) for shading. Use broken lines for battle damage/wear. High detail density. ${ANTI_STAMPING_DIRECTIVE}`,
     isFloodFillFriendly: false, // Stippling breaks fills
     allowsTextureShading: true, // EXEMPT from global stippling ban
     recommendedTemperature: 1.1, // Benefits from creative variation
@@ -155,8 +159,8 @@ export const STYLE_RULES: Record<string, StyleRule> = {
     label: 'Gothic',
     sceneIntent: `Create solemn beauty. Cathedral light filtering through sacred art - reverent, timeless, and architecturally magnificent.`,
     positivePrompt: `stained glass window design, thick bold leadlines, gothic arch frame, mosaic style, strong separation of regions, ecclesiastical art style, high contrast black ironwork lines, interconnected geometry, rose window aesthetics.`,
-    negativePrompt: `thin lines, open paths, floating elements, soft shading, watercolor style, gradient, transparency, photorealism, unrelated objects, props not in prompt.`,
-    technicalDirectives: `Simulate 'leading' with very thick lines (min 3px). Every region must be a closed polygon. Connect foreground to frame.`,
+    negativePrompt: `thin lines, open paths, floating elements, soft shading, watercolor style, gradient, transparency, photorealism, unrelated objects, props not in prompt, ${ANTI_REPETITION_NEGATIVE}.`,
+    technicalDirectives: `Simulate 'leading' with very thick lines (min 3px). Every region must be a closed polygon. Connect foreground to frame. ${ANTI_STAMPING_DIRECTIVE}`,
     isFloodFillFriendly: true,
     recommendedTemperature: 0.8, // Architectural precision needed
   },
@@ -167,8 +171,8 @@ export const STYLE_RULES: Record<string, StyleRule> = {
     label: 'Realistic',
     sceneIntent: `Capture the subject with academic precision and dignity. A serious, artistic study suitable for advanced colorists who enjoy shading.`,
     positivePrompt: `academic realism, fine line art, technical pen illustration, correct perspective, cross-hatching texture, scientific accuracy, highly detailed, museum quality sketch, etching style.`,
-    negativePrompt: `cartoon, caricature, distorted proportions, anime, doodle, simplified, cute, mascot, abstract, surreal, unrelated objects, props not in prompt.`,
-    technicalDirectives: `Use 'Cross-Hatching' and 'Stippling' for depth. Maintain realistic proportions. No simplified symbols.`,
+    negativePrompt: `cartoon, caricature, distorted proportions, anime, doodle, simplified, cute, mascot, abstract, surreal, unrelated objects, props not in prompt, ${ANTI_REPETITION_NEGATIVE}.`,
+    technicalDirectives: `Use 'Cross-Hatching' and 'Stippling' for depth. Maintain realistic proportions. No simplified symbols. ${ANTI_STAMPING_DIRECTIVE}`,
     isFloodFillFriendly: false, // Hatching breaks fills
     allowsTextureShading: true, // Crucial for realism
     recommendedTemperature: 0.7, // Lower temp for accuracy
@@ -181,8 +185,8 @@ export const STYLE_RULES: Record<string, StyleRule> = {
     label: 'Cozy',
     sceneIntent: `Wrap the viewer in warm nostalgia. The feeling of safety, softness, and deep comfort.`,
     positivePrompt: `hygge aesthetic line art, warm and inviting atmosphere, soft cozy mood, rounded organic shapes, gentle curved lines with hand-drawn organic quality, intimate close-up perspective, comforting composition, relaxed peaceful feeling, nostalgic warmth, soft touchable textures implied through natural line weight variation, welcoming scene, all shapes fully enclosed for coloring.`,
-    negativePrompt: `cold, sharp, industrial, scary, aggressive, high energy, dynamic action, empty space, modern tech, jagged lines, vector-perfect mechanical lines, thin details, tiny repeating patterns, unrelated objects, tea cups, coffee mugs, books, blankets, reading materials, hot beverages.`,
-    technicalDirectives: `Use short curved strokes to suggest soft textures (wool, fur) but keep them sparse to allow coloring. Lines should have organic hand-drawn warmth - never vector-clean. Perspective should be intimate and close-up. All shapes must be fully enclosed. Do NOT add unrelated cozy props - focus only on the subject. Large readable shapes for easy coloring.`,
+    negativePrompt: `cold, sharp, industrial, scary, aggressive, high energy, dynamic action, empty space, modern tech, jagged lines, vector-perfect mechanical lines, thin details, tiny repeating patterns, unrelated objects, tea cups, coffee mugs, books, blankets, reading materials, hot beverages, ${ANTI_REPETITION_NEGATIVE}.`,
+    technicalDirectives: `Use short curved strokes to suggest soft textures (wool, fur) but keep them sparse to allow coloring. Lines should have organic hand-drawn warmth - never vector-clean. Perspective should be intimate and close-up. All shapes must be fully enclosed. Do NOT add unrelated cozy props - focus only on the subject. Large readable shapes for easy coloring. ${ANTI_STAMPING_DIRECTIVE}`,
     isFloodFillFriendly: true,
     organicLineQuality: true,
     recommendedTemperature: 0.9, // Balanced warmth with consistency
@@ -194,8 +198,8 @@ export const STYLE_RULES: Record<string, StyleRule> = {
     label: 'Geometric',
     sceneIntent: `Deliver satisfying precision. Architectural order and balance that appeals to those who love clean lines and perfect symmetry.`,
     positivePrompt: `clean vector line art, geometric composition, art deco influence, symmetry, distinct shapes, architectural precision, drafting style, technical illustration, blueprint aesthetic (black on white), precise angles.`,
-    negativePrompt: `organic chaos, messy sketch, blurry, hand-drawn, low poly, wireframe, mesh, confusing topology, impossible geometry, unrelated objects, props not in prompt.`,
-    technicalDirectives: `Use ruler-straight lines for man-made objects. Maintain perfect symmetry where appropriate. Ensure functional parts (gears, wheels) are clearly defined circles, not polygons.`,
+    negativePrompt: `organic chaos, messy sketch, blurry, hand-drawn, low poly, wireframe, mesh, confusing topology, impossible geometry, unrelated objects, props not in prompt, ${ANTI_REPETITION_NEGATIVE}.`,
+    technicalDirectives: `Use ruler-straight lines for man-made objects. Maintain perfect symmetry where appropriate. Ensure functional parts (gears, wheels) are clearly defined circles, not polygons. ${ANTI_STAMPING_DIRECTIVE}`,
     isFloodFillFriendly: true,
     recommendedTemperature: 0.7, // Requires precision
   },
@@ -206,8 +210,8 @@ export const STYLE_RULES: Record<string, StyleRule> = {
     label: 'Wildlife',
     sceneIntent: `Inspire respectful observation. Nature documentary stillness - the viewer feels like a patient observer witnessing wildlife in its habitat.`,
     positivePrompt: `naturalist field sketch, realistic animal anatomy, detailed fur texture rendering, natural habitat background, respectful representation, wildlife conservation art, fine ink details.`,
-    negativePrompt: `cartoon, caricature, big head, anthropomorphic, clothes on animals, sticker style, simple outlines, unrelated objects, props not in prompt.`,
-    technicalDirectives: `Use directional strokes to mimic fur/feather flow. Proportions must be biologically accurate.`,
+    negativePrompt: `cartoon, caricature, big head, anthropomorphic, clothes on animals, sticker style, simple outlines, unrelated objects, props not in prompt, ${ANTI_REPETITION_NEGATIVE}.`,
+    technicalDirectives: `Use directional strokes to mimic fur/feather flow. Proportions must be biologically accurate. ${ANTI_STAMPING_DIRECTIVE}`,
     isFloodFillFriendly: false, // Fur texture usually breaks fills
     recommendedTemperature: 0.9, // Anatomical accuracy with life
   },
@@ -218,7 +222,7 @@ export const STYLE_RULES: Record<string, StyleRule> = {
     label: 'Floral',
     sceneIntent: `Evoke abundant joy. A garden in full bloom - lush, celebratory, and overflowing with natural beauty.`,
     positivePrompt: `floral pattern design, horror vacui composition, Art Nouveau influence, intertwining stems, lush garden density, decorative motif, elegant sworls, wallpaper aesthetic, all-over print style.`,
-    negativePrompt: `single flower, empty background, geometric, mechanical, stiff, dead space, unrelated objects, props not in prompt.`,
+    negativePrompt: `single flower, empty background, geometric, mechanical, stiff, dead space, unrelated objects, props not in prompt, ${ANTI_REPETITION_NEGATIVE}.`,
     technicalDirectives: `Maximize coverage (minimize white space). Stems must flow elegantly into one another.`,
     isFloodFillFriendly: true,
     recommendedTemperature: 1.0, // Organic variety acceptable
@@ -230,7 +234,7 @@ export const STYLE_RULES: Record<string, StyleRule> = {
     label: 'Abstract',
     sceneIntent: `Induce flow state. Rhythmic patterns that guide the hand without demanding interpretation - pure meditative coloring.`,
     positivePrompt: `abstract line art with clearly defined zones, each zone containing a distinct repeating pattern (spirals, waves, scales, concentric circles, chevrons). Zones must be separated by bold boundary lines (2px minimum). Non-representational - no faces, animals, or objects. Organic flowing divisions between pattern zones.`,
-    negativePrompt: `identifiable objects, faces, animals, buildings, rigid grid, chaotic scribbles, random marks, undefined boundaries between patterns, unrelated objects, props not in prompt.`,
+    negativePrompt: `identifiable objects, faces, animals, buildings, rigid grid, chaotic scribbles, random marks, undefined boundaries between patterns, unrelated objects, props not in prompt, ${ANTI_REPETITION_NEGATIVE}.`,
     technicalDirectives: `Focus on line quality and rhythm. Create 5-8 distinct 'zones' for coloring, each with a different internal pattern. All zone boundaries must be bold and clearly closed.`,
     isFloodFillFriendly: true,
     recommendedTemperature: 1.2, // Most creative freedom allowed
@@ -242,8 +246,8 @@ export const STYLE_RULES: Record<string, StyleRule> = {
     label: 'Standard',
     sceneIntent: `Provide a clean, satisfying coloring experience with clear shapes and good balance.`,
     positivePrompt: 'clean black and white line art, coloring book page, high contrast, vector style, white background',
-    negativePrompt: 'shading, grayscale, gradients, noise, text, watermark, color, unrelated objects, props not in prompt',
-    technicalDirectives: 'Standard line weight, distinct shapes, closed paths where possible.',
+    negativePrompt: `shading, grayscale, gradients, noise, text, watermark, color, unrelated objects, props not in prompt, ${ANTI_REPETITION_NEGATIVE}`,
+    technicalDirectives: `Standard line weight, distinct shapes, closed paths where possible. ${ANTI_STAMPING_DIRECTIVE}`,
     isFloodFillFriendly: true,
     recommendedTemperature: 1.0, // Balanced default
   }
@@ -400,7 +404,9 @@ export const buildPrompt = (
     ${complexity.negativePrompt},
     color, coloured, colorful, photography, photorealistic, 3d render,
     gradient, shadow, ambient occlusion, greyscale, gray,
-    watermark, signature, logo, copyright,
+    color, coloured, colorful, photography, photorealistic, 3d render,
+    gradient, shadow, ambient occlusion, greyscale, gray,
+    blurry, low resolution, jpeg artifacts, pixelated,
     blurry, low resolution, jpeg artifacts, pixelated,
     cropped, out of frame, cut off,
     messy, smudge, dirt, noise,
