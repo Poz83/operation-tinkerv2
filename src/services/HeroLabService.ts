@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/// <reference types="vite/client" />
+
 import { GoogleGenAI } from '@google/genai';
 import { GEMINI_TEXT_MODEL } from '../server/ai/gemini-client';
 

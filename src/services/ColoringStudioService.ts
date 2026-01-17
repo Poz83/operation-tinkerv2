@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/// <reference types="vite/client" />
+
 import { GoogleGenAI, Type } from '@google/genai';
 import { GEMINI_TEXT_MODEL } from '../server/ai/gemini-client';
 
@@ -201,6 +203,7 @@ export class ColoringStudioService {
       2. SET THE MOOD: Use adjectives that evoke feeling (cozy, majestic, playful, serene).
       3. DESCRIBE A MOMENT: Instead of static objects, capture a narrative moment (a cat curling up for a nap, a flower unfolding at dawn).
       4. SPECIFY SETTING: Ground the subject in an environment (on a mossy rock, beside a crackling fireplace, in a sun-dappled forest).
+      5. DIVERSIFY DETAILS: Mention specific, varied props. Avoid generic filler. If it's a coffee shop, include a vintage grinder, a stack of books, and a potted fern - not just coffee beans everywhere.
       
       Keep it under 75 words.
       Focus on visual elements that translate well to black and white line art.
@@ -217,6 +220,7 @@ export class ColoringStudioService {
       2. PROGRESSION: Create a visual journey (e.g., morning to night, small to large, calm to exciting).
       3. COHESION: All pages should feel like they belong together in the same book.
       4. BALANCE: Mix close-up details with wider scenes. Include character moments and environmental scenes.
+      5. DIVERSIFY DETAILS: Ensure each scene has unique props. Avoid repeating the same icons (like hearts or stars) on every page.
       
       FORMAT YOUR RESPONSE AS:
       "A ${pageCount}-page collection exploring [theme]: Page 1 - [brief scene]. Page 2 - [brief scene]. ..." etc.
