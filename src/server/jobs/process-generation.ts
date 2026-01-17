@@ -1,4 +1,4 @@
-import { DirectPromptService, BookPlanItem } from '../../services/direct-prompt-service';
+import { ColoringStudioService, BookPlanItem } from '../../services/ColoringStudioService';
 import { generateWithGemini } from '../ai/gemini-client';
 import { evaluatePublishability, QaHardFailReason } from '../../utils/publishability-qa';
 import { buildPrompt, STYLE_RULES } from '../ai/prompts';
@@ -69,9 +69,9 @@ export const processGeneration = async (
   onPageComplete: (pageNumber: number, imageUrl: string) => void,
   onPageEvent?: (event: PageGenerationEvent) => void
 ) => {
-  // Get user's stored API key (falls back to env var in DirectPromptService)
+  // Get user's stored API key (falls back to env var in ColoringStudioService)
   const userApiKey = await getStoredApiKey() ?? undefined;
-  const directPromptService = new DirectPromptService(userApiKey);
+  const coloringService = new ColoringStudioService(userApiKey);
   const qaResults: Array<{
     pageNumber: number;
     qaScore: number;
@@ -119,7 +119,7 @@ export const processGeneration = async (
   if (params.hasHeroRef && params.heroImage) {
     console.log('🔬 Analyzing reference image style...');
     try {
-      styleDNA = await directPromptService.analyzeReferenceStyle(
+      styleDNA = await coloringService.analyzeReferenceStyle(
         params.heroImage.base64,
         params.heroImage.mimeType,
         params.signal
@@ -136,7 +136,7 @@ export const processGeneration = async (
   if (params.signal?.aborted) throw new Error('Aborted');
 
   // 1. Generate Book Plan
-  let plan = await directPromptService.generateBookPlan(
+  let plan = await coloringService.generateBookPlan(
     params.userIdea,
     params.pageCount,
     params.audience,

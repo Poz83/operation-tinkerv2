@@ -4,7 +4,7 @@
 */
 
 import { getStoredApiKey } from '../lib/crypto';
-import { DirectPromptService } from './direct-prompt-service';
+import { ColoringStudioService } from './ColoringStudioService';
 
 export const brainstormPrompt = async (prompt: string, pageCount: number = 1): Promise<string> => {
   try {
@@ -12,7 +12,7 @@ export const brainstormPrompt = async (prompt: string, pageCount: number = 1): P
     const apiKey = await getStoredApiKey() || undefined;
 
     // Lazy instantiate service with the specific key
-    const backendService = new DirectPromptService(apiKey);
+    const backendService = new ColoringStudioService(apiKey);
 
     return await backendService.brainstormPrompt(prompt, pageCount);
   } catch (error) {

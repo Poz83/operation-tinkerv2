@@ -8,7 +8,7 @@ import { useGeneration } from '../hooks/useGeneration';
 import { useToast } from '../hooks/useToast';
 import { ToastContainer } from '../components/Toast';
 import { useHeroProject } from '../hooks/useHeroProject';
-import { DirectPromptService } from '../services/direct-prompt-service';
+import { HeroLabService } from '../services/HeroLabService';
 
 /**
  * Build a profile sheet prompt from DNA
@@ -164,7 +164,7 @@ export const HeroLab: React.FC = () => {
             if (project.referenceMode === 'replicate') {
                 setIsExtracting(true);
                 try {
-                    const service = new DirectPromptService();
+                    const service = new HeroLabService();
                     const extractedDNA = await service.extractCharacterDNA(base64, mimeType);
 
                     if (extractedDNA) {
@@ -199,7 +199,7 @@ export const HeroLab: React.FC = () => {
                     ? project.referenceImage.base64.split(',')[1]
                     : project.referenceImage.base64;
 
-                const service = new DirectPromptService();
+                const service = new HeroLabService();
                 const extractedDNA = await service.extractCharacterDNA(base64, project.referenceImage.mimeType);
 
                 if (extractedDNA) {

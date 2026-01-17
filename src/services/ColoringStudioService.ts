@@ -1,73 +1,78 @@
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
-*/
+ */
 
 import { GoogleGenAI, Type } from '@google/genai';
 import { GEMINI_TEXT_MODEL } from '../server/ai/gemini-client';
 
 export interface BookPlanItem {
-  pageNumber: number;
-  prompt: string;
-  vectorMode: 'organic' | 'geometric' | 'standard';
-  complexityDescription: string;
-  requiresText: boolean;
+    pageNumber: number;
+    prompt: string;
+    vectorMode: 'organic' | 'geometric' | 'standard';
+    complexityDescription: string;
+    requiresText: boolean;
 }
 
-export class DirectPromptService {
+/**
+ * ColoringStudioService - Handles all AI text operations for the Coloring Book Studio.
+ * 
+ * Methods:
+ * - generateBookPlan(): Creates page-by-page plans for coloring books
+ * - brainstormPrompt(): Expands simple ideas into detailed scene descriptions
+ * - analyzeReferenceStyle(): Extracts StyleDNA from reference images
+ */
+export class ColoringStudioService {
 
-  private ai: GoogleGenAI | null;
+    private ai: GoogleGenAI | null;
 
-  private ensureInitialized(): void {
-    if (!this.ai) {
-      throw new Error("Gemini API Key is not configured. Please add your key in Settings.");
-    }
-  }
-
-  constructor(apiKey?: string) {
-    // Check multiple sources for the key
-    const key = apiKey ||
-      (typeof process !== 'undefined' ? process.env?.API_KEY : undefined) ||
-      (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_GEMINI_API_KEY : undefined);
-
-    if (!key) {
-      console.warn("DirectPromptService initialized without API Key. Calls will fail if key is not provided later.");
+    private ensureInitialized(): void {
+        if (!this.ai) {
+            throw new Error("Gemini API Key is not configured. Please add your key in Settings.");
+        }
     }
 
-    // We initialize GoogleGenAI even with empty key if needed, or handle it.
-    // The SDK might throw if key is missing, so we wrap it.
-    if (key) {
-      this.ai = new GoogleGenAI({ apiKey: key });
-    } else {
-      // @ts-ignore - Handle missing key case by creating a dummy or leaving undefined handling to methods
-      this.ai = null;
+    constructor(apiKey?: string) {
+        // Check multiple sources for the key
+        const key = apiKey ||
+            (typeof process !== 'undefined' ? process.env?.API_KEY : undefined) ||
+            (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_GEMINI_API_KEY : undefined);
+
+        if (!key) {
+            console.warn("ColoringStudioService initialized without API Key. Calls will fail if key is not provided later.");
+        }
+
+        if (key) {
+            this.ai = new GoogleGenAI({ apiKey: key });
+        } else {
+            this.ai = null;
+        }
     }
-  }
 
-  /**
-   * Create a new instance with a specific API key
-   */
-  static createWithKey(apiKey: string): DirectPromptService {
-    return new DirectPromptService(apiKey);
-  }
+    /**
+     * Create a new instance with a specific API key
+     */
+    static createWithKey(apiKey: string): ColoringStudioService {
+        return new ColoringStudioService(apiKey);
+    }
 
-  async generateBookPlan(
-    userIdea: string,
-    pageCount: number,
-    audience: string,
-    style: string,
-    hasHeroRef: boolean,
-    includeText: boolean,
-    complexity: string,
-    signal?: AbortSignal
-  ): Promise<BookPlanItem[]> {
-    this.ensureInitialized();
+    async generateBookPlan(
+        userIdea: string,
+        pageCount: number,
+        audience: string,
+        style: string,
+        hasHeroRef: boolean,
+        includeText: boolean,
+        complexity: string,
+        signal?: AbortSignal
+    ): Promise<BookPlanItem[]> {
+        this.ensureInitialized();
 
-    const textControlInstruction = includeText
-      ? "TEXT CONTROL: IF `includeText` is TRUE: You MAY include text if the user's idea asks for it (e.g. 'A birthday card'). Set `requiresText` to true for those pages."
-      : "TEXT CONTROL: IF `includeText` is FALSE: You are STRICTLY FORBIDDEN from suggesting text. Set `requiresText` to false for ALL pages. Do not include words in the scene description.";
+        const textControlInstruction = includeText
+            ? "TEXT CONTROL: IF `includeText` is TRUE: You MAY include text if the user's idea asks for it (e.g. 'A birthday card'). Set `requiresText` to true for those pages."
+            : "TEXT CONTROL: IF `includeText` is FALSE: You are STRICTLY FORBIDDEN from suggesting text. Set `requiresText` to false for ALL pages. Do not include words in the scene description.";
 
-    const systemInstruction = `
+        const systemInstruction = `
       ROLE: Creative Director for a professional coloring book series.
       TASK: Create a coherent book plan based on the User's Idea.
 
@@ -75,7 +80,7 @@ export class DirectPromptService {
       1. THE MANDALA EFFECT: For 'Very Simple' or 'Simple' complexity, the goal is ANXIETY REDUCTION. Use repetitive, symmetrical, or 'bounded' elements. Avoid chaotic scattering.
       2. FUNCTIONAL REALISM: Objects must make physical sense. A bicycle must have pedals. A clock must have numbers or hands. Avoid "AI Dream Logic" (e.g., stairs leading nowhere).
       3. VISUAL QUIET: Neurodivergent users need 'Visual Quiet'. Avoid 'noisy' textures or random scribbles. Every line must serve a purpose.
-      4. THE COZY FACTOR: For 'Bold & Easy' styles, prioritize 'Nostalgia' and 'Safety'. Use soft, rounded terminology in prompts.
+      4. THE COZY FACTOR: For 'Bold & Easy' or 'Cozy Hand-Drawn' styles, prioritize 'Nostalgia' and 'Safety'. Use soft, rounded terminology in prompts.
 
       INPUTS:
       - Idea: "${userIdea}"
@@ -141,52 +146,52 @@ export class DirectPromptService {
       4. OUTPUT: Return a JSON array of ${pageCount} items.
     `;
 
-    try {
-      if (signal?.aborted) {
-        throw new Error('Aborted');
-      }
+        try {
+            if (signal?.aborted) {
+                throw new Error('Aborted');
+            }
 
-      const response = await this.ai!.models.generateContent({
-        model: GEMINI_TEXT_MODEL,
-        contents: "Generate the book plan now.",
-        config: {
-          systemInstruction: systemInstruction,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                pageNumber: { type: Type.INTEGER },
-                prompt: { type: Type.STRING },
-                vectorMode: { type: Type.STRING, enum: ['organic', 'geometric', 'standard'] },
-                complexityDescription: { type: Type.STRING },
-                requiresText: { type: Type.BOOLEAN },
-              },
-              required: ['pageNumber', 'prompt', 'vectorMode', 'complexityDescription', 'requiresText'],
-            },
-          },
-        },
-      });
+            const response = await this.ai!.models.generateContent({
+                model: GEMINI_TEXT_MODEL,
+                contents: "Generate the book plan now.",
+                config: {
+                    systemInstruction: systemInstruction,
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.ARRAY,
+                        items: {
+                            type: Type.OBJECT,
+                            properties: {
+                                pageNumber: { type: Type.INTEGER },
+                                prompt: { type: Type.STRING },
+                                vectorMode: { type: Type.STRING, enum: ['organic', 'geometric', 'standard'] },
+                                complexityDescription: { type: Type.STRING },
+                                requiresText: { type: Type.BOOLEAN },
+                            },
+                            required: ['pageNumber', 'prompt', 'vectorMode', 'complexityDescription', 'requiresText'],
+                        },
+                    },
+                },
+            });
 
-      if (response.text) {
-        return JSON.parse(response.text) as BookPlanItem[];
-      }
-    } catch (e: any) {
-      if (e.name === 'AbortError' || e.message === 'Aborted' || signal?.aborted) {
-        throw new Error('Aborted');
-      }
-      console.error("Failed to generate book plan", e);
+            if (response.text) {
+                return JSON.parse(response.text) as BookPlanItem[];
+            }
+        } catch (e: any) {
+            if (e.name === 'AbortError' || e.message === 'Aborted' || signal?.aborted) {
+                throw new Error('Aborted');
+            }
+            console.error("Failed to generate book plan", e);
+        }
+
+        return [];
     }
 
-    return [];
-  }
+    async brainstormPrompt(rawPrompt: string, pageCount: number = 1): Promise<string> {
+        this.ensureInitialized();
 
-  async brainstormPrompt(rawPrompt: string, pageCount: number = 1): Promise<string> {
-    this.ensureInitialized();
-
-    // Different system instruction based on page count
-    const singlePageInstruction = `
+        // Different system instruction based on page count
+        const singlePageInstruction = `
       You are a Creative Director for bestselling coloring books, specializing in evocative scene descriptions.
       
       Take the user's simple idea and expand it into a captivating coloring book scene.
@@ -202,7 +207,7 @@ export class DirectPromptService {
       Do NOT include style instructions (like "line art" or "coloring page") - just describe the scene itself.
     `;
 
-    const multiPageInstruction = `
+        const multiPageInstruction = `
       You are a Creative Director for bestselling coloring books, planning a cohesive ${pageCount}-page collection.
       
       Take the user's theme and create a NARRATIVE ARC across ${pageCount} pages. Each page should be a distinct scene that builds on the theme.
@@ -221,36 +226,36 @@ export class DirectPromptService {
       Do NOT include style instructions - just describe the scenes.
     `;
 
-    const systemInstruction = pageCount > 1 ? multiPageInstruction : singlePageInstruction;
+        const systemInstruction = pageCount > 1 ? multiPageInstruction : singlePageInstruction;
 
-    try {
-      const response = await this.ai!.models.generateContent({
-        model: GEMINI_TEXT_MODEL,
-        contents: rawPrompt,
-        config: {
-          systemInstruction: systemInstruction,
+        try {
+            const response = await this.ai!.models.generateContent({
+                model: GEMINI_TEXT_MODEL,
+                contents: rawPrompt,
+                config: {
+                    systemInstruction: systemInstruction,
+                }
+            });
+
+            return response.text?.trim() || rawPrompt;
+        } catch (e) {
+            console.error("Failed to brainstorm prompt", e);
+            return rawPrompt;
         }
-      });
-
-      return response.text?.trim() || rawPrompt;
-    } catch (e) {
-      console.error("Failed to brainstorm prompt", e);
-      return rawPrompt;
     }
-  }
 
-  /**
-   * Forensic Style Analysis - Analyzes a reference image to extract its visual style DNA
-   * for replication across all generated pages.
-   */
-  async analyzeReferenceStyle(
-    imageBase64: string,
-    mimeType: string,
-    signal?: AbortSignal
-  ): Promise<import('../types').StyleDNA | null> {
-    this.ensureInitialized();
+    /**
+     * Forensic Style Analysis - Analyzes a reference image to extract its visual style DNA
+     * for replication across all generated pages.
+     */
+    async analyzeReferenceStyle(
+        imageBase64: string,
+        mimeType: string,
+        signal?: AbortSignal
+    ): Promise<import('../types').StyleDNA | null> {
+        this.ensureInitialized();
 
-    const systemInstruction = `
+        const systemInstruction = `
 ROLE: Expert Art Analyst specializing in coloring book illustration techniques.
 
 TASK: Analyze this coloring page image and extract its visual style DNA for precise replication.
@@ -299,134 +304,47 @@ ANALYSIS GUIDELINES:
 RESPOND WITH JSON ONLY. No explanations.
 `;
 
-    try {
-      if (signal?.aborted) throw new Error('Aborted');
-
-      const response = await this.ai!.models.generateContent({
-        model: GEMINI_TEXT_MODEL,
-        contents: {
-          parts: [
-            { text: "Analyze this coloring page image and extract its style DNA:" },
-            {
-              inlineData: {
-                data: imageBase64,
-                mimeType: mimeType,
-              },
-            },
-          ],
-        },
-        config: {
-          systemInstruction: systemInstruction,
-          responseMimeType: "application/json",
-        },
-      });
-
-      if (signal?.aborted) throw new Error('Aborted');
-
-      if (response.text) {
         try {
-          const parsed = JSON.parse(response.text);
-          console.log('🔬 Style DNA extracted:', parsed);
-          return parsed as import('../types').StyleDNA;
-        } catch (parseError) {
-          console.error('Failed to parse StyleDNA JSON:', parseError, response.text);
-          return null;
+            if (signal?.aborted) throw new Error('Aborted');
+
+            const response = await this.ai!.models.generateContent({
+                model: GEMINI_TEXT_MODEL,
+                contents: {
+                    parts: [
+                        { text: "Analyze this coloring page image and extract its style DNA:" },
+                        {
+                            inlineData: {
+                                data: imageBase64,
+                                mimeType: mimeType,
+                            },
+                        },
+                    ],
+                },
+                config: {
+                    systemInstruction: systemInstruction,
+                    responseMimeType: "application/json",
+                },
+            });
+
+            if (signal?.aborted) throw new Error('Aborted');
+
+            if (response.text) {
+                try {
+                    const parsed = JSON.parse(response.text);
+                    console.log('🔬 Style DNA extracted:', parsed);
+                    return parsed as import('../types').StyleDNA;
+                } catch (parseError) {
+                    console.error('Failed to parse StyleDNA JSON:', parseError, response.text);
+                    return null;
+                }
+            }
+        } catch (e: any) {
+            if (e.name === 'AbortError' || e.message === 'Aborted' || signal?.aborted) {
+                throw new Error('Aborted');
+            }
+            console.error("Failed to analyze reference style", e);
         }
-      }
-    } catch (e: any) {
-      if (e.name === 'AbortError' || e.message === 'Aborted' || signal?.aborted) {
-        throw new Error('Aborted');
-      }
-      console.error("Failed to analyze reference style", e);
+
+        return null;
     }
-
-    return null;
-  }
-
-  /**
-   * Extract Character DNA from an uploaded image.
-   * Uses AI vision to analyze the character and populate DNA fields.
-   * Used in "Replicate" mode to auto-fill the DNA form.
-   */
-  async extractCharacterDNA(
-    imageBase64: string,
-    mimeType: string,
-    signal?: AbortSignal
-  ): Promise<import('../types').CharacterDNA | null> {
-    this.ensureInitialized();
-
-    const systemInstruction = `
-ROLE: Expert Character Analyst for coloring book illustrations.
-
-TASK: Analyze this character image and extract a detailed "Character DNA" profile.
-This DNA will be used to maintain consistency when generating the character in different poses/scenes.
-
-OUTPUT FORMAT (JSON only, no markdown):
-{
-  "name": "[Suggest a fitting name based on the character's appearance/vibe, or 'Unknown Hero' if unclear]",
-  "role": "[Character's apparent role: e.g., 'Space Explorer', 'Forest Guardian', 'Young Wizard']",
-  "age": "[Apparent age range: e.g., 'Child (8-10)', 'Young Adult', 'Middle-aged']",
-  "face": "[Detailed face description: jaw shape, cheekbones, nose, any distinctive features]",
-  "eyes": "[Eye details: shape, size, expression, any unique marks]",
-  "hair": "[Hair description: length, style, texture, any accessories like bows/clips]",
-  "skin": "[Skin tone description if visible, or art style note]",
-  "body": "[Body type and proportions: athletic, slim, round, chibi, etc.]",
-  "signatureFeatures": "[CRITICAL - List ALL distinctive features: scars, birthmarks, accessories, jewelry, tattoos, unique clothing elements that MUST appear in every image]",
-  "outfitCanon": "[Detailed outfit description: main clothing, colors (described not shown), accessories, footwear]",
-  "styleLock": "[Art style: 'Cozy Hand-Drawn', 'Bold & Easy', 'Kawaii', 'Realistic', 'Cartoon', etc.]"
-}
-
-ANALYSIS GUIDELINES:
-1. Be SPECIFIC about signature features - these are the anchors for consistency
-2. Describe what you SEE, not what you imagine
-3. For styleLock, match to the closest category: Cozy Hand-Drawn, Bold & Easy, Kawaii, Whimsical, Cartoon, Botanical, Mandala, Fantasy, Gothic, Cozy, Geometric, Wildlife, Floral, Abstract, Realistic
-4. If the character has text/name visible, use it for the name field
-5. Focus on VISUAL elements that can be replicated in line art
-
-RESPOND WITH JSON ONLY. No explanations.
-`;
-
-    try {
-      if (signal?.aborted) throw new Error('Aborted');
-
-      const response = await this.ai!.models.generateContent({
-        model: GEMINI_TEXT_MODEL,
-        contents: {
-          parts: [
-            { text: "Analyze this character image and extract its DNA profile:" },
-            {
-              inlineData: {
-                data: imageBase64,
-                mimeType: mimeType,
-              },
-            },
-          ],
-        },
-        config: {
-          systemInstruction: systemInstruction,
-          responseMimeType: "application/json",
-        },
-      });
-
-      if (signal?.aborted) throw new Error('Aborted');
-
-      if (response.text) {
-        try {
-          const parsed = JSON.parse(response.text);
-          console.log('🧬 Character DNA extracted:', parsed);
-          return parsed as import('../types').CharacterDNA;
-        } catch (parseError) {
-          console.error('Failed to parse CharacterDNA JSON:', parseError, response.text);
-          return null;
-        }
-      }
-    } catch (e: any) {
-      if (e.name === 'AbortError' || e.message === 'Aborted' || signal?.aborted) {
-        throw new Error('Aborted');
-      }
-      console.error("Failed to extract character DNA", e);
-    }
-
-    return null;
-  }
 }
