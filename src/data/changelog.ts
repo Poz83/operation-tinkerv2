@@ -15,6 +15,19 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
     {
+        id: 'update-2026-01-17',
+        date: '2026-01-17',
+        title: 'Development Update',
+        version: 'v2.1.x',
+        description: 'Latest changes and improvements based on recent development.',
+        changes: [
+            'Add Release Notes System & Automated Changelog',
+            'Enable scrolling on Updates page',
+            'Restrict automated changelog to significant commits only'
+        ],
+        type: 'minor'
+    },
+    {
         id: 'release-v1.0.0',
         date: '2026-01-17',
         title: 'Official Release v1.0.0',

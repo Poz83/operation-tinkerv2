@@ -42,11 +42,6 @@ function updateChangelog() {
     const lastDate = dateMatch[1];
     const today = formatDate(new Date());
 
-    if (lastDate === today) {
-        console.log('✅ Changelog is already up to date for today.');
-        return;
-    }
-
     // 2. Get commits since the last entry
     console.log(`🔍 Looking for commits since ${lastDate}...`);
     const commits = getGitCommits(lastDate);
@@ -57,10 +52,13 @@ function updateChangelog() {
     }
 
     // 3. Filter and format commits
-    // Filter out chore/wip/fix if desired, or keep everything for internal logs
+    // STRICT FILTERING: Only include meaningful user-facing changes (feat, fix, perf)
     const changes = commits
-        .filter(msg => !msg.includes('update changelog')) // Avoid circular log
-        .map(msg => msg.replace(/^feat:|^fix:|^chore:|^docs:/, '').trim()) // Remove conventional commit prefixes
+        .filter(msg => {
+            const m = msg.toLowerCase();
+            return m.startsWith('feat') || m.startsWith('fix') || m.startsWith('perf');
+        })
+        .map(msg => msg.replace(/^feat:|^fix:|^perf:/, '').trim()) // Remove prefixes
         .map(msg => msg.charAt(0).toUpperCase() + msg.slice(1)) // Capitalize
         .filter((v, i, a) => a.indexOf(v) === i); // Deduplicate
 
