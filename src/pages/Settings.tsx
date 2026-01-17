@@ -216,19 +216,33 @@ export const Settings: React.FC = () => {
 
                                             try {
                                                 // 1. Get presigned URL or upload directly
+                                                const contentType = file.type || 'image/png';
+
                                                 const res = await fetch('/api/upload-avatar', {
                                                     method: 'POST',
-                                                    headers: { 'Content-Type': file.type },
+                                                    headers: { 'Content-Type': contentType },
                                                     body: file
                                                 });
 
                                                 if (!res.ok) throw new Error('Upload failed');
 
                                                 const data = await res.json() as any;
+                                                let finalKey = data.key;
+
+                                                // Handle 2-step upload (if server returned uploadUrl)
+                                                if (data.uploadUrl) {
+                                                    const putRes = await fetch(data.uploadUrl, {
+                                                        method: 'PUT',
+                                                        headers: { 'Content-Type': contentType },
+                                                        body: file
+                                                    });
+
+                                                    if (!putRes.ok) throw new Error('Upload PUT failed');
+                                                }
 
                                                 // 2. Update profile
                                                 // view-avatar endpoint URL
-                                                const avatarUrl = data.url || `/api/view-avatar?key=${data.key}`;
+                                                const avatarUrl = data.url || `/api/view-avatar?key=${finalKey}`;
 
                                                 await updateProfile({ avatarUrl });
 

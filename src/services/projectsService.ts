@@ -172,8 +172,21 @@ export async function fetchProject(publicId: string): Promise<SavedProject | nul
     pages.sort((a, b) => (a.pageIndex ?? 0) - (b.pageIndex ?? 0));
 
     // 4. Combine and return
+    // 4. Combine and return
     const project = mapDbToSavedProject(projectData as ProjectWithColoringData);
     project.pages = pages;
+
+    // Hydrate Hero Logic: If we have a base_image_url that looks like a key (no http), sign it
+    if ((project as any).toolType === 'hero_lab' && (project as any).baseImageUrl) {
+        const urlOrKey = (project as any).baseImageUrl;
+        if (urlOrKey && !urlOrKey.startsWith('http') && !urlOrKey.startsWith('data:')) {
+            // Assume it's a key
+            const signed = await getSignedUrl(urlOrKey);
+            if (signed) {
+                (project as any).baseImageUrl = signed;
+            }
+        }
+    }
 
     return project;
 }
@@ -251,6 +264,38 @@ export async function saveProject(project: SavedProject): Promise<SavedProject> 
         const result = await createNewProjectDbOnly(user.id, project);
         projectId = result.id;
         publicId = result.public_id;
+    }
+
+    // Handle Hero Lab Image Upload (Base64 -> R2)
+    // If baseImageUrl is a data URL, we need to upload it and update the reference
+    let heroBaseImageKey = (project as any).baseImageUrl;
+    if ((project as any).toolType === 'hero_lab' && heroBaseImageKey && heroBaseImageKey.startsWith('data:image/')) {
+        try {
+            const imageUuid = crypto.randomUUID();
+            const uploadResult = await uploadProjectImage(projectId, imageUuid, heroBaseImageKey);
+            heroBaseImageKey = uploadResult.key;
+
+            // Also track in images table for consistency (optional but good for cleanup)
+            await supabase.from('images').insert({
+                id: imageUuid,
+                project_id: projectId,
+                storage_path: heroBaseImageKey,
+                type: 'hero_base',
+                mime_type: 'image/png',
+                user_id: user.id
+            });
+
+            // Update the hero_lab_data record with the new KEY
+            await supabase
+                .from('hero_lab_data')
+                .update({ base_image_url: heroBaseImageKey } as any)
+                .eq('project_id', projectId);
+
+        } catch (err) {
+            console.error('Failed to upload hero base image:', err);
+            // If upload fails, we might still return the object, 
+            // but the DB record will have the old value or be missing data.
+        }
     }
 
     // Handle Image Uploads & Persistence

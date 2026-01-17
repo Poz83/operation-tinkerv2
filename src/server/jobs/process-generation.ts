@@ -3,7 +3,7 @@ import { generateWithGemini } from '../ai/gemini-client';
 import { evaluatePublishability, QaHardFailReason } from '../../utils/publishability-qa';
 import { buildPrompt, STYLE_RULES } from '../ai/prompts';
 import { PageGenerationEvent } from '../../logging/events';
-import { TARGET_AUDIENCES, CREATIVE_VARIATION_OPTIONS, CreativeVariation } from '../../types';
+import { TARGET_AUDIENCES, CREATIVE_VARIATION_OPTIONS, CreativeVariation, CharacterDNA } from '../../types';
 import { getStoredApiKey } from '../../lib/crypto';
 
 // Simple utility to pause between generations (anti-hallucination cool-down)
@@ -21,6 +21,7 @@ export interface ProcessGenerationParams {
   aspectRatio: string;
   includeText: boolean;
   creativeVariation: CreativeVariation; // 'auto' | 'precision' | 'balanced' | 'freedom'
+  characterDNA?: CharacterDNA; // Character DNA for hero consistency
   signal?: AbortSignal;
 }
 
@@ -250,7 +251,8 @@ export const processGeneration = async (
       item.requiresText,
       audiencePrompt,
       params.audience, // Pass the raw audience label for border calibration
-      styleDNA // Pass StyleDNA for style matching
+      styleDNA, // Pass StyleDNA for style matching
+      params.characterDNA // Pass CharacterDNA for hero consistency
     );
 
     // Compute temperature - StyleDNA overrides if available

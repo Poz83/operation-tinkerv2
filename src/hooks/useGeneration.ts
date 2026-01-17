@@ -5,7 +5,7 @@
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import confetti from 'canvas-confetti';
-import { ColoringPage, PAGE_SIZES, VISUAL_STYLES, TARGET_AUDIENCES, CreativeVariation } from '../types';
+import { ColoringPage, PAGE_SIZES, VISUAL_STYLES, TARGET_AUDIENCES, CreativeVariation, CharacterDNA } from '../types';
 import { processGeneration } from '../server/jobs/process-generation';
 import { brainstormPrompt } from '../services/geminiService';
 import { PageGenerationEvent } from '../logging/events';
@@ -79,6 +79,7 @@ export const useGeneration = ({
         heroImage: { base64: string; mimeType: string } | null;
         includeText: boolean;
         creativeVariation: CreativeVariation;
+        characterDNA?: CharacterDNA | null;
     }) => {
         if (!apiKey) return;
 
@@ -195,6 +196,7 @@ export const useGeneration = ({
                     aspectRatio: aspectRatio,
                     includeText: params.includeText,
                     creativeVariation: params.creativeVariation,
+                    characterDNA: params.characterDNA || undefined,
                     signal: controller.signal
                 },
                 // 1. On Plan Generated

@@ -125,6 +125,7 @@ export interface SavedProject {
   thumbnail?: string; // Optional thumbnail data URL
   pages?: ColoringPage[];
   visibility?: 'private' | 'unlisted' | 'public'; // Gallery visibility
+  characterDNA?: CharacterDNA; // Hero character DNA for consistency across pages
 }
 
 export const VISIBILITY_OPTIONS = [
@@ -188,9 +189,17 @@ export interface CharacterDNA {
   styleLock: string;         // overall art style to enforce
 }
 
+// Reference mode for uploaded hero images
+export type HeroReferenceMode = 'replicate' | 'inspiration';
+
 export interface HeroProject extends SavedProject {
   toolType: 'hero_lab';
-  dna: CharacterDNA; // The core definition
-  baseImageUrl?: string; // The generated "perfect" reference
-  seed?: number; // The persistent seed for this character
+  dna: CharacterDNA;
+  // Reference image (uploaded by user)
+  referenceImageUrl?: string;
+  referenceMode?: HeroReferenceMode;
+  // Generated outputs
+  baseImageUrl?: string;       // Quick single-pose preview (legacy/optional)
+  profileSheetUrl?: string;    // 5-angle turnaround (primary output)
+  seed?: number;
 }

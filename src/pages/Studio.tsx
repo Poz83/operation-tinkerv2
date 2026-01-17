@@ -41,16 +41,12 @@ const App: React.FC = () => {
       project.setHasHeroRef(true);
       project.setHeroImage({ base64: heroData.image, mimeType: 'image/png' }); // Assuming it's a URL/Base64 string
 
-      // Construct Prompt from DNA
+      // Store the full DNA for consistency injection
       const dna = heroData.dna;
-      const dnaPrompt = `[CHARACTER REFERENCE: ${dna.name}]
-${dna.role}
-${dna.face}
-${dna.body}
-${dna.outfitCanon}
-${dna.signatureFeatures}
-`.trim();
+      project.setCharacterDNA(dna);
 
+      // Set a simpler prompt for the Book Plan (not the full DNA dump)
+      const dnaPrompt = `A coloring book starring ${dna.name}, ${dna.role}. Feature their signature look and adventures.`;
       project.setUserPrompt(dnaPrompt);
 
       // Clear state to prevent re-running on refresh
@@ -326,7 +322,8 @@ ${dna.signatureFeatures}
       hasHeroRef: project.hasHeroRef,
       heroImage: project.heroImage,
       includeText: project.includeText,
-      creativeVariation: project.creativeVariation
+      creativeVariation: project.creativeVariation,
+      characterDNA: project.characterDNA
     });
   };
 

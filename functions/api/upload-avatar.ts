@@ -4,9 +4,14 @@
  * Handles uploading user avatars to the AVATARS_BUCKET.
  */
 
+import { validateImageRequest } from '../utils/security';
+
 export const onRequestPost: PagesFunction<Env> = async (context) => {
     try {
         const { env, request } = context;
+
+        // Basic Security Check (1MB limit for avatars)
+        validateImageRequest(request, 1 * 1024 * 1024);
 
         if (!env.AVATARS_BUCKET) {
             throw new Error('AVATARS_BUCKET binding not configured.');
@@ -56,6 +61,10 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 export const onRequestPut: PagesFunction<Env> = async (context) => {
     try {
         const { env, request } = context;
+
+        // Basic Security Check (1MB limit for avatars)
+        validateImageRequest(request, 1 * 1024 * 1024);
+
         const url = new URL(request.url);
         const key = url.searchParams.get('key');
 

@@ -9,10 +9,18 @@ CREATE TABLE IF NOT EXISTS hero_lab_data (
     project_id UUID PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,
     dna JSONB DEFAULT '{}'::jsonb,
     base_image_url TEXT,
+    profile_sheet_url TEXT,
+    reference_image_url TEXT,
+    reference_mode TEXT DEFAULT 'inspiration',
     seed BIGINT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- 2b. Add columns if table already exists (for existing deployments)
+ALTER TABLE hero_lab_data ADD COLUMN IF NOT EXISTS profile_sheet_url TEXT;
+ALTER TABLE hero_lab_data ADD COLUMN IF NOT EXISTS reference_image_url TEXT;
+ALTER TABLE hero_lab_data ADD COLUMN IF NOT EXISTS reference_mode TEXT DEFAULT 'inspiration';
 
 -- 3. Add constraint to dna column if table exists (idempotent because table creation includes defaults)
 -- But if table existed previously without constraint:

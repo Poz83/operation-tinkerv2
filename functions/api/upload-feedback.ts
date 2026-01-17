@@ -5,9 +5,14 @@
  * Binding must be configured in Cloudflare Pages Settings > Functions > R2 bucket bindings
  */
 
+import { validateImageRequest } from '../utils/security';
+
 export const onRequestPost: PagesFunction<Env> = async (context) => {
     try {
         const { env, request } = context;
+
+        // Basic Security Check
+        validateImageRequest(request);
 
         // Check if bucket binding exists
         if (!env.FEEDBACK_BUCKET) {
@@ -62,6 +67,10 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 export const onRequestPut: PagesFunction<Env> = async (context) => {
     try {
         const { env, request } = context;
+
+        // Basic Security Check
+        validateImageRequest(request);
+
         const url = new URL(request.url);
         const key = url.searchParams.get('key');
 

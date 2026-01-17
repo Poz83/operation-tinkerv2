@@ -1,15 +1,64 @@
 import React, { useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Navigation } from '../components/Navigation';
 import { CharacterSetup } from '../components/CharacterSetup';
 import { CharacterView } from '../components/CharacterView';
-import { CharacterDNA, HeroProject } from '../types';
+import { CharacterDNA, HeroReferenceMode } from '../types';
 import { useGeneration } from '../hooks/useGeneration';
 import { useToast } from '../hooks/useToast';
 import { ToastContainer } from '../components/Toast';
+import { useHeroProject } from '../hooks/useHeroProject';
+import { DirectPromptService } from '../services/direct-prompt-service';
 
-const constructPrompt = (dna: CharacterDNA): string => {
+/**
+ * Build a profile sheet prompt from DNA
+ * Creates a 5-angle turnaround: Front, Back, Left, Right, 3/4 View
+ */
+const buildProfileSheetPrompt = (dna: CharacterDNA, referenceImage?: boolean, replicateMode?: boolean): string => {
+    if (replicateMode && referenceImage) {
+        return `
+CHARACTER TURNAROUND SHEET - EXACT REPLICATION
+
+Analyze the provided character image and create a 5-angle reference sheet showing this EXACT character in a grid layout:
+
+┌─────────┬─────────┐
+│  FRONT  │  BACK   │
+├─────────┼─────────┤
+│  LEFT   │  RIGHT  │
+├─────────┴─────────┤
+│    3/4 VIEW       │
+└───────────────────┘
+
+CRITICAL RULES:
+1. EXACTLY replicate the character's appearance from the reference
+2. Maintain all details: outfit, accessories, hairstyle, proportions
+3. Infer unseen angles logically (what does the back look like?)
+4. Keep the SAME art style as the reference
+5. Each view must show the SAME character - perfect consistency
+
+TECHNICAL STYLE:
+Coloring book line art, clean monoline black outlines, bold thick lines, no shading, no gradients, no gray tones.
+White background, high contrast. All 5 views clearly separated.
+
+OUTPUT: 5-angle turnaround maintaining perfect consistency with reference.
+`.trim();
+    }
+
     return `
+CHARACTER TURNAROUND SHEET - 5-ANGLE REFERENCE
+
+Create a professional character reference sheet showing the SAME character from 5 angles arranged in a grid:
+
+┌─────────┬─────────┐
+│  FRONT  │  BACK   │
+├─────────┼─────────┤
+│  LEFT   │  RIGHT  │
+├─────────┴─────────┤
+│    3/4 VIEW       │
+└───────────────────┘
+
+${referenceImage ? 'Use the provided image as CREATIVE INSPIRATION. Capture the essence and vibe, but feel free to interpret and enhance based on the DNA below.' : ''}
+
 CHARACTER DNA:
 - Name: ${dna.name}
 - Role: ${dna.role}
@@ -20,110 +69,47 @@ CHARACTER DNA:
 - Skin: ${dna.skin}
 - Body: ${dna.body}
 - Signature Features: ${dna.signatureFeatures}
-- Outfit Canon: ${dna.outfitCanon}
-- Style Lock: ${dna.styleLock}
+- Outfit: ${dna.outfitCanon}
+- Style: ${dna.styleLock}
 
-SCENE:
-Character standing in a neutral heroic pose, full body, plain background, clear lighting.
+CRITICAL RULES:
+1. ALL 5 views must show the EXACT SAME character with IDENTICAL features
+2. Signature features (${dna.signatureFeatures}) must appear in EVERY view where visible
+3. Outfit must be consistent across all angles
+4. Use T-pose or relaxed standing pose for clear silhouette
+5. Plain white background for each view
+6. Clear visual separation between views (thin lines or white space)
 
 TECHNICAL STYLE:
-Coloring book line art, clean monoline black outlines, bold thick lines, no shading, no gradients, no gray. White background, high contrast.
+Coloring book line art, clean monoline black outlines, bold thick lines matching "${dna.styleLock}" style.
+No shading, no gradients, no gray. White background, high contrast.
 `.trim();
 };
 
-const INITIAL_DNA: CharacterDNA = {
-    name: '',
-    role: '',
-    age: '',
-    face: '',
-    eyes: '',
-    hair: '',
-    skin: '',
-    body: '',
-    signatureFeatures: '',
-    outfitCanon: '',
-    styleLock: 'Bold & Easy'
-};
-
 export const HeroLab: React.FC = () => {
-    const { projectId } = useParams();
     const navigate = useNavigate();
     const toast = useToast();
 
-    const [projectName, setProjectName] = useState('');
-    const [dna, setDna] = useState<CharacterDNA>(INITIAL_DNA);
-    const [heroImage, setHeroImage] = useState<string | undefined>(undefined);
-    const [seed, setSeed] = useState<number>(Math.floor(Math.random() * 1000000));
-    const [isLoading, setIsLoading] = useState(false);
-
-    // Load Project
-    React.useEffect(() => {
-        if (!projectId) return;
-
-        async function load() {
-            try {
-                const { fetchProject } = await import('../services/projectsService');
-                const project = await fetchProject(projectId!);
-                if (project && (project as any).dna) {
-                    setProjectName(project.projectName);
-                    setDna((project as any).dna);
-                    setHeroImage((project as any).baseImageUrl);
-                    if ((project as any).seed) setSeed((project as any).seed);
-                }
-            } catch (err) {
-                console.error('Failed to load hero:', err);
-                toast.error('Failed to load hero');
-            }
+    // Use the new hero project hook with autosave
+    const showToast = useCallback((type: 'success' | 'error' | 'warning' | 'info', message: string, emoji?: string) => {
+        switch (type) {
+            case 'success': toast.success(message, emoji); break;
+            case 'error': toast.error(message, emoji); break;
+            case 'warning': toast.warning(message, emoji); break;
+            case 'info': toast.info(message, emoji); break;
         }
-        load();
-    }, [projectId, toast]);
+    }, [toast]);
 
-    // Save Helper
-    const saveHero = async () => {
-        const { saveProject } = await import('../services/projectsService');
-        try {
-            // Need to cast/construct a cohesive object
-            const projectToSave: HeroProject = {
-                id: projectId || 'new', // will be handled by service
-                toolType: 'hero_lab',
-                projectName: projectName || dna.name || 'Untitled Hero',
-                dna,
-                baseImageUrl: heroImage,
-                seed: seed,
-                // Required base props
-                pageAmount: 1,
-                pageSizeId: 'portrait',
-                visualStyle: dna.styleLock,
-                complexity: 'Moderate',
-                targetAudienceId: 'kids',
-                userPrompt: '',
-                hasHeroRef: false,
-                heroImage: null,
-                includeText: false,
-                createdAt: Date.now(),
-                updatedAt: Date.now(),
-                pages: []
-            };
-
-            const saved = await saveProject(projectToSave);
-            // If it was new, we might want to navigate or update ID, but for now just toast
-            toast.success('Hero saved successfully!');
-
-            // If new, navigate to proper URL so subsequent saves update
-            if (!projectId && saved.id) {
-                navigate(`/hero-lab/${saved.id}`, { replace: true });
-            }
-        } catch (err) {
-            console.error('Failed to save hero:', err);
-            toast.error('Failed to save hero');
-        }
-    };
-
-
-    // Custom "setPages" interceptor to catch the result
+    const [isExtracting, setIsExtracting] = useState(false);
     const [dummyPages, setDummyPages] = useState<any[]>([]);
 
-    // Reuse existing generation hook - mimicking how Studio uses it
+    // Use the new hook
+    const project = useHeroProject({
+        showToast,
+        isGenerating: false // Will be updated
+    });
+
+    // Generation hook
     const { isGenerating, startGeneration } = useGeneration({
         apiKey: 'valid',
         validateApiKey: () => true,
@@ -134,58 +120,147 @@ export const HeroLab: React.FC = () => {
             enableSummaryCard: false,
             reducedMotion: false
         },
-        showToast: (t, m, e) => {
-            if (t === 'error') toast.error(m, e);
-            else if (t === 'success') toast.success(m, e);
-            else toast.info(m, e);
-        },
+        showToast,
         setPages: setDummyPages,
         setUserPrompt: () => { }
     });
 
+    // Handle reference image upload with DNA extraction
+    const handleReferenceImageUpload = useCallback(async (file: File) => {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const result = e.target?.result as string;
+            if (!result) return;
 
+            // Extract base64 from data URL
+            const base64 = result.includes(',') ? result.split(',')[1] : result;
+            const mimeType = file.type || 'image/png';
 
-    const handleGeneration = async () => {
-        if (!dna.name) return;
+            project.setReferenceImage({ base64: result, mimeType });
 
-        const fullPrompt = constructPrompt(dna);
+            // If in replicate mode, auto-extract DNA
+            if (project.referenceMode === 'replicate') {
+                setIsExtracting(true);
+                try {
+                    const service = new DirectPromptService();
+                    const extractedDNA = await service.extractCharacterDNA(base64, mimeType);
 
-        // We use the existing hook's function
-        // Note: startGeneration expects specific struct.
-        // We are hijacking 'userPrompt' to send our full engineered prompt.
+                    if (extractedDNA) {
+                        project.setDna(extractedDNA);
+                        project.setProjectName(extractedDNA.name || 'Extracted Hero');
+                        toast.success('Character DNA extracted!', '🧬');
+                    }
+                } catch (err) {
+                    console.error('DNA extraction failed:', err);
+                    toast.error('Failed to extract DNA from image');
+                } finally {
+                    setIsExtracting(false);
+                }
+            }
+        };
+        reader.readAsDataURL(file);
+    }, [project, toast]);
+
+    const handleReferenceImageClear = useCallback(() => {
+        project.setReferenceImage(null);
+    }, [project]);
+
+    // Handle mode change - trigger extraction if switching to replicate with an image
+    const handleReferenceModeChange = useCallback(async (mode: HeroReferenceMode) => {
+        project.setReferenceMode(mode);
+
+        // If switching to replicate and we have an image, extract DNA
+        if (mode === 'replicate' && project.referenceImage) {
+            setIsExtracting(true);
+            try {
+                const base64 = project.referenceImage.base64.includes(',')
+                    ? project.referenceImage.base64.split(',')[1]
+                    : project.referenceImage.base64;
+
+                const service = new DirectPromptService();
+                const extractedDNA = await service.extractCharacterDNA(base64, project.referenceImage.mimeType);
+
+                if (extractedDNA) {
+                    project.setDna(extractedDNA);
+                    project.setProjectName(extractedDNA.name || project.projectName);
+                    toast.success('Character DNA extracted!', '🧬');
+                }
+            } catch (err) {
+                console.error('DNA extraction failed:', err);
+                toast.error('Failed to extract DNA from image');
+            } finally {
+                setIsExtracting(false);
+            }
+        }
+    }, [project, toast]);
+
+    const handleUseInStudio = useCallback(() => {
+        const heroImage = project.profileSheetUrl || project.baseImageUrl;
+        if (!heroImage) return;
+
+        navigate('/studio', {
+            state: {
+                heroData: {
+                    dna: project.dna,
+                    image: heroImage,
+                    seed: project.seed
+                }
+            }
+        });
+    }, [project, navigate]);
+
+    const handleImageUpload = useCallback((file: File) => {
+        // This is for the CharacterView upload - saves as base image
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const result = e.target?.result as string;
+            if (result) {
+                project.setBaseImageUrl(result);
+            }
+        };
+        reader.readAsDataURL(file);
+    }, [project]);
+
+    const handleGeneration = useCallback(async () => {
+        if (!project.dna.name && !project.referenceImage) return;
+
+        const hasRef = !!project.referenceImage;
+        const isReplicate = project.referenceMode === 'replicate';
+
+        const fullPrompt = buildProfileSheetPrompt(project.dna, hasRef, isReplicate);
+
+        // Use square aspect for profile sheet grid layout
         startGeneration({
-            projectName: projectName || dna.name,
+            projectName: project.projectName || project.dna.name,
             userPrompt: fullPrompt,
             pageAmount: 1,
-            pageSizeId: 'portrait',
-            visualStyle: dna.styleLock,
+            pageSizeId: 'square', // Square for grid layout
+            visualStyle: project.dna.styleLock,
             complexity: 'Moderate',
-            targetAudienceId: 'kids', // Default
-            hasHeroRef: false,
-            heroImage: null,
+            targetAudienceId: 'kids',
+            hasHeroRef: hasRef,
+            heroImage: hasRef && project.referenceImage ? {
+                base64: project.referenceImage.base64.includes(',')
+                    ? project.referenceImage.base64.split(',')[1]
+                    : project.referenceImage.base64,
+                mimeType: project.referenceImage.mimeType
+            } : null,
             includeText: false,
-            creativeVariation: 'balanced',
-            seed: seed
+            creativeVariation: 'precision', // Lower temp for consistency
+            characterDNA: project.dna
         });
-    };
+    }, [project, startGeneration]);
 
-    // Sync hook result to our local hero view
-    // The useGeneration hook calls setDummyPages. We watch dummyPages.
-    // This is a bit hacky but reuses the complex websocket/polling logic in useGeneration.
+    // Sync generation result to profile sheet
     React.useEffect(() => {
         const lastPage = dummyPages[dummyPages.length - 1];
         if (lastPage && lastPage.imageUrl && !lastPage.isLoading && lastPage.status === 'complete') {
-            setHeroImage(lastPage.imageUrl);
-            // Auto-save on generation success
-            saveHero();
+            project.setProfileSheetUrl(lastPage.imageUrl);
+            // Also set as base image for backwards compatibility
+            project.setBaseImageUrl(lastPage.imageUrl);
+            toast.success('Profile sheet generated!', '🖼️');
         }
-    }, [dummyPages]);
-
-    // Override the hook's setPages to point to ours
-    // We need to re-instantiate the hook with the correct setter if we want to use it this way.
-    // React hooks order rules mean we can't conditionally call it.
-    // The previous call to useGeneration passed `setPages: (pages) => ...` 
-    // Let's refine that definition above.
+    }, [dummyPages, project, toast]);
 
     return (
         <div className="h-screen w-screen overflow-hidden bg-[hsl(var(--background))] text-[hsl(var(--foreground))] flex flex-col font-sans">
@@ -198,55 +273,41 @@ export const HeroLab: React.FC = () => {
                 {/* Left Sidebar: Character Setup */}
                 <div className="w-[400px] flex-shrink-0 flex flex-col bg-[hsl(var(--card))]/30 backdrop-blur-xl border-r border-[hsl(var(--border))] z-20 shadow-2xl overflow-hidden">
                     <CharacterSetup
-                        dna={dna}
-                        setDna={setDna}
+                        dna={project.dna}
+                        setDna={project.setDna}
                         onGenerate={handleGeneration}
                         isGenerating={isGenerating}
-                        projectName={projectName}
-                        setProjectName={setProjectName}
-                        seed={seed}
-                        setSeed={setSeed}
+                        projectName={project.projectName}
+                        setProjectName={project.setProjectName}
+                        seed={project.seed}
+                        setSeed={project.setSeed}
+                        referenceImage={project.referenceImage}
+                        onReferenceImageUpload={handleReferenceImageUpload}
+                        onReferenceImageClear={handleReferenceImageClear}
+                        referenceMode={project.referenceMode}
+                        setReferenceMode={handleReferenceModeChange}
+                        isExtracting={isExtracting}
                     />
                 </div>
 
                 {/* Center Canvas: Character View */}
                 <CharacterView
-                    baseImageUrl={heroImage || (dummyPages[0]?.imageUrl)}
+                    baseImageUrl={project.profileSheetUrl || project.baseImageUrl || (dummyPages[0]?.imageUrl)}
                     isGenerating={isGenerating}
-                    projectName={projectName || dna.name}
+                    projectName={project.projectName || project.dna.name}
+                    onImageUpload={handleImageUpload}
+                    onUseInStudio={handleUseInStudio}
                 />
-
-                {/* Right Toolbar: Tools */}
-                <div className="w-16 flex-shrink-0 flex flex-col items-center py-6 gap-4 bg-[hsl(var(--card))]/30 backdrop-blur-xl border-l border-[hsl(var(--border))]">
-                     <button 
-                        onClick={() => {
-                            if (!heroImage) return;
-                            navigate('/studio', { 
-                                state: { 
-                                    heroData: {
-                                        dna,
-                                        image: heroImage,
-                                        seed
-                                    }
-                                } 
-                            });
-                        }}
-                        disabled={!heroImage}
-                        className="w-10 h-10 rounded-xl flex items-center justify-center border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))] hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed group relative" 
-                        title="Use in Studio"
-                    >
-                        <span className="text-xl">🎨</span>
-                        <div className="absolute right-12 bg-black text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none transition-opacity">
-                            Use in Studio
-                        </div>
-                     </button>
-                    
-                    {/* Placeholder for Magic Edit / Export */}
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center border border-[hsl(var(--border))] opacity-30 select-none pb-1" title="Magic Edit (Coming Soon)">
-                        <span className="text-xl text-[hsl(var(--muted-foreground))]">✨</span>
-                    </div>
-                </div>
             </div>
+
+            {/* Save Status Indicator */}
+            {project.saveStatus && project.saveStatus !== 'saved' && (
+                <div className="fixed bottom-4 right-4 px-3 py-1.5 rounded-full text-xs font-medium bg-[hsl(var(--card))]/80 backdrop-blur border border-[hsl(var(--border))]">
+                    {project.saveStatus === 'saving' && '💾 Saving...'}
+                    {project.saveStatus === 'unsaved' && '○ Unsaved changes'}
+                    {project.saveStatus === 'error' && '⚠️ Save failed'}
+                </div>
+            )}
         </div>
     );
 };

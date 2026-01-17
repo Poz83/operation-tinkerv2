@@ -5,7 +5,7 @@
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { PAGE_SIZES, VISUAL_STYLES, TARGET_AUDIENCES, COMPLEXITY_LEVELS, SavedProject, CreativeVariation, ColoringPage } from '../types';
+import { PAGE_SIZES, VISUAL_STYLES, TARGET_AUDIENCES, COMPLEXITY_LEVELS, SavedProject, CreativeVariation, ColoringPage, CharacterDNA } from '../types';
 import { useAutosave } from './useAutosave';
 import { saveProject, fetchProject } from '../services/projectsService';
 
@@ -28,6 +28,7 @@ export const useProject = (
     const [includeText, setIncludeText] = useState(false);
     const [creativeVariation, setCreativeVariation] = useState<CreativeVariation>('auto');
     const [visibility, setVisibility] = useState<'private' | 'unlisted' | 'public'>('private');
+    const [characterDNA, setCharacterDNA] = useState<CharacterDNA | null>(null);
 
     // --- Persistence State ---
     const { projectId: urlProjectId } = useParams<{ projectId?: string }>();
@@ -51,11 +52,12 @@ export const useProject = (
         updatedAt: Date.now(),
         thumbnail: pages.find(p => p.imageUrl)?.imageUrl,
         pages, // Pass pages for persistence
-        visibility
+        visibility,
+        characterDNA: characterDNA || undefined
     }), [
         currentProjectId, projectName, pageAmount, pageSizeId, visualStyle,
         complexity, targetAudienceId, userPrompt, hasHeroRef, heroImage,
-        includeText, pages, visibility
+        includeText, pages, visibility, characterDNA
     ]);
 
     const { status: saveStatus, lastSavedAt } = useAutosave({
@@ -108,6 +110,7 @@ export const useProject = (
         setHeroImage(project.heroImage);
         setIncludeText(project.includeText);
         setCurrentProjectId(project.id);
+        setCharacterDNA(project.characterDNA || null);
         setVisibility(project.visibility || 'private');
 
         if (project.pages) {
@@ -131,6 +134,7 @@ export const useProject = (
         setCurrentProjectId(null);
         setPages([]);
         setVisibility('private');
+        setCharacterDNA(null);
     }, [setPages]);
 
     // Load project on mount if URL ID exists
@@ -166,6 +170,7 @@ export const useProject = (
         includeText, setIncludeText,
         creativeVariation, setCreativeVariation,
         visibility, setVisibility,
+        characterDNA, setCharacterDNA,
 
         currentProjectId,
         saveStatus,

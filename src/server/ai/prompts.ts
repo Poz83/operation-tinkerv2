@@ -332,7 +332,8 @@ export const buildPrompt = (
   includeText: boolean = false,
   audiencePrompt: string = '',
   audienceLabel: string = '', // For precise border logic
-  styleDNA?: import('../../types').StyleDNA | null // Forensic analysis results
+  styleDNA?: import('../../types').StyleDNA | null, // Forensic analysis results
+  characterDNA?: import('../../types').CharacterDNA | null // Hero character DNA for consistency
 ): { fullPrompt: string; fullNegativePrompt: string } => {
   const style = STYLE_RULES[styleKey] || STYLE_RULES['default'];
   const complexity = COMPLEXITY_RULES[complexityKey] || COMPLEXITY_RULES['Moderate'];
@@ -439,6 +440,22 @@ ${styleDNA.promptFragment}
 ${styleDNA.hasBorder ? `- Border: ${styleDNA.borderStyle} border frame required` : '- Border: None - no border frame'}
 ` : '';
 
+  // Character DNA Reference - for hero consistency across multiple pages
+  const characterDNASection = characterDNA && characterDNA.name ? `
+[CHARACTER REFERENCE: ${characterDNA.name}]
+You MUST maintain absolute visual consistency with this character throughout:
+- Role: ${characterDNA.role || 'Not specified'}
+- Age: ${characterDNA.age || 'Not specified'}
+- Face: ${characterDNA.face || 'Not specified'}
+- Eyes: ${characterDNA.eyes || 'Not specified'}
+- Hair: ${characterDNA.hair || 'Not specified'}
+- Body: ${characterDNA.body || 'Not specified'}
+- Signature Features: ${characterDNA.signatureFeatures || 'None'}
+- Outfit: ${characterDNA.outfitCanon || 'Not specified'}
+
+CRITICAL: Every detail above MUST appear consistently on every page. Do not omit or alter signature features.
+` : '';
+
   // Override line weight instruction when StyleDNA is present
   const effectiveLineWeight = styleDNA
     ? `${styleDNA.lineWeightMm} (${styleDNA.lineWeight}, ${styleDNA.lineConsistency} - FROM REFERENCE IMAGE)`
@@ -450,7 +467,7 @@ ${styleDNA.hasBorder ? `- Border: ${styleDNA.borderStyle} border frame required`
 [SCENE_INTENT]: ${style.sceneIntent}
 
 [ROLE]: Professional Vector Illustrator creating a coloring book page.
-
+${characterDNASection}
 [SUBJECT]: ${userSubject}
 
 [AUDIENCE_GUIDANCE]: ${audiencePrompt || 'General audience - balanced approach.'}
