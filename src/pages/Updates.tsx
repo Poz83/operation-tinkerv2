@@ -9,7 +9,7 @@ import { Navigation } from '../components/Navigation';
 
 const Updates: React.FC = () => {
     return (
-        <div className="min-h-screen bg-[#09090b] text-white selection:bg-cyan-500/30">
+        <div className="h-screen overflow-y-auto bg-[#09090b] text-white selection:bg-cyan-500/30">
             <Navigation />
 
             <div className="max-w-4xl mx-auto px-6 pt-32 pb-20">
