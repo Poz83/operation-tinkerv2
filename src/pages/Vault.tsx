@@ -86,7 +86,7 @@ export const Vault: React.FC = () => {
     );
 
     return (
-        <div className="min-h-screen bg-[hsl(var(--background))] text-white font-sans selection:bg-purple-500/30">
+        <div className="h-screen overflow-y-auto bg-[hsl(var(--background))] text-white font-sans selection:bg-purple-500/30 no-scrollbar">
             <div className="aurora-veil" />
             <Navigation />
 
@@ -133,8 +133,8 @@ export const Vault: React.FC = () => {
                     <button
                         onClick={() => setActiveTab('projects')}
                         className={`pb-4 px-2 text-sm font-medium transition-colors relative ${activeTab === 'projects'
-                                ? 'text-white'
-                                : 'text-zinc-400 hover:text-white'
+                            ? 'text-white'
+                            : 'text-zinc-400 hover:text-white'
                             }`}
                     >
                         Projects
@@ -145,8 +145,8 @@ export const Vault: React.FC = () => {
                     <button
                         onClick={() => setActiveTab('references')}
                         className={`pb-4 px-2 text-sm font-medium transition-colors relative ${activeTab === 'references'
-                                ? 'text-white'
-                                : 'text-zinc-400 hover:text-white'
+                            ? 'text-white'
+                            : 'text-zinc-400 hover:text-white'
                             }`}
                     >
                         Saved References
