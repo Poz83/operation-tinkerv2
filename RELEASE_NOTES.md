@@ -55,6 +55,11 @@
 - **Purity Lock**: The Auto-Consistency engine now demands a **90% Quality Score** before locking onto a style reference.
 - **Anti-Poison**: If the first image has ANY color artifacts or mockup vibes, the system refuses to use it as a reference for the next pages. This prevents one bad image from ruining the whole book.
 
+## [2.2.12] - UI Visibility Patch
+- **Planning Visibility**: Wired up the "Magic Pencil" to appear immediately when you click Generate (during the "Planning" phase), not just when images start loading.
+- **Fixed Wiring**: The `Book` view was ignoring the global `isGenerating` signal. Fixed it.
+
+
 
 
 

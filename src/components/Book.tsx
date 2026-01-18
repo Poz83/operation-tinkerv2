@@ -17,9 +17,10 @@ interface BookProps {
     onImageSelect?: (imageUrl: string, pageIndex: number) => void;
     selectedImageIndex?: number | null;
     onDeletePage?: (pageIndex: number) => void;
+    isGenerating?: boolean; // New prop
 }
 
-export const Book: React.FC<BookProps> = ({ pages, currentSheetIndex, onSheetClick, pageSizeId, onImageSelect, selectedImageIndex, onDeletePage }) => {
+export const Book: React.FC<BookProps> = ({ pages, currentSheetIndex, onSheetClick, pageSizeId, onImageSelect, selectedImageIndex, onDeletePage, isGenerating }) => {
     // Determine aspect ratio from pageSizeId
     const sizeConfig = PAGE_SIZES.find(s => s.id === pageSizeId) || PAGE_SIZES[0];
     const aspectRatio = sizeConfig.width / sizeConfig.height;
@@ -157,19 +158,26 @@ export const Book: React.FC<BookProps> = ({ pages, currentSheetIndex, onSheetCli
                             </ErrorBoundary>
                         </div>
                     ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gray-50/50 flex-col gap-4 p-8 text-center animate-in fade-in duration-700">
-                            <div className="w-20 h-20 rounded-full bg-blue-500/10 flex items-center justify-center mb-2">
-                                <svg className="w-10 h-10 text-blue-500/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                </svg>
+                        // Empty State / Planning State
+                        isGenerating ? (
+                            <div className="w-full h-full flex flex-col items-center justify-center bg-white/90 backdrop-blur-md animate-in fade-in duration-500">
+                                <GenerationAnimation />
                             </div>
-                            <div className="space-y-1">
-                                <h3 className="text-xl font-semibold text-gray-700">Ready to Create!</h3>
-                                <p className="text-sm text-gray-500 max-w-[200px] mx-auto">
-                                    Describe your idea on the left and hit the magic button ✨
-                                </p>
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-gray-50/50 flex-col gap-4 p-8 text-center animate-in fade-in duration-700">
+                                <div className="w-20 h-20 rounded-full bg-blue-500/10 flex items-center justify-center mb-2">
+                                    <svg className="w-10 h-10 text-blue-500/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                </div>
+                                <div className="space-y-1">
+                                    <h3 className="text-xl font-semibold text-gray-700">Ready to Create!</h3>
+                                    <p className="text-sm text-gray-500 max-w-[200px] mx-auto">
+                                        Describe your idea on the left and hit the magic button ✨
+                                    </p>
+                                </div>
                             </div>
-                        </div>
+                        )
                     )}
 
                     {/* Generating / Loading Indicator - Clear Status Overlay */}
