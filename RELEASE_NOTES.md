@@ -42,6 +42,12 @@
 - **Constraint Awareness**: It explicitly knows to ask for "closed shapes", "distinct outlines", and "center composition".
 - **Translation Logic**: It knows how to translate "glowing" into "radiating lines" and "furry" into "texture lines" for perfect B&W results.
 
+## [2.2.9] - Compliance Force
+- **The "Footer" Check**: Added a forceful `[FINAL COMPLIANCE CHECK]` to every prompt.
+- **Artifact Protection**: Forces the AI to ask itself: "Is this a photo of paper?" before outputting. If YES, it fails and retries (internally).
+- **Zero-Gray Policy**: Strict enforcement of #000000 and #FFFFFF only.
+
+
 
 
 ## [2.2.0] - Agentic QA & Smart Repairs

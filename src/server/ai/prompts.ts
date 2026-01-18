@@ -146,6 +146,18 @@ export const buildPrompt = (
   }
 
   // D. Final Assembly
+
+  // [NEW] The "Compliance Footer" - Forces the model to check this LAST
+  const complianceFooter = `
+    [FINAL COMPLIANCE CHECK]
+    1. VIEW CHECK: Is this a digital vector file? (YES) Is this a photo of paper? (NO)
+    2. COLOR CHECK: Is the image 100% Black & White? (YES) Is there any red/blue/gray? (NO)
+    3. CONTENT CHECK: Are there humans? (NO - unless prompted)
+    
+    CRITICAL: If the image looks like a photo of a drawing on a table, YOU HAVE FAILED. 
+    Output strictly the vector line art on a pure white canvas (#FFFFFF).
+  `;
+
   // We wrap the instructions to enforce "Digital Vector" mode
   const fullPrompt = `
     ROLE: You are a vector line art generator.
@@ -171,6 +183,8 @@ export const buildPrompt = (
     Constraint: All shapes must be closed/watertight for flood-fill.
     
     ${heroConstraint}
+
+    ${complianceFooter}
   `;
 
   // E. Dynamic Negatives
