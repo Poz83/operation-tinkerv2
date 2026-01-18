@@ -7,6 +7,7 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { ColoringPage, PAGE_SIZES } from '../types';
 import { Panel } from './Panel';
 import { ErrorBoundary } from './ErrorBoundary';
+import { GenerationAnimation } from './GenerationAnimation';
 
 interface BookProps {
     pages: ColoringPage[];
@@ -173,16 +174,8 @@ export const Book: React.FC<BookProps> = ({ pages, currentSheetIndex, onSheetCli
 
                     {/* Generating / Loading Indicator - Clear Status Overlay */}
                     {activePage && (activePage.isLoading || activePage.status === 'generating') && (
-                        <div className="absolute inset-0 z-[60] flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm animate-in fade-in duration-500">
-                            <div className="relative">
-                                <div className="w-16 h-16 border-4 border-indigo-100 border-t-indigo-500 rounded-full animate-spin"></div>
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <span className="text-xl">✨</span>
-                                </div>
-                            </div>
-                            <p className="mt-4 text-sm font-medium text-indigo-600 animate-pulse">
-                                {activePage.statusMessage || 'Creating magic...'}
-                            </p>
+                        <div className="absolute inset-0 z-[60] flex flex-col items-center justify-center bg-white/90 backdrop-blur-md animate-in fade-in duration-500">
+                            <GenerationAnimation />
                         </div>
                     )}
 

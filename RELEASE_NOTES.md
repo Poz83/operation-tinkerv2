@@ -33,6 +33,11 @@
 - **Browser Disk Usage**: By stabilizing signed URLs, your browser can now effectively disk-cache community images, making navigation instant.
 - **Bandwidth Reduction**: Significantly reduced unnecessary R2 signing requests.
 
+## [2.2.7] - Creative Loading Experience
+- **Magic Pencil Animation**: Replaced the standard loading spinner with a whimsical "Magic Pencil" animation that sketches while you wait.
+- **Dynamic Status**: Floating icons and cycling messages ("Dreaming...", "Inking...") keep the wait engaging.
+
+
 ## [2.2.0] - Agentic QA & Smart Repairs
 - **Agentic Quality Assurance**: Integrated Gemini 1.5 Pro to semantically analyze every image (detects unwanted text, anatomy issues, etc.).
 - **Self-Healing AI**: The new "Smart Repair" system automatically translates QA failures into precise engineering directives for retries.
