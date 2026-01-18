@@ -104,6 +104,7 @@ export const generateWithGemini = async (options: GenerateImageOptions): Promise
         systemInstruction: SYSTEM_INSTRUCTION,
         imageConfig: imageConfig,
         temperature: options.temperature ?? 1.0,
+        responseModalities: ['IMAGE'], // Explicitly request only image output
       },
     });
 
