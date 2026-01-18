@@ -185,6 +185,7 @@ const App: React.FC = () => {
   // --- UI State ---
   const [showEditChat, setShowEditChat] = useState(false);
   const [showSummaryCard, setShowSummaryCard] = useState(false);
+  const [showStopConfirm, setShowStopConfirm] = useState(false);
   const [currentSheetIndex, setCurrentSheetIndex] = useState(0);
   const [showExportModal, setShowExportModal] = useState(false);
 
@@ -581,7 +582,7 @@ const App: React.FC = () => {
               <div className="flex flex-col gap-3">
                 {(generation.isGenerating || (displayProgress > 0 && displayProgress < 100)) ? (
                   <button
-                    onClick={generation.handleCancel}
+                    onClick={() => setShowStopConfirm(true)}
                     className="w-full py-3 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--muted))]/20 text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))]/40 font-medium transition-all"
                   >
                     Stop Creating
@@ -613,6 +614,44 @@ const App: React.FC = () => {
               setCurrentSheetIndex={setCurrentSheetIndex}
               onDeletePage={handleDeletePage}
             />
+
+            {/* Stop Confirmation Modal */}
+            {showStopConfirm && (
+              <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                <div className="glass-panel p-6 rounded-2xl max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200 border border-[hsl(var(--border))]">
+                  <div className="flex flex-col items-center text-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-2">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-red-500">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                      </svg>
+                    </div>
+                    <h3 className="text-xl font-bold text-[hsl(var(--foreground))]">Stop Creating?</h3>
+                    <p className="text-sm text-[hsl(var(--muted-foreground))]">
+                      This will abort the current generation and clear this project. Any finished pages may be lost.
+                    </p>
+                    <div className="flex gap-3 w-full mt-4">
+                      <button
+                        onClick={() => setShowStopConfirm(false)}
+                        className="flex-1 py-2.5 rounded-lg font-medium border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]/50 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => {
+                          generation.handleCancel();
+                          project.handleClear();
+                          setShowStopConfirm(false);
+                          showToast('info', 'Stopped and cleared.', '🛑');
+                        }}
+                        className="flex-1 py-2.5 rounded-lg font-medium bg-red-500 hover:bg-red-600 text-white transition-colors"
+                      >
+                        Stop & Clear
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {showSummaryCard && (
               <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">

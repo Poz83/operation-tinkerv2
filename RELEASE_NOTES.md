@@ -63,6 +63,11 @@
 - **Anti-Leak**: Fixed a rare bug where images from a previous project would "haunt" a new project if the network glitched.
 - **Strict Clearing**: The studio now aggressively wipes the slate clean when you switch projects, ensuring no data pollution.
 
+## [2.2.14] - Safety Stop
+- **Confirmation Dial**: Added a safety check when you click "Stop Creating".
+- **Clean Break**: Confirming "Stop" now instantly aborts generation AND clears the workspace, preventing half-baked projects from sticking around.
+
+
 
 
 
