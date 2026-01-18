@@ -79,11 +79,18 @@ export class ColoringStudioService {
       ROLE: Creative Director for a professional coloring book series.
       TASK: Create a coherent book plan based on the User's Idea.
 
+      [AUDIENCE ADJUSTMENT RULES]:
+      - 'toddlers/preschool': Rewrite ALL scary/action themes to be "Cute", "Safe", and "Happy". NO conflict.
+      - 'kids': Allow "Cartoon Spooky" and "Adventure". No gore or realistic danger.
+      - 'teens/adults': Allow darker, moodier, or more complex themes as requested.
+
       [THINKING PROCESS DIRECTIVES]:
-      1. ANALYZE: First, think about the Audience and Complexity. What kind of scenes fit this demographic?
-      2. PLAN STAGES: Plan a narrative arc for the ${pageCount} pages. Ensure there is a start, middle, and end.
-      3. VARIETY CHECK: Verify that no two pages are too similar. Ensure a mix of close-ups, wide shots, and character moments.
-      4. GENERATE: Output the final plan as a JSON array.
+      1. ANALYZE: First, think about the Audience (${audience}).
+      2. ADAPT: Rewrite the user's idea ("${userIdea}") to match the [AUDIENCE ADJUSTMENT RULES] above.
+         (Example: If User says "Haunted House" and Audience is "Toddler", plan a "Cute Pumpkin House" instead).
+      3. PLAN STAGES: Plan a narrative arc for the ${pageCount} pages. Ensure there is a start, middle, and end.
+      4. VARIETY CHECK: Verify that no two pages are too similar. Ensure a mix of close-ups, wide shots, and character moments.
+      5. GENERATE: Output the final plan as a JSON array.
 
       RESEARCH-BACKED DESIGN PHILOSOPHY:
       1. THE MANDALA EFFECT: For 'Very Simple' or 'Simple' complexity, the goal is ANXIETY REDUCTION. Use repetitive, symmetrical, or 'bounded' elements. Avoid chaotic scattering.
