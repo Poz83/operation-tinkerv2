@@ -15,6 +15,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
     {
+        id: 'update-2026-01-18-cinematics',
+        date: '2026-01-18',
+        title: 'Cinematic Intelligence',
+        version: 'v2.2.1',
+        type: 'minor',
+        description: 'Added a dynamic camera system to vary composition angles automatically.',
+        changes: [
+            'Implemented "Dynamic Camera" logic: Randomly selects from 8 cinematic angles (e.g., Low Angle, Dutch Angle, Worm\'s Eye) when "Dynamic" is chosen.',
+            'Added smart override: Obey\'s explicit camera selections while randomizing "Dynamic" defaults.'
+        ]
+    },
+    {
         id: 'update-2026-01-18-ai-qa',
         date: '2026-01-18',
         title: 'Agentic QA & Smart Repairs',

@@ -12,6 +12,22 @@ import { getStoredApiKey } from '../../lib/crypto';
 // Simple utility to pause between generations (anti-hallucination cool-down)
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+// A deck of camera angles to shuffle through for variety
+const DYNAMIC_ANGLES = [
+  'Low Angle (Looking up at subject, heroic)',
+  'High Angle (Looking down at subject, cute/small)',
+  'Close-Up (Focus on face/expression)',
+  'Wide Shot (Focus on environment/action)',
+  'Dutch Angle (Tilted camera, dynamic action)',
+  'Over-the-Shoulder (Looking at what the hero sees)',
+  'Worm\'s Eye View (Ground level, giant subject)',
+  'Eye Level (Standard portrait)'
+];
+
+// Helper to pick a random item from an array
+const pickRandom = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+
+
 export interface ProcessGenerationParams {
   batchId?: string;
   userIdea: string;
@@ -253,9 +269,23 @@ export const processGeneration = async (
     }
 
     // CINEMATICS LOGIC: Inject camera angle if specified
-    const cinematicPrompt = (params.cinematics && params.cinematics !== 'dynamic')
-      ? ` [CAMERA: ${params.cinematics.replace(/-/g, ' ')} view]`
-      : '';
+    // CINEMATICS LOGIC: Inject camera angle if specified
+    let selectedAngle = '';
+
+    // Case A: User picked a specific angle (e.g., "Close-Up") -> OBEY IT
+    if (params.cinematics && params.cinematics !== 'dynamic') {
+      selectedAngle = params.cinematics.replace(/-/g, ' ');
+    }
+    // Case B: User picked "Dynamic" (or nothing) -> RANDOMIZE IT
+    else {
+      // We pick a random angle from our deck to ensure variety
+      selectedAngle = pickRandom(DYNAMIC_ANGLES);
+    }
+
+    const cinematicPrompt = selectedAngle ? ` [CAMERA: ${selectedAngle} view]` : '';
+
+    // Log it so you can see what decision the AI made
+    console.log(`🎥 Page ${item.pageNumber} Auto-Camera: ${selectedAngle}`);
 
     // Inject cinematics into the item prompt before building full prompt
     const enhancedPrompt = item.prompt + cinematicPrompt;
