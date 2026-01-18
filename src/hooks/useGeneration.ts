@@ -128,7 +128,12 @@ export const useGeneration = ({
                     case 'success':
                         setPages(prev => prev.map(p =>
                             p.pageIndex === event.pageNumber - 1
-                                ? { ...p, status: 'complete', completedAt: new Date() }
+                                ? {
+                                    ...p,
+                                    status: 'complete',
+                                    completedAt: new Date(),
+                                    qa: event.qa
+                                }
                                 : p
                         ));
                         break;

@@ -181,7 +181,8 @@ export async function fetchProject(publicId: string): Promise<SavedProject | nul
             pageIndex: img.metadata?.pageIndex ?? 0,
             status: img.metadata?.status ?? 'complete',
             isLoading: false,
-            isCover: img.metadata?.isCover ?? false
+            isCover: img.metadata?.isCover ?? false,
+            qa: img.metadata?.qa
         };
     });
 
@@ -441,7 +442,8 @@ async function persistProjectImages(projectId: string, pages: ColoringPage[]): P
                 metadata: {
                     pageIndex: page.pageIndex,
                     status: page.status,
-                    isCover: page.isCover || false
+                    isCover: page.isCover || false,
+                    qa: page.qa
                 }
             });
 

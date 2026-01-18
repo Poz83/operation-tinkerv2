@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 
+import { PageQa } from './logging/types';
+
 export const PAGE_SIZES = [
   { id: 'square', label: '8.5" x 8.5"', ratio: '1:1', cssRatio: 1, width: 8.5, height: 8.5 },
   { id: 'portrait', label: '8.5" x 11"', ratio: '3:4', cssRatio: 0.77, width: 8.5, height: 11 }
@@ -94,6 +96,8 @@ export type PageStatus =
   | 'complete'       // Successfully generated
   | 'error';         // Failed
 
+
+
 export interface ColoringPage {
   id: string;
   imageUrl?: string;
@@ -106,6 +110,7 @@ export interface ColoringPage {
   cooldownRemaining?: number;
   startedAt?: Date;
   completedAt?: Date;
+  qa?: PageQa;
 }
 
 export interface SavedProject {
