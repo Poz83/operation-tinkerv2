@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 
-import { PageQa } from './logging/types';
+import { PageQa, QaTag } from './logging/types';
 
 export const PAGE_SIZES = [
   { id: 'square', label: '8.5" x 8.5"', ratio: '1:1', cssRatio: 1, width: 8.5, height: 8.5 },
@@ -222,45 +222,4 @@ export interface HeroProject extends SavedProject {
   seed?: number;
 }
 
-export type QaTag =
-  | 'cropped'
-  | 'open_paths'
-  | 'low_contrast_lines'
-  | 'too_detailed'
-  | 'too_noisy'
-  | 'text_present_unwanted'
-  | 'touches_border'
-  | 'blur'
-  | 'grayscale_shading'
-  | 'audience_mismatch'
-  | 'composition_poor'
-  | 'scary_content'
-  | 'distorted_anatomy'
-  | 'wrong_style'
-  | 'background_wrong'
-  | 'margin'
-  | 'midtones'
-  | 'speckles'
-  | 'micro_clutter'
-  | 'shading_present'
-  | 'too_simple'
-  | 'missing_subject'
-  | 'colored_artifacts'
-  | 'mockup_style'
-  | 'wrong_tone';
-
-export interface QaRubricBreakdown {
-  printCleanliness: number;
-  colorability: number;
-  composition: number;
-  audienceAlignment: number;
-  consistency: number;
-}
-
-export interface PageQa {
-  score: number; // 0-100
-  hardFail: boolean;
-  reasons: string[];
-  tags: QaTag[];
-  rubricBreakdown: QaRubricBreakdown;
-}
+export type { PageQa, QaTag };

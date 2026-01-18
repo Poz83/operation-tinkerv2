@@ -4,14 +4,14 @@
  */
 
 import { useState, useCallback, useRef } from 'react';
-import { editImageWithGemini, EditImageResult } from '../services/image-edit-service';
+import { editImage, EditImageResult } from '../services/image-edit-service';
 
 export interface ChatMessage {
     id: string;
     role: 'user' | 'assistant';
     content: string;
     timestamp: Date;
-    editedImageUrl?: string; // For assistant messages that produced edits
+    editedImageUrl?: string;
     isError?: boolean;
     isApplied?: boolean;
 }
@@ -32,18 +32,12 @@ export interface UseImageEditChatReturn {
     setSelectedImage: (imageUrl: string, pageIndex: number) => void;
     clearSelectedImage: () => void;
     applyEdit: (messageId: string, replace: boolean) => void;
-    // Undo/Redo
     canUndo: boolean;
     canRedo: boolean;
     undo: () => void;
     redo: () => void;
 }
 
-/**
- * Hook for managing AI image edit chat state.
- * Automatically resets chat when a new image is selected.
- * Includes undo/redo history for edits.
- */
 export function useImageEditChat(
     onImageEdited?: (pageIndex: number, newImageUrl: string, isNewVersion: boolean) => void
 ): UseImageEditChatReturn {
@@ -52,7 +46,6 @@ export function useImageEditChat(
     const [currentMask, setCurrentMask] = useState<string | null>(null);
     const [selectedImage, setSelectedImageState] = useState<SelectedImage | null>(null);
 
-    // Undo/Redo history - tracks image URLs that have been applied
     const [editHistory, setEditHistory] = useState<string[]>([]);
     const [redoStack, setRedoStack] = useState<string[]>([]);
 
@@ -61,7 +54,6 @@ export function useImageEditChat(
     const generateId = () => `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
     const clearChat = useCallback(() => {
-        // Abort any in-progress request
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
             abortControllerRef.current = null;
@@ -69,16 +61,13 @@ export function useImageEditChat(
         setMessages([]);
         setCurrentMask(null);
         setIsLoading(false);
-        // Reset undo/redo when clearing
         setEditHistory([]);
         setRedoStack([]);
     }, []);
 
     const setSelectedImage = useCallback((imageUrl: string, pageIndex: number) => {
-        // If selecting a different image, reset the chat
         setSelectedImageState(prev => {
             if (prev && prev.url !== imageUrl) {
-                // Different image - reset chat
                 clearChat();
             }
             return { url: imageUrl, pageIndex };
@@ -94,11 +83,7 @@ export function useImageEditChat(
         setCurrentMask(maskDataUrl);
     }, []);
 
-    /**
-     * Convert image URL (data, blob, or http) to base64 and mimeType
-     */
     const processImageData = async (url: string): Promise<{ base64: string; mimeType: string }> => {
-        // Handle Data URLs directly
         if (url.startsWith('data:')) {
             const matches = url.match(/^data:(.+);base64,(.+)$/);
             if (!matches) {
@@ -110,7 +95,6 @@ export function useImageEditChat(
             };
         }
 
-        // Handle Blob or HTTP URLs by fetching
         try {
             const response = await fetch(url);
             const blob = await response.blob();
@@ -141,14 +125,12 @@ export function useImageEditChat(
     const sendEdit = useCallback(async (prompt: string) => {
         if (!selectedImage || !prompt.trim()) return;
 
-        // Abort any previous request
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
         }
         const controller = new AbortController();
         abortControllerRef.current = controller;
 
-        // Add user message
         const userMessage: ChatMessage = {
             id: generateId(),
             role: 'user',
@@ -162,18 +144,17 @@ export function useImageEditChat(
             const sourceImageData = await processImageData(selectedImage.url);
             const maskImageData = currentMask ? await processImageData(currentMask) : undefined;
 
-            const result: EditImageResult = await editImageWithGemini({
+            const result: EditImageResult = await editImage({
                 sourceImage: sourceImageData,
                 maskImage: maskImageData,
                 editPrompt: prompt,
-                subject: "a black and white coloring page",
+                sourceSubject: "a black and white coloring page",
                 signal: controller.signal
             });
 
             if (controller.signal.aborted) return;
 
             if (result.error) {
-                // Add error message
                 const errorMessage: ChatMessage = {
                     id: generateId(),
                     role: 'assistant',
@@ -183,7 +164,6 @@ export function useImageEditChat(
                 };
                 setMessages(prev => [...prev, errorMessage]);
             } else if (result.imageUrl) {
-                // Add success message with edited image
                 const successMessage: ChatMessage = {
                     id: generateId(),
                     role: 'assistant',
@@ -193,14 +173,10 @@ export function useImageEditChat(
                     isApplied: false
                 };
                 setMessages(prev => [...prev, successMessage]);
-
-                // Auto-save logic removed to allow user choice
-                // Clear the mask after successful edit
                 setCurrentMask(null);
             }
         } catch (error: any) {
             if (error.message === 'Aborted' || controller.signal.aborted) {
-                // Request was cancelled, don't add error message
                 return;
             }
 
@@ -226,24 +202,20 @@ export function useImageEditChat(
         setMessages(prev => {
             const msg = prev.find(m => m.id === messageId);
             if (msg && msg.editedImageUrl && !msg.isApplied && selectedImage && onImageEdited) {
-                // Determine if new version (NOT replace)
                 const isNewVersion = !replace;
                 onImageEdited(selectedImage.pageIndex, msg.editedImageUrl, isNewVersion);
 
-                // Track in history for undo (save the current image before it gets replaced)
                 if (replace) {
                     setEditHistory(h => [...h, selectedImage.url]);
-                    setRedoStack([]); // Clear redo stack on new edit
+                    setRedoStack([]);
                 }
 
-                // Mark as applied
                 return prev.map(m => m.id === messageId ? { ...m, isApplied: true } : m);
             }
             return prev;
         });
     }, [selectedImage, onImageEdited]);
 
-    // Undo: revert to the previous image in history
     const undo = useCallback(() => {
         if (editHistory.length === 0 || !selectedImage || !onImageEdited) return;
 
@@ -251,17 +223,11 @@ export function useImageEditChat(
         const previousImageUrl = prevHistory.pop()!;
         setEditHistory(prevHistory);
 
-        // Push current to redo stack
         setRedoStack(r => [...r, selectedImage.url]);
-
-        // Apply the previous image (replace mode)
         onImageEdited(selectedImage.pageIndex, previousImageUrl, false);
-
-        // Update selectedImage to the reverted image
         setSelectedImageState({ url: previousImageUrl, pageIndex: selectedImage.pageIndex });
     }, [editHistory, selectedImage, onImageEdited]);
 
-    // Redo: re-apply the undone edit
     const redo = useCallback(() => {
         if (redoStack.length === 0 || !selectedImage || !onImageEdited) return;
 
@@ -269,13 +235,8 @@ export function useImageEditChat(
         const redoImageUrl = prevRedo.pop()!;
         setRedoStack(prevRedo);
 
-        // Push current to history
         setEditHistory(h => [...h, selectedImage.url]);
-
-        // Apply the redo image
         onImageEdited(selectedImage.pageIndex, redoImageUrl, false);
-
-        // Update selectedImage
         setSelectedImageState({ url: redoImageUrl, pageIndex: selectedImage.pageIndex });
     }, [redoStack, selectedImage, onImageEdited]);
 
@@ -290,7 +251,6 @@ export function useImageEditChat(
         setSelectedImage,
         clearSelectedImage,
         applyEdit,
-        // Undo/Redo
         canUndo: editHistory.length > 0,
         canRedo: redoStack.length > 0,
         undo,

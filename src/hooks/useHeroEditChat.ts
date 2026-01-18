@@ -7,7 +7,7 @@
  */
 
 import { useState, useCallback, useRef } from 'react';
-import { editImageWithGemini, EditImageResult } from '../services/image-edit-service';
+import { editImage, EditImageResult } from '../services/image-edit-service';
 import { CharacterDNA } from '../types';
 
 export interface HeroChatMessage {
@@ -42,9 +42,6 @@ export interface UseHeroEditChatReturn {
     redo: () => void;
 }
 
-/**
- * Build a character-aware edit prompt that maintains DNA consistency
- */
 const buildCharacterEditPrompt = (userPrompt: string, dna?: CharacterDNA): string => {
     if (!dna || !dna.name) {
         return userPrompt;
@@ -72,9 +69,6 @@ Ensure the character remains recognizable after the edit.
 `.trim();
 };
 
-/**
- * Hook for managing AI hero/character edit chat state.
- */
 export function useHeroEditChat(
     onImageEdited?: (newImageUrl: string, isNewVersion: boolean) => void,
     characterDNA?: CharacterDNA
@@ -84,7 +78,6 @@ export function useHeroEditChat(
     const [currentMask, setCurrentMask] = useState<string | null>(null);
     const [selectedImage, setSelectedImageState] = useState<SelectedHeroImage | null>(null);
 
-    // Undo/Redo history
     const [editHistory, setEditHistory] = useState<string[]>([]);
     const [redoStack, setRedoStack] = useState<string[]>([]);
 
@@ -144,7 +137,6 @@ export function useHeroEditChat(
         const controller = new AbortController();
         abortControllerRef.current = controller;
 
-        // Add user message
         const userMessage: HeroChatMessage = {
             id: generateId(),
             role: 'user',
@@ -158,10 +150,8 @@ export function useHeroEditChat(
             const sourceImageData = dataUrlToImageData(selectedImage.url);
             const maskImageData = currentMask ? dataUrlToImageData(currentMask) : undefined;
 
-            // Build character-aware prompt (still useful for context, though subject handles identity)
             const enhancedPrompt = buildCharacterEditPrompt(prompt, dnaRef.current);
 
-            // Construct the subject string from DNA for the new "Using the provided image of [subject]" template
             let subject = "a character";
             if (dnaRef.current) {
                 const parts = [];
@@ -170,11 +160,11 @@ export function useHeroEditChat(
                 if (parts.length > 0) subject = parts.join(', ');
             }
 
-            const result: EditImageResult = await editImageWithGemini({
+            const result: EditImageResult = await editImage({
                 sourceImage: sourceImageData,
                 maskImage: maskImageData,
                 editPrompt: enhancedPrompt,
-                subject: subject, // Pass the extracted subject
+                sourceSubject: subject,
                 signal: controller.signal
             });
 
@@ -234,7 +224,6 @@ export function useHeroEditChat(
                 if (replace) {
                     setEditHistory(h => [...h, selectedImage.url]);
                     setRedoStack([]);
-                    // Update selectedImage to the new image
                     setSelectedImageState({ url: msg.editedImageUrl, name: selectedImage.name });
                 }
 

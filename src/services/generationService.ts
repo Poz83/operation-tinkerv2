@@ -187,6 +187,10 @@ export interface BatchGenerateRequest {
         requiresText?: boolean;
         vectorMode?: 'organic' | 'geometric' | 'standard';
     }>;
+    /** Whether to use the first high-quality image as a reference for subsequent pages */
+    autoConsistency?: boolean;
+    /** Helper logic for auto-consistency carried over from legacy pipeline */
+    sessionReferenceImage?: { base64: string; mimeType: string };
     /** Abort signal */
     signal?: AbortSignal;
 }
@@ -583,6 +587,8 @@ export interface BatchGenerateConfig extends Omit<GeneratePageConfig, 'onProgres
     concurrency?: number;
     /** Delay between pages in ms (to avoid rate limiting) */
     delayBetweenPages?: number;
+    /** Called with progress updates for the current page */
+    onPageProgress?: (pageIndex: number, progress: GenerationProgress) => void;
 }
 
 export const batchGenerate = async (
@@ -596,9 +602,11 @@ export const batchGenerate = async (
     let failureCount = 0;
     let totalCost = 0;
 
-    const { project, pages, signal } = request;
+    const { project, pages, signal, autoConsistency } = request;
     const concurrency = config.concurrency || 1;
     const delayBetweenPages = config.delayBetweenPages ?? 1000;
+
+    let sessionReferenceImage = request.sessionReferenceImage;
 
     // Process pages
     if (concurrency === 1) {
@@ -622,6 +630,7 @@ export const batchGenerate = async (
                     requiresText: pageSpec.requiresText,
                     projectId: project.id,
                     autoSave: true,
+                    referenceImage: sessionReferenceImage || undefined,
                     signal,
                 },
                 {
@@ -629,6 +638,9 @@ export const batchGenerate = async (
                     maxAttempts: config.maxAttempts,
                     enableLogging: config.enableLogging,
                     onAttemptComplete: config.onAttemptComplete,
+                    onProgress: config.onPageProgress
+                        ? (p) => config.onPageProgress!(pageSpec.pageIndex, p)
+                        : undefined
                 }
             );
 
@@ -639,6 +651,22 @@ export const batchGenerate = async (
                 successCount++;
             } else {
                 failureCount++;
+            }
+
+            // [SMART CONSISTENCY] Logic from legacy process-generation.ts
+            // Logic: If autoConsistency is ON, and we don't have a ref yet, AND this result is high quality...
+            if (autoConsistency && !sessionReferenceImage && result.success && result.qualityScore >= 90 && result.imageUrl) {
+                // Check for specific artifacts (simplified check, real check would need parsing tags again or passing tags up)
+                // For now, trust high score.
+                try {
+                    const matches = result.imageUrl.match(/^data:(.+);base64,(.+)$/);
+                    if (matches) {
+                        sessionReferenceImage = { mimeType: matches[1], base64: matches[2] };
+                        // console.log(`🌟 Quality Standard Met (Page ${pageSpec.pageIndex}). Locking as Session Reference.`);
+                    }
+                } catch (e) {
+                    // ignore
+                }
             }
 
             totalCost += result.estimatedCost;
@@ -678,6 +706,9 @@ export const batchGenerate = async (
                             mode: config.mode,
                             maxAttempts: config.maxAttempts,
                             enableLogging: config.enableLogging,
+                            onProgress: config.onPageProgress
+                                ? (p) => config.onPageProgress!(pageSpec.pageIndex, p)
+                                : undefined
                         }
                     );
 
