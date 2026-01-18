@@ -51,6 +51,11 @@
 - **New Audit Rules**: The "Inspector" (QA AI) now strictly fails any image containing colored pixels (red/blue leaks) or "mockup" aesthetics.
 - **Smart Tags**: Added `colored_artifacts` and `mockup_style` tags to help the retry system understand *why* it failed and correct it faster.
 
+## [2.2.11] - "Perfect Match" Consistency
+- **Purity Lock**: The Auto-Consistency engine now demands a **90% Quality Score** before locking onto a style reference.
+- **Anti-Poison**: If the first image has ANY color artifacts or mockup vibes, the system refuses to use it as a reference for the next pages. This prevents one bad image from ruining the whole book.
+
+
 
 
 

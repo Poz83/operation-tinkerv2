@@ -578,12 +578,20 @@ export const processGeneration = async (
 
       // Save output buffer/base64 to your database/storage (simulated by callback)
 
-      // [SMART CONSISTENCY]: Only lock the reference if the image is High Quality (>85 score)
+      // [SMART CONSISTENCY]: Only lock the reference if the image is High Quality (>90 score)
       // This prevents locking "hallucinations" (like unwanted snails) as the style anchor.
       const isReferenceLocked = sessionReferenceImage !== null;
-      const isHighQuality = !qaHardFail && qaScore >= 85;
 
-      if (!isReferenceLocked && isHighQuality && currentImageUrl && params.autoConsistency && !params.hasHeroRef) {
+      // [UPDATED] Strict Reference Locking
+      const isHighQuality = !qaHardFail && qaScore >= 90; // Bump to 90 for "Perfect"
+
+      // Check for specific artifacts in the merged tags
+      const currentTags = qa ? (qa.tags || []) : [];
+      const hasColorArtifacts = currentTags.includes('colored_artifacts');
+      const isMockup = currentTags.includes('mockup_style');
+
+      // ONLY lock if it is perfect AND has no color/mockup issues
+      if (!isReferenceLocked && isHighQuality && !hasColorArtifacts && !isMockup && currentImageUrl && params.autoConsistency && !params.hasHeroRef) {
         console.log(`🌟 Quality Standard Met (Page ${item.pageNumber}). Locking this as Session Reference.`);
 
         try {
