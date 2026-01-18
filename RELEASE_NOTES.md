@@ -67,6 +67,12 @@
 - **Confirmation Dial**: Added a safety check when you click "Stop Creating".
 - **Clean Break**: Confirming "Stop" now instantly aborts generation AND clears the workspace, preventing half-baked projects from sticking around.
 
+## [2.2.15] - Prompt Engine Tuning
+- **Cozy Authenticity**: Updated the "Cozy Hand-Drawn" style to allow textures and stippling for a richer, more organic look.
+- **Audience Physics**: Refined rules for "Adults" to permit complexity while keeping "Toddlers" strictly simple.
+- **Negative Prompts**: Overhauled the ban list to be smarter about context (e.g., allowing "clouds" unless indoors).
+
+
 
 
 
