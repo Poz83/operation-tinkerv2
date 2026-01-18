@@ -24,7 +24,9 @@ export const CHANGELOG: ChangelogEntry[] = [
         changes: [
             'Implemented "Dynamic Camera" logic: Randomly selects from 8 cinematic angles (e.g., Low Angle, Dutch Angle, Worm\'s Eye) when "Dynamic" is chosen.',
             'Added smart override: Obey\'s explicit camera selections while randomizing "Dynamic" defaults.',
-            'UX Improvement: Prevented duplicate tabs on login. The original tab now politely informs you of success instead of auto-redirecting.'
+            'UX Improvement: Prevented duplicate tabs on login. The original tab now politely informs you of success instead of auto-redirecting.',
+            'Fixed Export Bug: Ensures downloaded projects (from vault) export correctly instead of creating empty zip files.',
+            'Friendly Filenames: Exported files now keep your project name\'s spacing and casing (e.g., "My Cool Project.pdf") instead of snake_case.'
         ]
     },
     {

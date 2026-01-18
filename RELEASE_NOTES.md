@@ -3,6 +3,8 @@
 ## [2.2.1] - Cinematic Intelligence
 - **Dynamic Camera System**: The AI now acts as a cinematographer, automatically choosing from 8 distinct camera angles (Low, High, Dutch, etc.) found in professional comics to create dynamic, non-repetitive compositions.
 - **Clean Login Flow**: Fixed the "duplicate tab" annoyance. If you log in via a magic link in a new tab, the old tab will now stay put and confirm your success, rather than opening a second dashboard.
+- **Reliable Export**: Fixed a bug where exporting saved projects resulted in empty files. The system now correctly downloads images from cloud storage before zipping.
+- **Friendly Filenames**: Exported files now respect your project name (e.g., "My Cool Project.zip" instead of "my_cool_project.zip").
 
 ## [2.2.0] - Agentic QA & Smart Repairs
 - **Agentic Quality Assurance**: Integrated Gemini 1.5 Pro to semantically analyze every image (detects unwanted text, anatomy issues, etc.).

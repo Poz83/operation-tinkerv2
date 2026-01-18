@@ -193,36 +193,51 @@ const App: React.FC = () => {
     const finishedPages = pages.filter(p => p.imageUrl && !p.isLoading);
     if (finishedPages.length === 0) return;
 
-    const safeProjectName = (project.projectName || 'coloring_book')
-      .slice(0, 30)
-      .replace(/[^a-z0-9]/gi, '_')
-      .replace(/_+/g, '_')
-      .toLowerCase();
+    const safeProjectName = (project.projectName || 'Coloring Book')
+      .trim()
+      .replace(/[<>:"/\\|?*]/g, '') // Only remove illegal characters
+      .slice(0, 50); // Reasonable length limit
+
+    // Helper to get image blob (handles both Data URI and Remote URL)
+    const getImageBlob = async (url: string): Promise<Blob> => {
+      const res = await fetch(url);
+      return await res.blob();
+    };
+
+    // Helper to convert blob to base64 (for jsPDF addImage)
+    const blobToBase64 = (blob: Blob): Promise<string> => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    };
 
     if (format === 'pdf') {
+      const { jsPDF } = await import('jspdf');
+      const sizeConfig = PAGE_SIZES.find(s => s.id === project.pageSizeId) || PAGE_SIZES[1];
+      const width = sizeConfig.width * 25.4;
+      const height = sizeConfig.height * 25.4;
+      const margin = 6.35; // 0.25" for KDP
+
       if (finishedPages.length === 1) {
         // Single page PDF - download directly
-        const { jsPDF } = await import('jspdf');
-        const sizeConfig = PAGE_SIZES.find(s => s.id === project.pageSizeId) || PAGE_SIZES[1];
-        const width = sizeConfig.width * 25.4;
-        const height = sizeConfig.height * 25.4;
         const doc = new jsPDF({
           orientation: width > height ? 'landscape' : 'portrait',
           unit: 'mm',
           format: [width, height]
         });
-        const margin = 6.35; // 0.25" for KDP
-        doc.addImage(finishedPages[0].imageUrl!, 'PNG', margin, margin, width - margin * 2, height - margin * 2, undefined, 'NONE');
+
+        const blob = await getImageBlob(finishedPages[0].imageUrl!);
+        const base64 = await blobToBase64(blob);
+
+        doc.addImage(base64, 'PNG', margin, margin, width - margin * 2, height - margin * 2, undefined, 'NONE');
         doc.save(`${safeProjectName}.pdf`);
       } else {
         // Multiple pages PDF - ZIP them
-        const { jsPDF } = await import('jspdf');
         const JSZip = (await import('jszip')).default;
         const zip = new JSZip();
-        const sizeConfig = PAGE_SIZES.find(s => s.id === project.pageSizeId) || PAGE_SIZES[1];
-        const width = sizeConfig.width * 25.4;
-        const height = sizeConfig.height * 25.4;
-        const margin = 6.35;
 
         // Create individual PDFs for each page
         for (const page of finishedPages) {
@@ -231,7 +246,11 @@ const App: React.FC = () => {
             unit: 'mm',
             format: [width, height]
           });
-          doc.addImage(page.imageUrl!, 'PNG', margin, margin, width - margin * 2, height - margin * 2, undefined, 'NONE');
+
+          const blob = await getImageBlob(page.imageUrl!);
+          const base64 = await blobToBase64(blob);
+
+          doc.addImage(base64, 'PNG', margin, margin, width - margin * 2, height - margin * 2, undefined, 'NONE');
           const pdfBlob = doc.output('blob');
           const fileName = page.isCover ? `00_cover.pdf` : `${String(page.pageIndex + 1).padStart(2, '0')}_page.pdf`;
           zip.file(fileName, pdfBlob);
@@ -249,22 +268,27 @@ const App: React.FC = () => {
       // PNG format
       if (finishedPages.length === 1) {
         // Single PNG - download directly
+        // For remote URLs, we must fetch-blob-download to force "Download" behavior instead of "Open"
+        const blob = await getImageBlob(finishedPages[0].imageUrl!);
+        const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
-        link.href = finishedPages[0].imageUrl!;
+        link.href = url;
         link.download = `${safeProjectName}.png`;
         link.click();
+        window.URL.revokeObjectURL(url);
       } else {
         // Multiple PNGs - ZIP them
         const JSZip = (await import('jszip')).default;
         const zip = new JSZip();
 
-        finishedPages.forEach((page) => {
+        // Fetch all blobs in parallel
+        await Promise.all(finishedPages.map(async (page) => {
           if (page.imageUrl) {
-            const data = page.imageUrl.split(',')[1];
+            const blob = await getImageBlob(page.imageUrl);
             const fileName = page.isCover ? `00_cover.png` : `${String(page.pageIndex + 1).padStart(2, '0')}_page.png`;
-            zip.file(fileName, data, { base64: true });
+            zip.file(fileName, blob);
           }
-        });
+        }));
 
         const content = await zip.generateAsync({ type: 'blob' });
         const url = window.URL.createObjectURL(content);
@@ -285,11 +309,26 @@ const App: React.FC = () => {
     const finishedPages = pages.filter(p => p.imageUrl && !p.isLoading);
     if (finishedPages.length === 0) return;
 
-    const safeProjectName = (project.projectName || 'coloring_book')
-      .slice(0, 30)
-      .replace(/[^a-z0-9]/gi, '_')
-      .replace(/_+/g, '_')
-      .toLowerCase();
+    const safeProjectName = (project.projectName || 'Coloring Book')
+      .trim()
+      .replace(/[<>:"/\\|?*]/g, '')
+      .slice(0, 50);
+
+    // Helper to get image blob (handles both Data URI and Remote URL)
+    const getImageBlob = async (url: string): Promise<Blob> => {
+      const res = await fetch(url);
+      return await res.blob();
+    };
+
+    // Helper to convert blob to base64 (for jsPDF addImage)
+    const blobToBase64 = (blob: Blob): Promise<string> => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    };
 
     const { jsPDF } = await import('jspdf');
     const sizeConfig = PAGE_SIZES.find(s => s.id === project.pageSizeId) || PAGE_SIZES[1];
@@ -306,15 +345,19 @@ const App: React.FC = () => {
     });
 
     // Add all pages - NO metadata/recipe page for KDP
-    finishedPages.forEach((page, index) => {
-      if (index > 0) {
+    for (let i = 0; i < finishedPages.length; i++) {
+      const page = finishedPages[i];
+      if (i > 0) {
         doc.addPage([width, height], width > height ? 'landscape' : 'portrait');
       }
 
       if (page.imageUrl) {
         // Content within safe margins (no bleed)
+        const blob = await getImageBlob(page.imageUrl);
+        const base64 = await blobToBase64(blob);
+
         doc.addImage(
-          page.imageUrl,
+          base64,
           'PNG',
           margin,
           margin,
@@ -324,7 +367,7 @@ const App: React.FC = () => {
           'NONE'  // Lossless compression for print quality
         );
       }
-    });
+    }
 
     // Set PDF metadata
     doc.setProperties({

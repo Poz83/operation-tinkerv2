@@ -273,11 +273,10 @@ export const useGeneration = ({
         const styleLabel = VISUAL_STYLES.find(s => s.id === projectMeta.visualStyle)?.label || projectMeta.visualStyle;
         const audienceLabel = TARGET_AUDIENCES.find(a => a.id === projectMeta.targetAudienceId)?.label || projectMeta.targetAudienceId;
 
-        const safeTitle = (projectMeta.projectName || 'coloring_book')
-            .slice(0, 30)
-            .replace(/[^a-z0-9]/gi, '_')
-            .replace(/_+/g, '_')
-            .toLowerCase();
+        const safeTitle = (projectMeta.projectName || 'Coloring Book')
+            .trim()
+            .replace(/[<>:"/\\|?*]/g, '')
+            .slice(0, 50);
 
         const filename = `${safeTitle}_${Date.now()}.pdf`;
 
@@ -300,21 +299,25 @@ export const useGeneration = ({
         const zip = new JSZip();
         const finishedPages = pages.filter(p => p.imageUrl);
 
-        finishedPages.forEach((page) => {
+        await Promise.all(finishedPages.map(async (page) => {
             if (page.imageUrl) {
-                const data = page.imageUrl.split(',')[1];
+                const res = await fetch(page.imageUrl);
+                const blob = await res.blob();
+
                 const fileName = page.isCover
                     ? `00_cover.png`
                     : `${String(page.pageIndex).padStart(2, '0')}_page.png`;
-                zip.file(fileName, data, { base64: true });
+
+                zip.file(fileName, blob);
             }
-        });
+        }));
 
         const content = await zip.generateAsync({ type: "blob" });
         const url = window.URL.createObjectURL(content);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `${(projectName || 'coloring_book').replace(/\s+/g, '-')}_images.zip`;
+        const safeName = (projectName || 'Coloring Book').trim().replace(/[<>:"/\\|?*]/g, '').slice(0, 50);
+        link.download = `${safeName}_images.zip`;
         link.click();
         window.URL.revokeObjectURL(url);
     }, []);
