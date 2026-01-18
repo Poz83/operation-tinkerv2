@@ -31,8 +31,8 @@ import { CharacterDNA, StyleDNA } from '../../types';
 // CONSTANTS & CONFIGURATION
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export const GEMINI_TEXT_MODEL = 'gemini-2.0-flash-001'; // Updated to latest flash
-export const GEMINI_IMAGE_MODEL = 'gemini-2.0-flash-preview-image-generation'; // Use preview for image gen
+export const GEMINI_TEXT_MODEL = 'gemini-2.0-flash-001';
+export const GEMINI_IMAGE_MODEL = 'gemini-2.0-flash-001'; // Unified multimodal model
 
 /** Retry configuration for transient errors */
 const RETRY_CONFIG = {
