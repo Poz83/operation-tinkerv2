@@ -101,8 +101,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const isAuthenticated = !!session && !!user;
     const userEmail = user?.email ?? null;
+
+    // Emergency / hardcoded whitelist for family/admin access without DB entry
+    const MANUAL_WHITELIST = ['jamie@myjoe.app', 'thepozniakfamily@gmail.com'];
+
     // For now, if we can't fetch details, assume false to be safe, unless it's a loading state handled elsewhere.
-    const isWhitelisted = userDetails?.isWhitelisted ?? false;
+    const isWhitelisted = (userEmail && MANUAL_WHITELIST.includes(userEmail.toLowerCase())) || (userDetails?.isWhitelisted ?? false);
     const isAdmin = userDetails?.isAdmin ?? false;
     const avatarUrl = userDetails?.avatarUrl ?? null;
     const displayName = userDetails?.displayName ?? null;

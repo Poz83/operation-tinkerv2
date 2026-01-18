@@ -16,7 +16,7 @@ const LandingPage: React.FC = () => {
     const { settings, toggleTheme } = useSettings();
     const navigate = useNavigate();
 
-    // If already authenticated, redirect to dashboard
+    // If authenticated, redirect to dashboard
     React.useEffect(() => {
         if (isAuthenticated) {
             navigate('/dashboard', { replace: true });

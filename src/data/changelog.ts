@@ -23,7 +23,8 @@ export const CHANGELOG: ChangelogEntry[] = [
         description: 'Added a dynamic camera system to vary composition angles automatically.',
         changes: [
             'Implemented "Dynamic Camera" logic: Randomly selects from 8 cinematic angles (e.g., Low Angle, Dutch Angle, Worm\'s Eye) when "Dynamic" is chosen.',
-            'Added smart override: Obey\'s explicit camera selections while randomizing "Dynamic" defaults.'
+            'Added smart override: Obey\'s explicit camera selections while randomizing "Dynamic" defaults.',
+            'UX Improvement: Prevented duplicate tabs on login. The original tab now politely informs you of success instead of auto-redirecting.'
         ]
     },
     {

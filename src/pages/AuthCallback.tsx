@@ -43,12 +43,23 @@ const AuthCallback: React.FC = () => {
                     setError('Authentication timed out. Please try sending the magic link again.');
                 }, 10000); // 10 seconds timeout
 
+                const handleSuccess = () => {
+                    clearTimeout(timeoutId);
+                    setStatus('Authentication successful! You can close this window.');
+                    // Attempt to close the tab for a seamless experience
+                    try {
+                        window.close();
+                    } catch (e) {
+                        // Some browsers block scripts from closing windows they didn't open
+                    }
+                    if (subscription) subscription.unsubscribe();
+                };
+
                 // The actual exchange happens automatically by the Supabase client
                 // We just need to wait for the result
                 const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
                     if (event === 'SIGNED_IN' && session) {
-                        clearTimeout(timeoutId);
-                        navigate(next, { replace: true });
+                        handleSuccess();
                     } else if (event === 'SIGNED_OUT') {
                         // Some flows might trigger this initially, ignore unless it persists
                     }
@@ -59,9 +70,7 @@ const AuthCallback: React.FC = () => {
                 if (sessionError) throw sessionError;
 
                 if (session) {
-                    clearTimeout(timeoutId);
-                    navigate(next, { replace: true });
-                    subscription.unsubscribe();
+                    handleSuccess();
                 }
 
                 return () => {
@@ -141,17 +150,45 @@ const AuthCallback: React.FC = () => {
             color: '#fff',
             fontFamily: 'Outfit, sans-serif'
         }}>
-            <div style={{
-                width: '48px',
-                height: '48px',
-                border: '3px solid rgba(102, 126, 234, 0.3)',
-                borderTopColor: '#667eea',
-                borderRadius: '50%',
-                animation: 'spin 1s linear infinite'
-            }} />
-            <p style={{ marginTop: '1.5rem', opacity: 0.7 }}>
-                {status}
-            </p>
+            {status.includes('successful') ? (
+                <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🚀</div>
+                    <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', color: '#4ade80' }}>
+                        You're Logged In!
+                    </h2>
+                    <p style={{ opacity: 0.7, marginBottom: '2rem' }}>
+                        You can safely close this window and return to your original tab.
+                    </p>
+                    <button
+                        onClick={() => navigate('/dashboard', { replace: true })}
+                        style={{
+                            background: 'rgba(255,255,255,0.1)',
+                            border: '1px solid rgba(255,255,255,0.2)',
+                            color: '#fff',
+                            borderRadius: '8px',
+                            padding: '10px 20px',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        Go to Dashboard &rarr;
+                    </button>
+                    <script dangerouslySetInnerHTML={{ __html: "window.close();" }} />
+                </div>
+            ) : (
+                <>
+                    <div style={{
+                        width: '48px',
+                        height: '48px',
+                        border: '3px solid rgba(102, 126, 234, 0.3)',
+                        borderTopColor: '#667eea',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite'
+                    }} />
+                    <p style={{ marginTop: '1.5rem', opacity: 0.7 }}>
+                        {status}
+                    </p>
+                </>
+            )}
             <style>{`
                 @keyframes spin {
                     to { transform: rotate(360deg); }
