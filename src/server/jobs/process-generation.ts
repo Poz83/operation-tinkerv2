@@ -578,30 +578,29 @@ export const processGeneration = async (
 
       // Save output buffer/base64 to your database/storage (simulated by callback)
 
-      // Session Consistency Logic: Capture Page 1 output
-      if (item.pageNumber === 1 && currentImageUrl && params.autoConsistency && !params.hasHeroRef) {
-        console.log('🔄 Session Consistency: Capturing Page 1 as style reference...');
+      // [SMART CONSISTENCY]: Only lock the reference if the image is High Quality (>85 score)
+      // This prevents locking "hallucinations" (like unwanted snails) as the style anchor.
+      const isReferenceLocked = sessionReferenceImage !== null;
+      const isHighQuality = !qaHardFail && qaScore >= 85;
+
+      if (!isReferenceLocked && isHighQuality && currentImageUrl && params.autoConsistency && !params.hasHeroRef) {
+        console.log(`🌟 Quality Standard Met (Page ${item.pageNumber}). Locking this as Session Reference.`);
+
         try {
-          // Convert data URL to clean base64/mime
           const matches = currentImageUrl.match(/^data:(.+);base64,(.+)$/);
           if (matches) {
             sessionReferenceImage = { mimeType: matches[1], base64: matches[2] };
 
-            // Forensic Feedback Loop: Analyze the just-generated image
-            console.log('🔬 Session Consistency: Extracting Style DNA from Page 1...');
+            // Optional: Extract Style DNA from this "Perfect Page" for even tighter control
             const extractedDna = await coloringService.analyzeReferenceStyle(
               matches[2],
               matches[1],
               params.signal
             );
-
-            if (extractedDna) {
-              sessionStyleDNA = extractedDna;
-              console.log('✅ Session Style DNA locked:', sessionStyleDNA.styleFamily);
-            }
+            if (extractedDna) sessionStyleDNA = extractedDna;
           }
-        } catch (err) {
-          console.warn('Failed to capture session reference:', err);
+        } catch (e) {
+          console.warn('Consistency capture failed', e);
         }
       }
 
