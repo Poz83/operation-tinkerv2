@@ -7,6 +7,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Navigation } from '../components/Navigation';
 import { BrandLogo } from '../components/BrandLogo';
+import { CHANGELOG } from '../data/changelog';
 
 // Import custom 3D icons
 import coloringStudioIcon from '../assets/coloring-studio.png';
@@ -185,11 +186,11 @@ export const Dashboard: React.FC = () => {
     };
 
     return (
-        <div className="dashboard-container pt-24">
+        <div className="dashboard-container pt-24 min-h-screen flex flex-col">
             <Navigation />
             <div className="aurora-veil opacity-50 dark:opacity-100 transition-opacity duration-500" />
 
-            <header className="dashboard-header">
+            <header className="dashboard-header flex-none">
                 <div className="flex justify-center mb-0">
                     <BrandLogo className="h-40 w-[32rem]" />
                 </div>
@@ -202,7 +203,7 @@ export const Dashboard: React.FC = () => {
             </header>
 
             {/* Grid Layout: LG 5 columns for 2 rows of 5 */}
-            <main className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 max-w-7xl mx-auto px-6 py-12">
+            <main className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 max-w-7xl mx-auto px-6 py-12 flex-grow w-full">
                 {displayTiles.map((tile, index) => (
                     <div key={tile.title} onClick={(e) => handleTileClick(e, tile)}>
                         {tile.title === 'Dev Portal' ? (
@@ -230,6 +231,10 @@ export const Dashboard: React.FC = () => {
                     </div>
                 ))}
             </main>
+
+            <footer className="w-full py-6 text-center text-xs text-zinc-600 font-mono">
+                {CHANGELOG[0].version} ({'fac209d'})
+            </footer>
 
             {/* Dev Password Modal */}
             {isDevModalOpen && (
