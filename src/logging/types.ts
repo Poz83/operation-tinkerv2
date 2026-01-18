@@ -15,7 +15,9 @@ export type QaTag =
   | 'text_present_unwanted'
   | 'distorted_anatomy'
   | 'background_wrong'
-  | 'low_contrast_lines';
+  | 'low_contrast_lines'
+  | 'mockup_style'
+  | 'colored_artifacts';
 
 export interface PageQa {
   tags: QaTag[];

@@ -30,6 +30,14 @@ export function useAutosave({ project, onSave, interval = 3000, enabled = true }
     const performSave = useCallback(async (force = false): Promise<SavedProject | null> => {
         if (!enabled && !force) return null;
 
+        // Skip if project has no ID and no meaningful content (prevents premature saves)
+        const proj = projectRef.current;
+        const hasNoId = !proj.id || proj.id === '';
+        const hasNoContent = !proj.projectName && !proj.userPrompt && (!proj.pages || proj.pages.length === 0);
+        if (hasNoId && hasNoContent && !force) {
+            return null;
+        }
+
         // Check if actually changed
         const currentJson = JSON.stringify(projectRef.current);
         if (currentJson === lastSavedProjectJson.current) {

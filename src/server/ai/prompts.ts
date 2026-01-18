@@ -76,22 +76,24 @@ const STYLE_SPECS: Record<string, StyleSpec> = {
 ### Style: Cozy Hand-Drawn
 
 **Drafting Tool**: 0.5mm felt-tip pen on textured paper
-**Line Character**: Organic, slightly wobbly strokes with natural pressure variation (0.4–0.7mm). Hand-drawn aesthetic — NOT vector-perfect.
-**Line Weight**: 0.5mm nominal
+**Line Character**: Organic ink bleed, imperfect wobble, stippling texture, rustic woodcut style, warm feeling, thick felt-tip pen texture, hygge aesthetic, whimsical but clean lines. Hand-drawn aesthetic — NOT vector-perfect.
+**Line Weight**: 0.5mm nominal with natural pressure variation (0.4–0.7mm)
 **Corners**: Rounded, soft transitions — no sharp angles
 **Closure**: All shapes fully enclosed despite organic wobble
 **Minimum Region**: 4mm²
 
-**Aesthetic Goal**: Warm, rustic, approachable. Charm through imperfection.
+**Texture Allowance**: Light stippling and hatching marks are PERMITTED to add warmth and texture.
 
-**DO**: Slightly uneven lines, gentle curves, cosy domestic subjects, soft rounded forms
-**DO NOT**: Perfectly straight lines, geometric precision, sharp corners, mechanical uniformity
+**Aesthetic Goal**: Warm, rustic, approachable. Hygge comfort. Charm through imperfection.
+
+**DO**: Organic ink bleed, slightly uneven lines, gentle curves, cosy domestic subjects, soft rounded forms, subtle stippling for warmth
+**DO NOT**: Digital perfection, vector smoothness, mechanical lines, rigid geometry, sharp corners
     `.trim(),
-    negatives: 'vector perfect, geometric, sharp angles, mechanical, sterile, precise, rigid',
+    negatives: 'digital perfection, vector smoothness, mechanical lines, rigid geometry, sharp corners, sterile, precise',
     minRegionMm: 4,
     minGapMm: 1,
     maxRegions: 120,
-    allowsTextureMarks: false,
+    allowsTextureMarks: true,
     compatibleComplexity: ['Very Simple', 'Simple', 'Moderate']
   },
 
@@ -746,6 +748,8 @@ const AUDIENCE_SPECS: Record<string, AudienceSpec> = {
 **Background**: Complex layering encouraged
 **Mood**: Sophisticated, meditative, artistic, challenging
 
+**Texture Rules**: High intricacy. Fine liner detail. Complex patterns. Texture and shading (stippling/hatching) are ALLOWED for artistic effect. NO grayscale fills.
+
 **Rule**: Should provide genuine relaxation and artistic satisfaction.
     `.trim(),
     safetyMargin: 0,
@@ -932,19 +936,59 @@ const validateHeroForAudience = (
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const BASE_NEGATIVE = `
-photo, photograph, photorealistic, 3d render, CGI,
-staged scene, flatlay, product shot, mockup,
-pencils, pens, crayons, markers, art supplies visible,
-shadow, drop shadow, cast shadow, vignette,
-crumpled paper, parchment texture, canvas grain, paper texture, noise, dither,
-shading, gray, grey, gradient, halftone,
-solid black fill, filled areas, solid black shapes, black silhouette,
-color, colour, pigment, paint, watercolor, any color,
-text, watermark, signature, logo, date, copyright,
-border, frame, decorative border, page edge,
-multiple views, reference sheet, character turnaround,
-blurry, low quality, jpeg artifacts, pixelated
+photo, photograph, photorealistic, realism,
+staged scene, flatlay, flat lay, product shot, promotional shot,
+overhead shot of desk, drafting table background, art supplies on table,
+pencils, pens, crayons, markers, brushes,
+shadow, drop shadow, contact shadow, vignette, depth of field,
+angled view, perspective shot, tilt shift,
+crumpled paper, wrinkled paper, parchment texture,
+cardboard, canvas grain, noise, dither,
+color, colored, colorful, pigment, paint, watercolor,
+red, blue, green, yellow, pink, purple,
+colored fill, grey fill, multi-colored,
+text, watermark, signature, logo, date,
+human, people, man, woman, person, face, skin (unless explicitly prompted),
+deformed hands, extra fingers, distorted face
 `.trim();
+
+// STYLE-SPECIFIC NEGATIVES — Override pattern for different styles
+const STYLE_NEGATIVES: Record<string, string> = {
+  // Bold & Easy hates texture - keep everything simple
+  'Bold & Easy': 'sketch lines, hatching, stippling, texture, shading, grayscale, broken lines, fuzzy edges, fine detail',
+  // Cozy Hand-Drawn ALLOWS texture for warmth
+  'Cozy Hand-Drawn': 'digital perfection, vector smoothness, mechanical lines, rigid geometry, sharp corners, clinical',
+  // Kawaii - keep smooth and cute
+  'Kawaii': 'realistic proportions, sharp edges, mature style, detailed anatomy, harsh lines, gritty',
+  // Whimsical - allow flowing lines, ban rigidity
+  'Whimsical': 'rigid geometry, mechanical lines, straight edges, harsh angles, digital precision, sterile',
+  // Cartoon - dynamic lines, ban static
+  'Cartoon': 'static poses, uniform weight, rigid lines, photorealistic, detailed texture, stiff',
+  // Botanical ALLOWS stippling and hatching
+  'Botanical': 'cartoon style, thick lines, bold strokes, simplified shapes, chunky, wobbly',
+  // Mandala - geometric precision required
+  'Mandala': 'asymmetric patterns, organic shapes, irregular spacing, wobbly lines, freehand imperfection',
+  // Zentangle ALLOWS decorative patterns
+  'Zentangle': 'representational imagery, figurative, realistic subjects, smooth empty spaces',
+  // Fantasy ALLOWS dramatic line weight variation
+  'Fantasy': 'cartoon style, simple shapes, uniform lines, mundane subjects, casual style',
+  // Gothic - thick bold lines only
+  'Gothic': 'thin lines, delicate strokes, soft curves, rounded shapes, intricate detail, gentle',
+  // Cozy - soft and warm
+  'Cozy': 'sharp angles, harsh edges, cold tones, industrial, aggressive, clinical, geometric',
+  // Geometric - pure straight lines
+  'Geometric': 'curves, organic shapes, freehand, wobbly, natural forms, soft transitions',
+  // Wildlife ALLOWS directional texture strokes
+  'Wildlife': 'cartoon style, stylised, simplified anatomy, closed hatching, solid black',
+  // Floral - Art Nouveau flowing
+  'Floral': 'geometric rigidity, sharp angles, isolated elements, sparse composition, mechanical',
+  // Abstract - expressive variation allowed
+  'Abstract': 'representational subjects, figurative imagery, narrative content, recognisable objects',
+  // Realistic (Ligne Claire) - uniform weight only
+  'Realistic': 'line weight variation, hatching, cross-hatching, expressive marks, sketchy, loose',
+  // Default fallback
+  'default': 'grayscale, shading, gradients, 3d render, sketch lines, pencil lead, smudge'
+};
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 8. CONTEXTUAL NEGATIVE GENERATOR
@@ -972,10 +1016,16 @@ const getContextualNegatives = (
     negatives.push('buildings', 'cars', 'roads', 'urban elements');
   }
 
-  // Style-specific negatives
+  // Style-specific negatives from STYLE_SPECS
   const style = STYLE_SPECS[styleId];
   if (style) {
     negatives.push(style.negatives);
+  }
+
+  // Style-specific OVERRIDES from STYLE_NEGATIVES (targeted bans)
+  const styleNegative = STYLE_NEGATIVES[styleId] || STYLE_NEGATIVES['default'];
+  if (styleNegative) {
+    negatives.push(styleNegative);
   }
 
   // Audience-specific negatives

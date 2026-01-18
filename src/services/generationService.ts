@@ -455,8 +455,12 @@ export const generatePage = async (
         }
         : null;
 
-    // Handle auto-save
-    if (request.autoSave && request.projectId && page && orchestratorResult.imageUrl) {
+    // Handle auto-save (only for real projects, not temp IDs)
+    const isValidProjectId = request.projectId &&
+        request.projectId !== 'temp-project-id' &&
+        (request.projectId.startsWith('CB') || request.projectId.startsWith('HL'));
+
+    if (request.autoSave && isValidProjectId && page && orchestratorResult.imageUrl) {
         config.onProgress?.({
             phase: 'saving',
             message: 'Saving to project...',
@@ -653,20 +657,26 @@ export const batchGenerate = async (
                 failureCount++;
             }
 
-            // [SMART CONSISTENCY] Logic from legacy process-generation.ts
-            // Logic: If autoConsistency is ON, and we don't have a ref yet, AND this result is high quality...
-            if (autoConsistency && !sessionReferenceImage && result.success && result.qualityScore >= 90 && result.imageUrl) {
-                // Check for specific artifacts (simplified check, real check would need parsing tags again or passing tags up)
-                // For now, trust high score.
+            // [SMART CONSISTENCY] Quality Gate for Style Reference
+            // Only use a previous image as a reference if it got a High QA Score and no bad tags
+            const qaTags = result.page?.qa?.tags || [];
+            const isReferenceWorthy =
+                result.qualityScore >= 85 && // High Score threshold
+                !qaTags.includes('mockup_style') && // Not a mockup
+                !qaTags.includes('colored_artifacts'); // No color leaks
+
+            if (autoConsistency && !sessionReferenceImage && result.success && isReferenceWorthy && result.imageUrl) {
                 try {
                     const matches = result.imageUrl.match(/^data:(.+);base64,(.+)$/);
                     if (matches) {
                         sessionReferenceImage = { mimeType: matches[1], base64: matches[2] };
-                        // console.log(`🌟 Quality Standard Met (Page ${pageSpec.pageIndex}). Locking as Session Reference.`);
+                        console.log(`✅ Using Page ${pageSpec.pageIndex} as Style Reference (QA Score: ${result.qualityScore}).`);
                     }
                 } catch (e) {
                     // ignore
                 }
+            } else if (autoConsistency && !sessionReferenceImage && result.success && !isReferenceWorthy) {
+                console.log(`⚠️ Page ${pageSpec.pageIndex} was low quality (Score: ${result.qualityScore}). SKIPPING consistency to avoid pollution.`);
             }
 
             totalCost += result.estimatedCost;

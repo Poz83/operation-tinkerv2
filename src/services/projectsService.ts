@@ -55,10 +55,10 @@ interface DbImage {
 }
 
 /**
- * Generate a public ID for a project (e.g., CB847291)
+ * Generate a public ID for a project (e.g., CB847291 for coloring, HL847291 for hero lab)
  */
-function generatePublicId(): string {
-    const prefix = 'CB'; // Coloring Book
+function generatePublicId(toolType?: string): string {
+    const prefix = toolType === 'hero_lab' ? 'HL' : 'CB';
     const randomNum = Math.floor(100000 + Math.random() * 900000);
     return `${prefix}${randomNum}`;
 }
@@ -208,8 +208,10 @@ export async function saveProject(project: SavedProject): Promise<SavedProject> 
         throw new Error('Not authenticated');
     }
 
-    // Check if project exists (by ID)
-    const isUpdate = !!project.id && !project.id.startsWith('temp-') && project.id.startsWith('CB');
+    // Check if project exists (by ID) - Valid IDs start with 'CB' (coloring) or 'HL' (hero lab)
+    const isValidPublicId = project.id && !project.id.startsWith('temp-') &&
+        (project.id.startsWith('CB') || project.id.startsWith('HL'));
+    const isUpdate = !!isValidPublicId;
 
     let projectId: string; // Internal UUID
     let publicId: string;
@@ -243,18 +245,23 @@ export async function saveProject(project: SavedProject): Promise<SavedProject> 
                 })
                 .eq('id', projectId);
 
-            // Update appropriate auxiliary table
-            if ((project as any).toolType === 'hero_lab' || (project as any).dna) {
-                await supabase
+            // Update appropriate auxiliary table based on tool type
+            const toolType = project.toolType || ((project as any).dna ? 'hero_lab' : 'coloring_studio');
+
+            if (toolType === 'hero_lab') {
+                const { error: heroError } = await supabase
                     .from('hero_lab_data')
                     .upsert({
                         project_id: projectId,
-                        dna: (project as any).dna,
+                        dna: (project as any).dna || {},
                         base_image_url: (project as any).baseImageUrl,
+                        reference_image_url: (project as any).referenceImageUrl,
+                        profile_sheet_url: (project as any).profileSheetUrl,
                         seed: (project as any).seed
                     });
+                if (heroError) console.error('Hero data upsert error:', heroError);
             } else {
-                await supabase
+                const { error: coloringError } = await supabase
                     .from('coloring_studio_data')
                     .upsert({
                         project_id: projectId,
@@ -263,6 +270,7 @@ export async function saveProject(project: SavedProject): Promise<SavedProject> 
                         complexity: project.complexity,
                         page_count: project.pageAmount
                     });
+                if (coloringError) console.error('Coloring data upsert error:', coloringError);
             }
         }
 
@@ -350,7 +358,8 @@ export async function saveProject(project: SavedProject): Promise<SavedProject> 
  * Internal helper to create DB records for a new project
  */
 async function createNewProjectDbOnly(userId: string, project: SavedProject) {
-    const publicId = generatePublicId();
+    const toolType = (project as any).toolType || 'coloring_studio';
+    const publicId = generatePublicId(toolType);
 
     const { data: newProject, error: insertError } = await supabase
         .from('projects')
