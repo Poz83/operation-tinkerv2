@@ -968,5 +968,6 @@ export const strictGenerate = async (
 // RE-EXPORTS FOR CONVENIENCE
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export { setLogCallback, GenerationLogEntry };
+export { setLogCallback };
+export type { GenerationLogEntry };
 export type { ColoringPageResult, QaResult, RepairPlan };

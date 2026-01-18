@@ -304,7 +304,7 @@ const mapQaToPageQa = (qaResult: QaResult): PageQa => ({
     score: qaResult.overallScore,
     hardFail: !qaResult.passed,
     reasons: qaResult.issues.map(i => i.description),
-    tags: qaResult.issues.map(i => i.code as unknown as QaTag),
+    tags: qaResult.issues.map(i => i.code as any),
     rubricBreakdown: {
         printCleanliness: qaResult.rubric.lineQuality,
         colorability: qaResult.rubric.regionIntegrity,
