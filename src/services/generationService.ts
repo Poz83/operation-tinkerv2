@@ -446,7 +446,7 @@ export const generatePage = async (
             isLoading: false,
             isCover: request.pageIndex === 0,
             qa: orchestratorResult.finalQaResult
-                ? mapQaToPageQa(orchestratorResult.finalQaResult)
+                ? mapQaToPageQa(orchestratorResult.finalQaResult) as any
                 : undefined,
         }
         : null;
