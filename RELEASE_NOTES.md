@@ -22,6 +22,12 @@
 - **LRU Eviction**: Cache automatically clears old images when it exceeds 500MB, keeping your browser light.
 - **Memory Management**: Blob URLs are properly revoked to prevent memory leaks during long sessions.
 
+## [2.2.5] - Production-Ready Prompt Engineering
+- **"Nuclear" Negative Prompt**: Aggressively bans "Midjourney-style" artifacts like staged photos, flatlays, and wood textures, ensuring pure digital line art.
+- **Digital Flatness Enforcer**: New positive prompt structure forces the AI to "think" in vector 2D, eliminating angled shots and paper textures.
+- **Enhanced Color Bans**: Stricter rules against color leakage (red/blue/green) and 3D anaglyph effects.
+- **Smart Context Hygiene**: Automatically removes nature debris from indoor scenes and fire/dust from underwater scenes.
+
 ## [2.2.0] - Agentic QA & Smart Repairs
 - **Agentic Quality Assurance**: Integrated Gemini 1.5 Pro to semantically analyze every image (detects unwanted text, anatomy issues, etc.).
 - **Self-Healing AI**: The new "Smart Repair" system automatically translates QA failures into precise engineering directives for retries.
