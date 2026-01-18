@@ -6,6 +6,12 @@
 - **Reliable Export**: Fixed a bug where exporting saved projects resulted in empty files. The system now correctly downloads images from cloud storage before zipping.
 - **Friendly Filenames**: Exported files now respect your project name (e.g., "My Cool Project.zip" instead of "my_cool_project.zip").
 
+## [2.2.2] - Safety First & Smart Context
+- **Audience Safety Guardrails**: Added strict, age-specific safety checks (e.g., Toddlers get "100% Cute" enforcement with zero scare-factor, while Adults allow for horror themes if requested).
+- **Smart Context Hygiene**: The AI now "reads the room"—automatically preventing outdoor hallucinations (like clouds/sun) when you ask for an indoor scene, or fire/dust for underwater scenes.
+- **Tone-Aware Generation**: Each audience setting now drives a specific emotional tone, ensuring content isn't just visually appropriate but emotionally resonant (e.g., "Innocent & Joyful" for Toddlers vs "Adventurous" for Kids).
+- **Expanded QA Vision**: The Agentic QA now specifically scans for `scary_content` and `wrong_tone`, adding an extra layer of protection before images reach the user.
+
 ## [2.2.0] - Agentic QA & Smart Repairs
 - **Agentic Quality Assurance**: Integrated Gemini 1.5 Pro to semantically analyze every image (detects unwanted text, anatomy issues, etc.).
 - **Self-Healing AI**: The new "Smart Repair" system automatically translates QA failures into precise engineering directives for retries.

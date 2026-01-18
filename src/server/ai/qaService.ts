@@ -9,16 +9,23 @@ export const analyzeImageQuality = async (
     complexity?: string // Added context
 ): Promise<PageQa> => {
 
+    // [NEW] Updated System Prompt with Safety Checks
     const prompt = `
     ROLE: Senior Technical Art Director.
-    TASK: Grade this coloring page for: ${audience}.
-    STYLE TARGET: ${style || 'General'}.
-    COMPLEXITY TARGET: ${complexity || 'Standard'}.
-
-    CRITICAL RULES:
+    TASK: Grade this coloring page for target audience: ${audience}.
+    
+    CRITICAL CHECKLIST:
     1. PRINTABILITY: Lines must be pure BLACK. No gray, no fuzzy edges.
     2. TOPOLOGY: Main shapes must be CLOSED (watertight).
-    3. CONTENT: No text, no grayscale shading, no cut-off subjects.
+    3. AGE APPROPRIATENESS (Safety Check):
+       - If Audience is 'Toddler/Preschool': IMMEDIATE FAIL if the image is scary, aggressive, or has sharp/angry faces. Must be 100% cute.
+       - If Audience is 'Kids': FAIL if there is blood, gore, or realistic horror. "Cartoon Spooky" is OK.
+       - If Audience is 'Adults': ALLOW horror themes (skulls, monsters) if the prompt requested them.
+    
+    TAGGING RULES:
+    - 'scary_content': Use this tag if the image violates the Safety Check for the specific audience.
+    - 'wrong_tone': The style or emotion is too mature/immature for the audience.
+    - 'low_contrast_lines': Lines are grey or weak.
 
     Return the exact JSON object defined in the schema.
   `;
@@ -36,7 +43,8 @@ export const analyzeImageQuality = async (
                         "cropped", "touches_border", "open_paths", "too_noisy",
                         "too_detailed", "too_simple", "missing_subject", "wrong_style",
                         "text_present_unwanted", "distorted_anatomy", "background_wrong",
-                        "low_contrast_lines", "shading_present"
+                        "low_contrast_lines", "shading_present",
+                        "scary_content", "wrong_tone"
                     ]
                 }
             },
