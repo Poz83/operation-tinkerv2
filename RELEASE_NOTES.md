@@ -79,10 +79,10 @@
 
 ## [2.2.17] - Gemini 3 Pro & Style Reform
 - **Prompt Engine 3.0**: Completely refactored the prompt generation to align with **Gemini 3 Pro Image (Imagen 3)** best practices.
+- **Professional-Grade Specs (v3.0)**: Adopted a rigorous new specification standard. Each style now includes "DO" and "DO NOT" rules, metric constraints (e.g., "0.5mm nominal line weight"), and specific aesthetic goals.
+- **Spec-Driven Prompts**: The prompt engine now injects a "Universal Header" with critical rules (output only black/white) and a "QA Checklist" that forces the AI to self-verifiy against potential errors.
 - **Narrative Prompts**: Switched from robotic "Instruction Lists" to natural language narratives ("Create a high-quality line drawing..."), which the new model understands far better.
 - **Complexity Physics**: Upgraded the complexity engine to a 5-level "Physics Model", defining specific pen types and gap constraints for each level (from "Fat Marker" for toddlers to "Micro-Pen" for experts).
-- **Structural Engineering**: Introduced a "3-Tier Line Weight System" that instructs the AI on exactly how to draw contours (thick), structure (medium), and details (fine), mimicking professional drafting.
-- **Compositional Physics**: Added audience-specific layout rules (e.g., "Center-Weighted" for toddlers vs "Full-Bleed" for adults) to insure age-appropriate framing.
 - **Positive Framing**: Replaced confusing negative constraints ("No broken lines") with clear, positive goals ("Ensure all shapes are closed").
 - **Style Restoration**: Fixed the "Cozy Hand-Drawn" style by removing conflicting texture instructions that were causing messy shading.
 - **Text Support Fixed**: Enabled the previously ignored `requiresText` feature, allowing you to ask for specific titles to be integrated into the design.
