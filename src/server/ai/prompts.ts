@@ -1,465 +1,1219 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * PAINT-BY-NUMBERS PROMPT ENGINEERING PIPELINE v4.0
+ * Production-Grade Specification for Gemini 3 Pro Image Preview
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 
+ * Architecture:
+ * 1. Universal Constraints (immutable physical laws)
+ * 2. Style Specifications (drafting tool + aesthetic)
+ * 3. Complexity Physics (information density)
+ * 4. Audience Rules (mood + safety + motor skills)
+ * 5. Compatibility Matrix (conflict resolution)
+ * 6. Assembly Engine (constraint-first ordering)
+ * 
+ * Design Principles:
+ * - Constraints BEFORE subject (model decides within rules, not retrofits)
+ * - Markdown structure preserved for Gemini section parsing
+ * - Style-specific negatives co-located with style specs
+ * - Explicit conflict detection and resolution
+ * 
+ * Target Output:
+ * - 300 DPI print-ready
+ * - Amazon KDP compliant
+ * - <0.5% region closure error rate
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
 import {
   CharacterDNA,
   StyleDNA,
-  CinematicOption,
-  VISUAL_STYLES,
-  TARGET_AUDIENCES
+  // CinematicOption,
+  // VISUAL_STYLES,
+  // TARGET_AUDIENCES
 } from '../../types';
 
-// 1. UNIVERSAL HEADER (v3.0 - Global Rules)
+// ═══════════════════════════════════════════════════════════════════════════════
+// 1. UNIVERSAL HEADER — Immutable Physical Laws
+// ═══════════════════════════════════════════════════════════════════════════════
+
 const UNIVERSAL_HEADER = `
-CRITICAL REQUIREMENTS FOR ALL OUTPUT:
-═══════════════════════════════════════
+## CRITICAL REQUIREMENTS — READ FIRST
+
 You are generating BLACK AND WHITE LINE ART for a colouring book.
+These rules are ABSOLUTE and override all other instructions.
 
-ABSOLUTE RULES:
-1. OUTPUT ONLY: Black lines (#000000) on white background (#FFFFFF)
-2. NO solid black filled areas—everything is OUTLINE ONLY
-3. NO grey tones, NO gradients, NO shading, NO rendering
-4. ALL shapes must be CLOSED (fully enclosed regions)
-5. Every white space must be a colourable region
-6. Pupils, shadows, dark areas = outlined shapes, NOT filled black
+### Physical Laws (Non-Negotiable):
+1. **OUTPUT**: Pure black lines (#000000) on pure white background (#FFFFFF)
+2. **NO FILLS**: Zero solid black areas — everything is OUTLINE ONLY
+3. **NO TONES**: Zero grey, zero gradients, zero shading, zero rendering
+4. **CLOSED PATHS**: ALL shapes must be fully enclosed (no gaps)
+5. **COLOURABLE**: Every white space must be a distinct colourable region
+6. **CONVERT DARKS**: Pupils, shadows, hair = outlined regions, NOT filled black
 
-The purpose is to create line art that users will colour in.
-Every area that appears "black" in reference images must be
-converted to an outlined region that can be coloured.
-
-Now follow these style-specific instructions:
-═══════════════════════════════════════
+### Purpose:
+Users will colour this image. Every "would-be-dark" area must be an outlined shape they can fill with their chosen colour.
 `.trim();
 
-// 2. STYLE SPECIFICATIONS (v3.0 - Professional Manual)
-const STYLE_SPECS: Record<string, string> = {
-  'Cozy Hand-Drawn': `
-OUTPUT: Black line art on white background. No fills, no shading.
-LINE CHARACTER: Organic, slightly wobbly strokes simulating a 0.5mm felt-tip pen. Natural pressure variation (0.4–0.7mm width). Imperfect, hand-drawn aesthetic—NOT vector-perfect.
-LINE WEIGHT: 0.5mm nominal.
-CORNERS: Rounded, soft transitions. No sharp angles.
-CLOSURE: All shapes fully enclosed despite organic wobble. Line endpoints must connect.
-MINIMUM REGION: 4mm².
-AESTHETIC GOAL: Warm, rustic, approachable. The charm is in the imperfection.
-DO: Slightly uneven lines, gentle curves, cosy domestic subjects.
-DO NOT: Perfectly straight lines, geometric precision, sharp corners, any filled/solid black areas.
-  `.trim(),
+// ═══════════════════════════════════════════════════════════════════════════════
+// 2. STYLE SPECIFICATIONS — Drafting Tool + Aesthetic + Negatives
+// ═══════════════════════════════════════════════════════════════════════════════
 
-  'Bold & Easy': `
-OUTPUT: Black line art on white background. No fills, no shading.
-LINE CHARACTER: Thick, uniform strokes simulating a 4mm chisel marker. Smooth, confident curves. Maximum simplicity.
-LINE WEIGHT: 4mm consistent—no variation.
-MINIMUM GAP: 2mm between any parallel lines.
-CLOSURE: All shapes fully enclosed. No gaps.
-MINIMUM REGION: 8mm² (no tiny spaces).
-MAXIMUM REGIONS: 50 total for entire image.
-AESTHETIC GOAL: Simple, bold, high-contrast. Readable at arm's length. Sticker-art clarity.
-DO: Large simple shapes, thick confident lines, minimal detail.
-DO NOT: Fine details, intricate patterns, thin lines, small enclosed spaces, any filled/solid black areas.
-  `.trim(),
+interface StyleSpec {
+  prompt: string;
+  negatives: string;
+  minRegionMm: number;
+  minGapMm: number;
+  maxRegions: number | null;
+  allowsTextureMarks: boolean;
+  compatibleComplexity: string[]; // Which complexity levels work with this style
+}
 
-  'Kawaii': `
-OUTPUT: Black line art on white background. No fills, no shading.
-LINE CHARACTER: Thick, smooth, uniform vector curves. Friendly and approachable.
-LINE WEIGHT: 3mm consistent throughout.
-CORNER RADIUS: Minimum 2mm on ALL corners—nothing sharp.
-CLOSURE: All shapes fully enclosed with seamless joins.
-MINIMUM REGION: 6mm².
-PROPORTIONS: Chibi style—1:2 head-to-body ratio for characters. Oversized heads.
-EYES: Large (30–40% of face width). Include 1–2 circular highlight areas as separate enclosed regions (NOT filled white—left as colourable space).
-AESTHETIC GOAL: Cute, round, soft, cheerful.
-DO: Rounded everything, simple expressions, oversized features, mitten-hands acceptable.
-DO NOT: Sharp angles, realistic proportions, detailed anatomy, filled black areas (including pupils—outline only).
-  `.trim(),
+const STYLE_SPECS: Record<string, StyleSpec> = {
 
-  'Whimsical': `
-OUTPUT: Black line art on white background. No fills, no shading.
-LINE CHARACTER: Flowing, gestural strokes with expressive width variation. Suggests movement and magic.
-LINE WEIGHT: Variable 0.5mm–2mm. Thicker for emphasis/foreground, thinner for detail/background.
-CLOSURE: ALL paths must close completely despite gestural quality. No open strokes.
-MINIMUM REGION: 5mm².
-AESTHETIC GOAL: Fairy-tale storybook illustration. Dreamlike, magical, gently surreal.
-PERMITTED: Exaggerated scale, whimsical architecture, floating elements, curved horizons.
-DO: Flowing lines, magical subjects, enchanted scenes, playful distortion.
-DO NOT: Open-ended strokes, incomplete shapes, fading lines, any solid black fills, realistic proportions.
-  `.trim(),
+  'Cozy Hand-Drawn': {
+    prompt: `
+### Style: Cozy Hand-Drawn
 
-  'Cartoon': `
-OUTPUT: Black line art on white background. No fills, no shading.
-LINE CHARACTER: Dynamic strokes with purposeful tapering. Thick outer contours define silhouette; thinner inner lines define features.
-LINE WEIGHT HIERARCHY: Outer silhouette 2–3mm, secondary forms 1–1.5mm, fine details 0.8mm minimum.
-CLOSURE: All shapes fully enclosed. Contour lines must connect cleanly.
-MINIMUM REGION: 5mm².
-AESTHETIC GOAL: Western animation cel style. Clear silhouettes, dynamic poses, energetic.
-POSES: Exaggerated action, clear "line of action," strong silhouette readability.
-DO: Bold outlines, expressive shapes, dynamic poses, clear shape hierarchy.
-DO NOT: Static poses, tangent lines, ambiguous silhouettes, any solid black fills, rendering/shading.
-  `.trim(),
+**Drafting Tool**: 0.5mm felt-tip pen on textured paper
+**Line Character**: Organic, slightly wobbly strokes with natural pressure variation (0.4–0.7mm). Hand-drawn aesthetic — NOT vector-perfect.
+**Line Weight**: 0.5mm nominal
+**Corners**: Rounded, soft transitions — no sharp angles
+**Closure**: All shapes fully enclosed despite organic wobble
+**Minimum Region**: 4mm²
 
-  'Botanical': `
-OUTPUT: Black line art on white background. No fills, no shading.
-LINE CHARACTER: Fine, precise strokes simulating copperplate engraving. Controlled and elegant.
-LINE WEIGHT: 0.3mm primary contours.
-TEXTURE INDICATION: Use STIPPLING (scattered dots) or OPEN HATCHING (parallel lines that do NOT enclose regions) to suggest form. Dots and hatch lines are decorative only—they must not create colourable sub-regions.
-CLOSURE: All plant structures (leaves, petals, stems) must form closed colourable regions.
-MINIMUM REGION: 3mm².
-WHITE SPACE: Maintain 60%+ open white space within each plant form.
-AESTHETIC GOAL: Victorian scientific illustration. Precise, elegant, botanically informed.
-DO: Fine controlled lines, accurate plant anatomy, delicate detail, stipple dots for texture.
-DO NOT: Solid black areas, closed hatching, dense rendering, grey tones, any fills.
-  `.trim(),
+**Aesthetic Goal**: Warm, rustic, approachable. Charm through imperfection.
 
-  'Mandala': `
-OUTPUT: Black line art on white background. No fills, no shading.
-LINE CHARACTER: Precise vector strokes with perfect geometric accuracy. Mathematical symmetry.
-LINE WEIGHT: 1mm primary radial divisions, 0.5mm secondary pattern lines.
-SYMMETRY: Radial symmetry MANDATORY (8-fold, 12-fold, or 16-fold). Perfect rotational repetition.
-STRUCTURE: Concentric bands radiating from defined centre point. Each band contains repeating pattern elements.
-CLOSURE: All segments fully enclosed. Geometric construction ensures closure.
-MINIMUM REGION: 4mm².
-OUTER BOUNDARY: Complete circle or regular polygon required.
-AESTHETIC GOAL: Meditative, balanced, geometrically perfect.
-DO: Perfect symmetry, repetitive patterns, concentric organisation, clean geometry.
-DO NOT: Asymmetry, organic variation, any solid black fills, incomplete patterns.
-  `.trim(),
+**DO**: Slightly uneven lines, gentle curves, cosy domestic subjects, soft rounded forms
+**DO NOT**: Perfectly straight lines, geometric precision, sharp corners, mechanical uniformity
+    `.trim(),
+    negatives: 'vector perfect, geometric, sharp angles, mechanical, sterile, precise, rigid',
+    minRegionMm: 4,
+    minGapMm: 1,
+    maxRegions: 120,
+    allowsTextureMarks: false,
+    compatibleComplexity: ['Very Simple', 'Simple', 'Moderate']
+  },
 
-  'Zentangle': `
-OUTPUT: Black line art on white background. No fills, no shading.
-LINE CHARACTER: Consistent, confident ink-style strokes. High contrast, uniform weight.
-LINE WEIGHT: 0.8mm consistent.
-STRUCTURE: Divide composition into sections ("strings"). Each string is a closed region. Fill strings with decorative patterns.
-PATTERN RULES: Patterns (dots, parallel lines, curves, grids) suggest texture but must NOT create enclosed sub-regions smaller than minimum. Pattern elements are decorative marks, not boundaries.
-CLOSURE: Each string section must be a closed, colourable region.
-MINIMUM REGION: 4mm² for string sections.
-AESTHETIC GOAL: Structured doodling. Meditative, rhythmic, abstract.
-DO: Bold section divisions, decorative pattern fills, rhythmic repetition.
-DO NOT: Patterns that create tiny enclosed spaces, solid black fills, representational imagery, shading.
-  `.trim(),
+  'Bold & Easy': {
+    prompt: `
+### Style: Bold & Easy
 
-  'Fantasy': `
-OUTPUT: Black line art on white background. No fills, no shading.
-LINE CHARACTER: Detailed ink work with weight variation suggesting drama and depth.
-LINE WEIGHT: 1.5mm shadow-side contours, 0.5mm light-side contours, 0.3mm fine detail minimum.
-LIGHTING CONVENTION: Suggest single dramatic light source through line weight ONLY. Shadow side = thicker lines. NO solid black shadows.
-CLOSURE: All forms fully enclosed despite intricate detail.
-MINIMUM REGION: 3.5mm².
-PROPORTIONS: Heroic (8–9 head heights for humanoid figures).
-AESTHETIC GOAL: Classic RPG/fantasy illustration. Dramatic, detailed, epic.
-SUBJECTS: Warriors, mages, dragons, mythical creatures, armour, weapons, magical effects.
-DO: Line weight variation for drama, intricate costume detail, heroic poses.
-DO NOT: Solid black shadows, filled areas, modern elements, grey tones, actual shading.
-  `.trim(),
+**Drafting Tool**: 4mm chisel-tip marker
+**Line Character**: Thick, uniform strokes. Smooth, confident curves. Maximum simplicity.
+**Line Weight**: 4mm consistent — NO variation permitted
+**Minimum Gap**: 2mm between any parallel lines
+**Closure**: All shapes fully enclosed — no gaps
+**Minimum Region**: 8mm² (no tiny spaces)
+**Maximum Regions**: 50 total for entire image
 
-  'Gothic': `
-OUTPUT: Black line art on white background. No fills, no shading.
-LINE CHARACTER: Very thick, angular strokes simulating stained glass leading or woodcut lines.
-LINE WEIGHT: 5mm minimum for ALL lines. No line thinner than 3mm permitted.
-STRUCTURE: Image compartmentalised into distinct segments like stained glass panels.
-CORNERS: Angular preferred. Minimum curve radius 10mm where curves occur.
-CLOSURE: Mandatory—compartmentalised structure inherently creates closed regions.
-MINIMUM REGION: 15mm² (large segments required due to thick lines).
-AESTHETIC GOAL: Medieval stained glass or woodcut. Bold, angular, dramatic.
-DO: Thick bold lines, angular shapes, compartmentalised composition, dramatic subjects.
-DO NOT: Thin lines, fine detail, soft curves, any solid black fills, grey tones.
-  `.trim(),
+**Aesthetic Goal**: Simple, bold, high-contrast. Readable at arm's length. Sticker-art clarity.
 
-  'Cozy': `
-OUTPUT: Black line art on white background. No fills, no shading.
-LINE CHARACTER: Soft, rounded strokes with gentle, warm quality. Approachable and comforting.
-LINE WEIGHT: 1.5mm with softened endpoints (rounded line caps).
-CORNERS: No angles sharper than 90°. Prefer curves. Minimum 3mm radius on all corners.
-CLOSURE: All shapes fully enclosed.
-MINIMUM REGION: 6mm².
-AESTHETIC GOAL: Hygge/comfort illustration. Warm, soft, domestic, peaceful.
-SUBJECTS: Cosy interiors, comfort food, pets, blankets, beverages, candles, books, soft furnishings.
-DO: Rounded shapes, plump forms, gentle curves, domestic warmth.
-DO NOT: Sharp angles, cold subjects, harsh contrasts, industrial elements, any solid black fills.
-  `.trim(),
+**DO**: Large simple shapes, thick confident lines, minimal detail, bold silhouettes
+**DO NOT**: Fine details, intricate patterns, thin lines, small enclosed spaces, texture marks
+    `.trim(),
+    negatives: 'fine detail, thin lines, intricate, complex, hatching, texture, small shapes, delicate, wispy',
+    minRegionMm: 8,
+    minGapMm: 2,
+    maxRegions: 50,
+    allowsTextureMarks: false,
+    compatibleComplexity: ['Very Simple', 'Simple'] // NOT compatible with Intricate/Extreme
+  },
 
-  'Geometric': `
-OUTPUT: Black line art on white background. No fills, no shading.
-LINE CHARACTER: Perfectly straight ruler lines ONLY. Absolute precision.
-LINE WEIGHT: 0.8mm consistent throughout.
-CONSTRUCTION: ZERO curves permitted. Entire image composed of straight-edged triangles and convex polygons.
-CLOSURE: Inherent to geometric construction—all polygons closed.
-MINIMUM REGION: 5mm².
-VERTICES: Clean, precise intersections at polygon meeting points.
-AESTHETIC GOAL: Low-poly, faceted, crystalline, digital.
-DO: Straight lines only, triangular tessellation, clean vertices, mathematical precision.
-DO NOT: Any curved lines whatsoever, organic shapes, soft transitions, any solid black fills.
-  `.trim(),
+  'Kawaii': {
+    prompt: `
+### Style: Kawaii
 
-  'Wildlife': `
-OUTPUT: Black line art on white background. No fills, no shading.
-LINE CHARACTER: Naturalistic contour drawing with directional strokes indicating texture.
-LINE WEIGHT: 1mm primary contours, 0.4mm texture indication lines.
-TEXTURE TECHNIQUE: Use line DIRECTION to suggest fur grain, feather barbs, scale patterns. Texture lines indicate direction only—they must remain OPEN-ENDED within regions, not enclosing sub-spaces.
-CLOSURE: All animal body regions (head, body, limbs, tail) must be closed colourable shapes.
-MINIMUM REGION: 4mm².
-WHITE SPACE: Maintain 70%+ open white space. Do not over-render.
-ANATOMY: Accurate proportions for species identification.
-AESTHETIC GOAL: Naturalist field guide illustration. Scientific yet artistic.
-DO: Accurate anatomy, directional texture strokes, natural poses, habitat elements.
-DO NOT: Solid black areas, over-rendering to dark, closed texture patterns, grey tones, any fills.
-  `.trim(),
+**Drafting Tool**: 3mm vector brush
+**Line Character**: Thick, smooth, uniform curves. Friendly and approachable.
+**Line Weight**: 3mm consistent throughout
+**Corner Radius**: Minimum 2mm on ALL corners — nothing sharp
+**Closure**: All shapes fully enclosed with seamless joins
+**Minimum Region**: 6mm²
 
-  'Floral': `
-OUTPUT: Black line art on white background. No fills, no shading.
-LINE CHARACTER: Flowing, continuous Art Nouveau "whiplash" curves. Elegant, sinuous, organic.
-LINE WEIGHT: 1.2mm consistent, slightly thicker (1.5mm) at curve peaks.
-COMPOSITION: Interlocking plant elements filling the frame. Vines, leaves, flowers weave together.
-CLOSURE: All floral elements form closed colourable regions.
-MINIMUM REGION: 4mm².
-SPACE FILLING: Minimal empty background—fill negative space with secondary elements (small leaves, buds, tendrils).
-AESTHETIC GOAL: Art Nouveau decorative pattern. Flowing, organic, elegant.
-DO: Continuous flowing lines, interlocking organic forms, rhythmic curves, dense composition.
-DO NOT: Rigid geometric shapes, isolated floating elements, sharp angles, any solid black fills.
-  `.trim(),
+**Proportions**: Chibi style — 1:2 head-to-body ratio for characters. Oversized heads.
+**Eyes**: Large (30–40% of face width). Include 1–2 circular highlight areas as SEPARATE ENCLOSED REGIONS (colourable, not filled white).
+**Hands**: Mitten-style simplification acceptable.
 
-  'Abstract': `
-OUTPUT: Black line art on white background. No fills, no shading.
-LINE CHARACTER: Fluid, continuous, expressive strokes with intentional variation.
-LINE WEIGHT: Variable 0.5mm–2.5mm based on compositional emphasis.
-CLOSURE: ALL lines must form closed regions despite abstract nature. No open-ended strokes.
-MINIMUM REGION: 5mm².
-COMPOSITION: Non-representational. Focus on shape relationships, negative space, visual rhythm, movement.
-AESTHETIC GOAL: Abstract line composition. Balanced, dynamic, visually engaging.
-DO: Overlapping forms, interlocking shapes, continuous paths, compositional balance.
-DO NOT: Recognisable subjects, representational imagery, open strokes, any solid black fills.
-  `.trim(),
+**Aesthetic Goal**: Cute, round, soft, cheerful. Japanese "kawaii" sensibility.
 
-  'Realistic': `
-OUTPUT: Black line art on white background. No fills, no shading.
-LINE CHARACTER: Clean, precise, uniform strokes. Pure contour—form described through outline only.
-LINE WEIGHT: 0.6mm consistent throughout. TRUE Ligne Claire—no weight variation.
-CLOSURE: All forms cleanly closed with precise endpoint connections.
-MINIMUM REGION: 4mm².
-PROPORTIONS: Anatomically correct. Adult figures 7.5–8 head heights. Accurate perspective.
-STYLE: Ligne Claire (Hergé/Tintin influence). Form through contour alone.
-AESTHETIC GOAL: Clean, precise, professional technical illustration.
-DO: Uniform line weight, accurate anatomy, correct perspective, clean closures.
-DO NOT: Line weight variation, hatching, cross-hatching, shading, rendering, any solid black fills.
-  `.trim(),
+**DO**: Round everything, simple expressions, oversized features, blushing cheeks as circles
+**DO NOT**: Sharp angles, realistic proportions, detailed anatomy, filled black pupils
+    `.trim(),
+    negatives: 'sharp angles, realistic, detailed anatomy, angular, pointy, aggressive, mature proportions',
+    minRegionMm: 6,
+    minGapMm: 1.5,
+    maxRegions: 80,
+    allowsTextureMarks: false,
+    compatibleComplexity: ['Very Simple', 'Simple', 'Moderate']
+  },
 
-  'default': `
-OUTPUT: Black line art on white background. No fills, no shading.
-LINE CHARACTER: Clean, continuous vector strokes. Professional, neutral, versatile.
-LINE WEIGHT: 1mm consistent throughout.
-MINIMUM GAP: 1.5mm between parallel lines.
-CLOSURE: All regions fully enclosed. No gaps.
-MINIMUM REGION: 5mm².
-TARGET REGIONS: 80–120 distinct colourable regions.
-AESTHETIC GOAL: Standard commercial colouring book. Clean, clear, broadly appealing.
-DO: Clear shapes, consistent lines, unambiguous regions.
-DO NOT: Stylistic flourishes, texture rendering, any solid black fills, grey tones.
-  `.trim()
-};
+  'Whimsical': {
+    prompt: `
+### Style: Whimsical
 
-// 3. COMPLEXITY GUIDES (Engineering-Grade Physics)
-// Keeps the "How much stuff" logic separate from "How to draw" logic
-const COMPLEXITY_GUIDES: Record<string, string> = {
-  'Very Simple': 'Physics: "Fat Marker" Standard. Constraint: Maximum 3-5 major shapes. Min Gap: 5mm (crayon safe). Internal Detail: ZERO. No patterns, no shading. Focus: Instant recognition.',
-  'Simple': 'Physics: "Standard Marker" Standard. Constraint: Clear separation between elements. Min Gap: 3mm. Internal Detail: Minimal (only defining features like eyes/mouth). Background: Sparse or empty.',
-  'Moderate': 'Physics: "Sharp Pencil" Standard. Constraint: Balanced foreground/background interactions. Min Gap: 1mm. Internal Detail: Standard coloring book level. Use variation in line weight to separate forms.',
-  'Intricate': 'Physics: "Fine Liner" Standard. Constraint: High element density. Textures: Allowed (fur, wood grain, leaves). Min Gap: 0.5mm. Focus: Engaging for adults, requiring fine motor control.',
-  'Extreme Detail': 'Physics: "Micro-Pen" Standard. Constraint: Fractal subdivision. Fill 90% of negative space with patterns (Zentangle-style). Recursive detail: large shapes should contain smaller shapes. "Hidden Object" density.'
-};
+**Drafting Tool**: Variable-width ink brush
+**Line Character**: Flowing, gestural strokes with expressive width variation. Suggests movement and magic.
+**Line Weight**: Variable 0.5mm–2mm (thicker for emphasis/foreground, thinner for detail/background)
+**Closure**: ALL paths must close completely despite gestural quality — no open strokes
+**Minimum Region**: 5mm²
 
-// 4. VALIDATION CHECKLIST (v3.0 - QA Layer)
-const VALIDATION_CHECKLIST = {
-  universal: [
-    'ONLY black (#000000) lines present—no grey, no other colours',
-    'Background is pure white (#FFFFFF)—no off-white, no texture',
-    'ZERO solid black filled areas anywhere in image',
-    'ZERO grey tones or gradients anywhere',
-    'ALL paths fully closed (no gaps exceeding 0.1mm)',
-    'NO regions below style-specified minimum size',
-    'Total region count between 30–150',
-    'No unintended micro-regions from line intersections',
-    'Output resolution: 300 DPI at target print size',
-    'All lines clearly separated (no merged strokes)',
-  ],
-  styleSpecific: {
-    'Bold & Easy': ['Line weight consistently 4mm (no thin lines)', 'Region count under 50', 'Minimum gap 2mm verified', 'No fine detail present'],
-    'Botanical': ['Stipple dots do NOT form enclosed regions', 'Hatch lines are OPEN-ENDED (not closing spaces)', 'White space exceeds 60% within plant forms'],
-    'Zentangle': ['Pattern marks do NOT create sub-regions', 'Each string section independently closed', 'No pattern area smaller than 4mm²'],
-    'Geometric': ['ZERO curved lines (absolute requirement)', 'All shapes are straight-edged polygons', 'Clean vertex intersections'],
-    'Wildlife': ['Texture lines are directional strokes, NOT boundaries', 'No texture line encloses a sub-region', 'White space exceeds 70%'],
-    'Gothic': ['No line thinner than 3mm', 'All regions exceed 15mm²', 'Compartmentalised structure verified'],
-    'Realistic': ['Line weight uniform throughout (0.6mm)', 'No hatching or cross-hatching present', 'No rendering or tonal indication'],
-    'Kawaii': ['All corners rounded (2mm+ radius)', 'Eye highlights are enclosed regions, NOT filled white', 'No sharp angles present'],
+**Aesthetic Goal**: Fairy-tale storybook illustration. Dreamlike, magical, gently surreal.
+
+**Permitted Distortions**: Exaggerated scale, whimsical architecture, floating elements, curved horizons
+**Forbidden Distortions**: Incomplete shapes, fading lines, open-ended strokes
+
+**DO**: Flowing lines, magical subjects, enchanted scenes, playful scale distortion, dreamy atmosphere
+**DO NOT**: Open strokes, incomplete shapes, harsh edges, realistic proportions, mundane subjects
+    `.trim(),
+    negatives: 'harsh, angular, realistic, mundane, incomplete, open strokes, rigid, stiff',
+    minRegionMm: 5,
+    minGapMm: 1,
+    maxRegions: 100,
+    allowsTextureMarks: false,
+    compatibleComplexity: ['Simple', 'Moderate', 'Intricate']
+  },
+
+  'Cartoon': {
+    prompt: `
+### Style: Cartoon
+
+**Drafting Tool**: Dynamic brush with taper control
+**Line Character**: Dynamic strokes with purposeful tapering. Thick outer contours define silhouette; thinner inner lines define features.
+**Line Weight Hierarchy**:
+  - Outer silhouette: 2–3mm
+  - Secondary forms: 1–1.5mm
+  - Fine details: 0.8mm minimum
+**Closure**: All shapes fully enclosed. Contour lines must connect cleanly.
+**Minimum Region**: 5mm²
+
+**Aesthetic Goal**: Western animation cel style (Disney/WB influence). Clear silhouettes, dynamic poses, energetic.
+
+**Poses**: Exaggerated action, clear "line of action," strong silhouette readability.
+
+**DO**: Bold outlines, expressive shapes, dynamic poses, clear hierarchy, squash-and-stretch
+**DO NOT**: Static poses, tangent lines, ambiguous silhouettes, flat poses, uniform line weight
+    `.trim(),
+    negatives: 'static, stiff, tangent lines, ambiguous silhouette, lifeless, rigid pose, uniform weight',
+    minRegionMm: 5,
+    minGapMm: 1,
+    maxRegions: 100,
+    allowsTextureMarks: false,
+    compatibleComplexity: ['Simple', 'Moderate', 'Intricate']
+  },
+
+  'Botanical': {
+    prompt: `
+### Style: Botanical
+
+**Drafting Tool**: 0.3mm technical pen (copperplate engraving simulation)
+**Line Character**: Fine, precise, controlled strokes. Elegant and scientific.
+**Line Weight**: 0.3mm primary contours
+**Closure**: All plant structures (leaves, petals, stems) must form closed colourable regions
+**Minimum Region**: 3mm²
+
+**Texture Indication** (CRITICAL):
+- Use STIPPLING (scattered dots) for form suggestion — dots are decorative, NOT boundaries
+- Use OPEN HATCHING (parallel lines that do NOT enclose regions) for texture
+- Texture marks must NEVER create colourable sub-regions
+
+**White Space**: Maintain 60%+ open white space within each plant form
+
+**Aesthetic Goal**: Victorian scientific illustration. Precise, elegant, botanically accurate.
+
+**DO**: Fine controlled lines, accurate plant anatomy, delicate stippling, open hatching
+**DO NOT**: Solid black areas, closed hatching, dense rendering, over-stippling to grey
+    `.trim(),
+    negatives: 'solid black, dense shading, closed hatching, grey tones, muddy, over-rendered, sloppy',
+    minRegionMm: 3,
+    minGapMm: 0.5,
+    maxRegions: 150,
+    allowsTextureMarks: true,
+    compatibleComplexity: ['Moderate', 'Intricate', 'Extreme Detail']
+  },
+
+  'Mandala': {
+    prompt: `
+### Style: Mandala
+
+**Drafting Tool**: Precision vector compass and ruler
+**Line Character**: Mathematically precise strokes with perfect geometric accuracy.
+**Line Weight**: 1mm primary radial divisions, 0.5mm secondary pattern lines
+**Symmetry**: Radial symmetry MANDATORY (8-fold, 12-fold, or 16-fold). Perfect rotational repetition.
+**Structure**: Concentric bands radiating from defined centre point. Each band contains repeating pattern elements.
+**Closure**: All segments fully enclosed — geometric construction ensures closure
+**Minimum Region**: 4mm²
+**Outer Boundary**: Complete circle or regular polygon required
+
+**Aesthetic Goal**: Meditative, balanced, geometrically perfect. Spiritual symmetry.
+
+**DO**: Perfect symmetry, repetitive patterns, concentric organisation, clean geometry, meditative complexity
+**DO NOT**: Asymmetry, organic variation, incomplete patterns, freehand wobble
+    `.trim(),
+    negatives: 'asymmetric, organic, wobbly, incomplete, freehand, irregular, chaotic',
+    minRegionMm: 4,
+    minGapMm: 0.8,
+    maxRegions: 150,
+    allowsTextureMarks: false,
+    compatibleComplexity: ['Moderate', 'Intricate', 'Extreme Detail']
+  },
+
+  'Zentangle': {
+    prompt: `
+### Style: Zentangle
+
+**Drafting Tool**: 0.8mm fine liner
+**Line Character**: Consistent, confident ink-style strokes. High contrast, uniform weight.
+**Line Weight**: 0.8mm consistent
+**Structure**: Divide composition into sections ("strings"). Each string is a closed region filled with decorative patterns.
+**Closure**: Each string section must be a closed, colourable region
+**Minimum Region**: 4mm² for string sections
+
+**Pattern Rules** (CRITICAL):
+- Patterns (dots, parallel lines, curves, grids) suggest texture
+- Pattern elements are DECORATIVE MARKS, not boundaries
+- Patterns must NOT create enclosed sub-regions smaller than 4mm²
+
+**Aesthetic Goal**: Structured doodling. Meditative, rhythmic, abstract.
+
+**DO**: Bold section divisions, decorative pattern fills, rhythmic repetition, clear string boundaries
+**DO NOT**: Patterns creating tiny enclosed spaces, representational imagery, irregular string shapes
+    `.trim(),
+    negatives: 'representational, realistic imagery, tiny enclosed patterns, irregular, chaotic, figurative',
+    minRegionMm: 4,
+    minGapMm: 0.8,
+    maxRegions: 120,
+    allowsTextureMarks: true,
+    compatibleComplexity: ['Moderate', 'Intricate', 'Extreme Detail']
+  },
+
+  'Fantasy': {
+    prompt: `
+### Style: Fantasy
+
+**Drafting Tool**: Variable ink brush (RPG illustration style)
+**Line Character**: Detailed ink work with weight variation suggesting drama and depth.
+**Line Weight**:
+  - Shadow-side contours: 1.5mm
+  - Light-side contours: 0.5mm
+  - Fine detail minimum: 0.3mm
+**Closure**: All forms fully enclosed despite intricate detail
+**Minimum Region**: 3.5mm²
+
+**Lighting Convention**: Suggest single dramatic light source through LINE WEIGHT ONLY.
+- Shadow side = thicker lines
+- Light side = thinner lines
+- NO solid black shadows
+
+**Proportions**: Heroic (8–9 head heights for humanoid figures)
+
+**Aesthetic Goal**: Classic RPG/tabletop illustration. Dramatic, detailed, epic.
+
+**Subjects**: Warriors, mages, dragons, mythical creatures, armour, weapons, magical effects
+
+**DO**: Line weight variation for drama, intricate costume/armour detail, heroic poses, epic scale
+**DO NOT**: Solid black shadows, filled areas, modern elements, casual poses
+    `.trim(),
+    negatives: 'solid black shadows, filled areas, modern clothing, casual, mundane, simple, cartoonish',
+    minRegionMm: 3.5,
+    minGapMm: 0.5,
+    maxRegions: 150,
+    allowsTextureMarks: true,
+    compatibleComplexity: ['Moderate', 'Intricate', 'Extreme Detail']
+  },
+
+  'Gothic': {
+    prompt: `
+### Style: Gothic
+
+**Drafting Tool**: 5mm+ bold marker (stained glass / woodcut simulation)
+**Line Character**: Very thick, angular strokes simulating stained glass leading or woodcut lines.
+**Line Weight**: 5mm minimum for ALL lines — no line thinner than 3mm permitted
+**Structure**: Image compartmentalised into distinct segments like stained glass panels
+**Corners**: Angular preferred. Minimum curve radius 10mm where curves occur.
+**Closure**: Mandatory — compartmentalised structure inherently creates closed regions
+**Minimum Region**: 15mm² (large segments required due to thick lines)
+
+**Aesthetic Goal**: Medieval stained glass or woodcut. Bold, angular, dramatic, ecclesiastical.
+
+**DO**: Thick bold lines, angular shapes, compartmentalised composition, dramatic subjects, verticality
+**DO NOT**: Thin lines, fine detail, soft curves, rounded shapes, delicate elements
+    `.trim(),
+    negatives: 'thin lines, fine detail, soft curves, delicate, rounded, wispy, intricate, gentle',
+    minRegionMm: 15,
+    minGapMm: 3,
+    maxRegions: 60,
+    allowsTextureMarks: false,
+    compatibleComplexity: ['Very Simple', 'Simple', 'Moderate']
+  },
+
+  'Cozy': {
+    prompt: `
+### Style: Cozy
+
+**Drafting Tool**: 1.5mm soft-tip marker with rounded caps
+**Line Character**: Soft, rounded strokes with gentle, warm quality. Approachable and comforting.
+**Line Weight**: 1.5mm with softened endpoints (rounded line caps)
+**Corners**: No angles sharper than 90°. Prefer curves. Minimum 3mm radius on all corners.
+**Closure**: All shapes fully enclosed
+**Minimum Region**: 6mm²
+
+**Aesthetic Goal**: Hygge/comfort illustration. Warm, soft, domestic, peaceful.
+
+**Subjects**: Cosy interiors, comfort food, pets, blankets, beverages, candles, books, soft furnishings
+
+**DO**: Rounded shapes, plump forms, gentle curves, domestic warmth, soft textures suggested through form
+**DO NOT**: Sharp angles, cold subjects, harsh contrasts, industrial elements, outdoor adventure
+    `.trim(),
+    negatives: 'sharp angles, harsh, cold, industrial, angular, aggressive, outdoor adventure, action',
+    minRegionMm: 6,
+    minGapMm: 1.5,
+    maxRegions: 100,
+    allowsTextureMarks: false,
+    compatibleComplexity: ['Very Simple', 'Simple', 'Moderate']
+  },
+
+  'Geometric': {
+    prompt: `
+### Style: Geometric
+
+**Drafting Tool**: Ruler and 0.8mm technical pen ONLY
+**Line Character**: Perfectly straight lines. Absolute mathematical precision.
+**Line Weight**: 0.8mm consistent throughout
+**Construction**: ZERO curves permitted. Entire image composed of straight-edged triangles and convex polygons.
+**Closure**: Inherent to geometric construction — all polygons closed
+**Minimum Region**: 5mm²
+**Vertices**: Clean, precise intersections at polygon meeting points
+
+**Aesthetic Goal**: Low-poly, faceted, crystalline, digital aesthetic.
+
+**DO**: Straight lines only, triangular tessellation, clean vertices, mathematical precision, faceted forms
+**DO NOT**: ANY curved lines whatsoever, organic shapes, soft transitions, freehand marks
+    `.trim(),
+    negatives: 'curves, curved lines, organic, soft, freehand, wobbly, rounded, natural forms',
+    minRegionMm: 5,
+    minGapMm: 0.8,
+    maxRegions: 120,
+    allowsTextureMarks: false,
+    compatibleComplexity: ['Simple', 'Moderate', 'Intricate', 'Extreme Detail']
+  },
+
+  'Wildlife': {
+    prompt: `
+### Style: Wildlife
+
+**Drafting Tool**: 1mm contour pen + 0.4mm texture pen
+**Line Character**: Naturalistic contour drawing with directional strokes indicating texture.
+**Line Weight**: 1mm primary contours, 0.4mm texture indication lines
+**Closure**: All animal body regions (head, body, limbs, tail) must be closed colourable shapes
+**Minimum Region**: 4mm²
+
+**Texture Technique** (CRITICAL):
+- Use line DIRECTION to suggest fur grain, feather barbs, scale patterns
+- Texture lines indicate direction ONLY — they must remain OPEN-ENDED within regions
+- Texture lines must NEVER enclose sub-spaces
+
+**White Space**: Maintain 70%+ open white space — do not over-render
+
+**Anatomy**: Accurate proportions for species identification
+
+**Aesthetic Goal**: Naturalist field guide illustration. Scientific yet artistic.
+
+**DO**: Accurate anatomy, directional texture strokes, natural poses, habitat elements
+**DO NOT**: Solid black areas, over-rendering to dark, closed texture patterns, stylised distortion
+    `.trim(),
+    negatives: 'solid black, over-rendered, dark fur mass, stylised, cartoon, inaccurate anatomy, closed texture',
+    minRegionMm: 4,
+    minGapMm: 0.8,
+    maxRegions: 120,
+    allowsTextureMarks: true,
+    compatibleComplexity: ['Moderate', 'Intricate']
+  },
+
+  'Floral': {
+    prompt: `
+### Style: Floral
+
+**Drafting Tool**: 1.2mm flowing brush
+**Line Character**: Flowing, continuous Art Nouveau "whiplash" curves. Elegant, sinuous, organic.
+**Line Weight**: 1.2mm consistent, slightly thicker (1.5mm) at curve peaks
+**Composition**: Interlocking plant elements filling the frame. Vines, leaves, flowers weave together.
+**Closure**: All floral elements form closed colourable regions.
+**Minimum Region**: 4mm²
+
+**Space Filling**: Minimal empty background — fill negative space with secondary elements (small leaves, buds, tendrils)
+
+**Aesthetic Goal**: Art Nouveau decorative pattern. Flowing, organic, elegant, rhythmic.
+
+**DO**: Continuous flowing lines, interlocking organic forms, rhythmic curves, dense composition, natural elegance
+**DO NOT**: Rigid geometric shapes, isolated floating elements, sharp angles, sparse composition
+    `.trim(),
+    negatives: 'geometric, rigid, angular, sparse, isolated elements, harsh, mechanical',
+    minRegionMm: 4,
+    minGapMm: 0.8,
+    maxRegions: 130,
+    allowsTextureMarks: false,
+    compatibleComplexity: ['Moderate', 'Intricate', 'Extreme Detail']
+  },
+
+  'Abstract': {
+    prompt: `
+### Style: Abstract
+
+**Drafting Tool**: Variable-width expressive brush
+**Line Character**: Fluid, continuous, expressive strokes with intentional variation.
+**Line Weight**: Variable 0.5mm–2.5mm based on compositional emphasis
+**Closure**: ALL lines must form closed regions despite abstract nature — no open-ended strokes
+**Minimum Region**: 5mm²
+
+**Composition**: Non-representational. Focus on shape relationships, negative space, visual rhythm, movement.
+
+**Aesthetic Goal**: Abstract line composition. Balanced, dynamic, visually engaging.
+
+**DO**: Overlapping forms, interlocking shapes, continuous paths, compositional balance, visual rhythm
+**DO NOT**: Recognisable subjects, representational imagery, open strokes, narrative content
+    `.trim(),
+    negatives: 'representational, figurative, recognisable subjects, realistic, narrative, open strokes',
+    minRegionMm: 5,
+    minGapMm: 1,
+    maxRegions: 100,
+    allowsTextureMarks: false,
+    compatibleComplexity: ['Simple', 'Moderate', 'Intricate']
+  },
+
+  'Realistic': {
+    prompt: `
+### Style: Realistic (Ligne Claire)
+
+**Drafting Tool**: 0.6mm technical pen — uniform weight
+**Line Character**: Clean, precise, uniform strokes. Pure contour — form described through outline only.
+**Line Weight**: 0.6mm consistent throughout — TRUE Ligne Claire with NO weight variation
+**Closure**: All forms cleanly closed with precise endpoint connections
+**Minimum Region**: 4mm²
+
+**Proportions**: Anatomically correct. Adult figures 7.5–8 head heights. Accurate perspective.
+
+**Style Reference**: Hergé (Tintin), technical illustration. Form through contour alone.
+
+**Aesthetic Goal**: Clean, precise, professional technical illustration.
+
+**DO**: Uniform line weight, accurate anatomy, correct perspective, clean closures, clarity
+**DO NOT**: Line weight variation, hatching, cross-hatching, expressive marks, stylisation
+    `.trim(),
+    negatives: 'line weight variation, hatching, cross-hatching, expressive, stylised, sketchy, loose',
+    minRegionMm: 4,
+    minGapMm: 0.8,
+    maxRegions: 120,
+    allowsTextureMarks: false,
+    compatibleComplexity: ['Moderate', 'Intricate']
+  },
+
+  'default': {
+    prompt: `
+### Style: Standard Commercial
+
+**Drafting Tool**: 1mm consistent marker
+**Line Character**: Clean, continuous vector strokes. Professional, neutral, versatile.
+**Line Weight**: 1mm consistent throughout
+**Minimum Gap**: 1.5mm between parallel lines
+**Closure**: All regions fully enclosed — no gaps
+**Minimum Region**: 5mm²
+**Target Regions**: 80–120 distinct colourable regions
+
+**Aesthetic Goal**: Standard commercial colouring book. Clean, clear, broadly appealing.
+
+**DO**: Clear shapes, consistent lines, unambiguous regions, balanced composition
+**DO NOT**: Stylistic flourishes, texture rendering, artistic interpretation
+    `.trim(),
+    negatives: 'stylised, artistic flourishes, texture, rendering, experimental',
+    minRegionMm: 5,
+    minGapMm: 1.5,
+    maxRegions: 120,
+    allowsTextureMarks: false,
+    compatibleComplexity: ['Very Simple', 'Simple', 'Moderate', 'Intricate']
   }
 };
 
-// 5. AUDIENCE PHYSICS (Narrative Rules)
-const AUDIENCE_RULES: Record<string, string> = {
-  'toddlers': 'The subject must be isolated and instantly recognizable. Zero background noise. Use massive shapes.',
-  'preschool': 'Use simple storytelling scenes with clearly defined characters. Avoid clutter.',
-  'kids': 'Create a fun, dynamic scene. Standard complexity is appropriate.',
-  'teens': 'Use stylish, "cool" aesthetics. Dynamic poses and pop-culture vibes are welcome.',
-  'adults': 'Prioritize artistic beauty and sophistication. Complex patterns are encouraged.',
-  'seniors': 'Ensure high visibility. Use distinct sections and avoid tiny, hard-to-see details.',
-  'sen': 'Predictability is key. Avoid chaotic elements or "busy" areas. Keep it calming.'
+// ═══════════════════════════════════════════════════════════════════════════════
+// 3. COMPLEXITY PHYSICS — Information Density Rules
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface ComplexitySpec {
+  prompt: string;
+  maxShapes: number | null;
+  minGapMm: number;
+  allowsBackground: boolean;
+  allowsTexture: boolean;
+  regionDensity: string;
+}
+
+const COMPLEXITY_SPECS: Record<string, ComplexitySpec> = {
+
+  'Very Simple': {
+    prompt: `
+### Complexity: Very Simple
+
+**Physics Model**: "Fat Marker" Standard
+**Shape Budget**: Maximum 3–5 major shapes total
+**Minimum Gap**: 5mm (crayon-safe for small hands)
+**Internal Detail**: ZERO — shapes are solid silhouettes with no internal divisions
+**Background**: NONE — subject floats on white
+**Focus**: Instant recognition from across the room
+
+**Rule**: If you can't draw it with a crayon in 30 seconds, it's too complex.
+    `.trim(),
+    maxShapes: 5,
+    minGapMm: 5,
+    allowsBackground: false,
+    allowsTexture: false,
+    regionDensity: 'minimal'
+  },
+
+  'Simple': {
+    prompt: `
+### Complexity: Simple
+
+**Physics Model**: "Standard Marker" Standard
+**Shape Budget**: 10–25 distinct regions
+**Minimum Gap**: 3mm
+**Internal Detail**: Minimal — only essential defining features (eyes, mouth, major divisions)
+**Background**: Sparse or empty — maximum 2–3 background elements
+**Focus**: Clear separation between all elements
+
+**Rule**: A 4-year-old should be able to colour it without frustration.
+    `.trim(),
+    maxShapes: 25,
+    minGapMm: 3,
+    allowsBackground: true,
+    allowsTexture: false,
+    regionDensity: 'low'
+  },
+
+  'Moderate': {
+    prompt: `
+### Complexity: Moderate
+
+**Physics Model**: "Sharp Pencil" Standard
+**Shape Budget**: 40–80 distinct regions
+**Minimum Gap**: 1.5mm
+**Internal Detail**: Standard colouring book level — clothing folds, facial features, object details
+**Background**: Balanced foreground/background interaction
+**Focus**: Engaging without overwhelming
+
+**Rule**: Standard commercial colouring book density.
+    `.trim(),
+    maxShapes: 80,
+    minGapMm: 1.5,
+    allowsBackground: true,
+    allowsTexture: false,
+    regionDensity: 'medium'
+  },
+
+  'Intricate': {
+    prompt: `
+### Complexity: Intricate
+
+**Physics Model**: "Fine Liner" Standard
+**Shape Budget**: 80–120 distinct regions
+**Minimum Gap**: 0.8mm
+**Internal Detail**: High — textures permitted (fur direction, fabric patterns, architectural detail)
+**Background**: Dense environmental storytelling
+**Focus**: Engaging for adults requiring fine motor control
+
+**Rule**: Reward patience and precision.
+    `.trim(),
+    maxShapes: 120,
+    minGapMm: 0.8,
+    allowsBackground: true,
+    allowsTexture: true,
+    regionDensity: 'high'
+  },
+
+  'Extreme Detail': {
+    prompt: `
+### Complexity: Extreme Detail
+
+**Physics Model**: "Micro-Pen" Standard
+**Shape Budget**: 120–150+ distinct regions
+**Minimum Gap**: 0.5mm
+**Internal Detail**: Fractal subdivision — large shapes contain smaller shapes contain smaller shapes
+**Background**: Fill 90% of negative space with pattern elements
+**Focus**: Meditative, immersive, "hidden object" density
+
+**Rule**: The image should reveal new details on each viewing.
+    `.trim(),
+    maxShapes: 150,
+    minGapMm: 0.5,
+    allowsBackground: true,
+    allowsTexture: true,
+    regionDensity: 'maximum'
+  }
 };
 
-// 6. THE BASE NEGATIVE (Strict Safety Net)
+// ═══════════════════════════════════════════════════════════════════════════════
+// 4. AUDIENCE RULES — Motor Skills + Safety + Tone
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface AudienceSpec {
+  prompt: string;
+  safetyMargin: number; // Percentage margin around edges
+  centreWeighted: boolean;
+  maxComplexity: string;
+  prohibitedContent: string[];
+}
+
+const AUDIENCE_SPECS: Record<string, AudienceSpec> = {
+
+  'toddlers': {
+    prompt: `
+### Target Audience: Toddlers (Ages 1–3)
+
+**Motor Skills**: Gross motor only — large arm movements, limited precision
+**Composition**: Subject MUST be centre-weighted with 20% safety margin (no important elements near edges)
+**Recognition**: Subject must be instantly recognisable — archetypal forms only
+**Background**: ZERO background elements — subject floats alone on white
+**Mood**: Calm, friendly, non-threatening
+
+**Rule**: If it takes more than 1 second to identify the subject, it's too complex.
+    `.trim(),
+    safetyMargin: 20,
+    centreWeighted: true,
+    maxComplexity: 'Very Simple',
+    prohibitedContent: ['scary', 'teeth', 'claws', 'fire', 'weapons', 'villains']
+  },
+
+  'preschool': {
+    prompt: `
+### Target Audience: Preschool (Ages 3–5)
+
+**Motor Skills**: Developing fine motor — can stay within large boundaries
+**Composition**: Centre-focused with simple scene context allowed
+**Recognition**: Simple storytelling scenes with clearly defined characters
+**Background**: Sparse — maximum 2–3 background elements, clearly separated
+**Mood**: Happy, adventurous, wonder-filled
+
+**Rule**: The scene should tell a simple story a child can narrate.
+    `.trim(),
+    safetyMargin: 15,
+    centreWeighted: true,
+    maxComplexity: 'Simple',
+    prohibitedContent: ['scary', 'violence', 'weapons', 'death']
+  },
+
+  'kids': {
+    prompt: `
+### Target Audience: Kids (Ages 6–10)
+
+**Motor Skills**: Competent fine motor — can handle standard colouring book detail
+**Composition**: Dynamic, balanced — can fill the frame
+**Recognition**: Fun, action-oriented scenes with character interaction
+**Background**: Standard complexity — environmental storytelling permitted
+**Mood**: Energetic, fun, imaginative, adventurous
+
+**Rule**: Should make a child say "Cool!" and want to show their parents.
+    `.trim(),
+    safetyMargin: 10,
+    centreWeighted: false,
+    maxComplexity: 'Moderate',
+    prohibitedContent: ['gore', 'sexual content', 'extreme violence']
+  },
+
+  'teens': {
+    prompt: `
+### Target Audience: Teens (Ages 11–17)
+
+**Motor Skills**: Full fine motor competence
+**Composition**: Dynamic, stylish — can handle complex layouts
+**Recognition**: "Cool" factor important — pop culture awareness, dynamic poses
+**Background**: Full complexity permitted
+**Mood**: Stylish, dynamic, aspirational, culturally aware
+
+**Rule**: Would this look good as a poster on a teenager's wall?
+    `.trim(),
+    safetyMargin: 5,
+    centreWeighted: false,
+    maxComplexity: 'Intricate',
+    prohibitedContent: ['gore', 'sexual content', 'drug use']
+  },
+
+  'adults': {
+    prompt: `
+### Target Audience: Adults (18+)
+
+**Motor Skills**: Full capability — precision is a feature, not a bug
+**Composition**: Full-bleed permitted — sophisticated layouts, infinite canvas feel
+**Recognition**: Artistic beauty and sophistication prioritised
+**Background**: Complex layering encouraged
+**Mood**: Sophisticated, meditative, artistic, challenging
+
+**Rule**: Should provide genuine relaxation and artistic satisfaction.
+    `.trim(),
+    safetyMargin: 0,
+    centreWeighted: false,
+    maxComplexity: 'Extreme Detail',
+    prohibitedContent: ['illegal content']
+  },
+
+  'seniors': {
+    prompt: `
+### Target Audience: Seniors (65+)
+
+**Motor Skills**: May have reduced fine motor / visual acuity
+**Composition**: High visibility — distinct sections, generous spacing
+**Recognition**: Clear, unambiguous imagery
+**Background**: Moderate — avoid visual clutter
+**Mood**: Nostalgic, peaceful, dignified
+
+**Rule**: All details should be clearly visible without squinting.
+    `.trim(),
+    safetyMargin: 15,
+    centreWeighted: false,
+    maxComplexity: 'Moderate',
+    prohibitedContent: ['tiny details', 'cluttered compositions']
+  },
+
+  'sen': {
+    prompt: `
+### Target Audience: Special Educational Needs
+
+**Motor Skills**: Variable — prioritise predictability over precision
+**Composition**: Structured, predictable — avoid chaotic elements or "busy" areas
+**Recognition**: Familiar, calming subjects
+**Background**: Minimal — reduce sensory overwhelm
+**Mood**: Calming, predictable, safe, structured
+
+**Rule**: Predictability is key. Every element should feel intentional and orderly.
+    `.trim(),
+    safetyMargin: 20,
+    centreWeighted: true,
+    maxComplexity: 'Simple',
+    prohibitedContent: ['chaotic', 'busy', 'unpredictable', 'scary', 'overwhelming']
+  },
+
+  'default': {
+    prompt: `
+### Target Audience: General
+
+**Motor Skills**: Standard capability assumed
+**Composition**: Balanced, professional
+**Background**: Moderate complexity
+**Mood**: Broadly appealing
+
+**Rule**: Should work for most audiences without specific optimisation.
+    `.trim(),
+    safetyMargin: 10,
+    centreWeighted: false,
+    maxComplexity: 'Moderate',
+    prohibitedContent: ['inappropriate content']
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 5. COMPATIBILITY MATRIX — Conflict Detection & Resolution
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface CompatibilityResult {
+  isCompatible: boolean;
+  warnings: string[];
+  adjustments: {
+    complexity?: string;
+    style?: string;
+  };
+  resolvedComplexity: string;
+  resolvedStyle: string;
+}
+
+const checkCompatibility = (
+  styleId: string,
+  complexityId: string,
+  audienceId: string
+): CompatibilityResult => {
+  const style = STYLE_SPECS[styleId] || STYLE_SPECS['default'];
+  const audience = AUDIENCE_SPECS[audienceId] || AUDIENCE_SPECS['default'];
+
+  const warnings: string[] = [];
+  const adjustments: { complexity?: string; style?: string } = {};
+
+  let resolvedComplexity = complexityId;
+  let resolvedStyle = styleId;
+
+  // Check 1: Style-Complexity compatibility
+  if (!style.compatibleComplexity.includes(complexityId)) {
+    const nearestCompatible = style.compatibleComplexity[style.compatibleComplexity.length - 1];
+    warnings.push(
+      `Style "${styleId}" is incompatible with complexity "${complexityId}". ` +
+      `Adjusting to "${nearestCompatible}".`
+    );
+    adjustments.complexity = nearestCompatible;
+    resolvedComplexity = nearestCompatible;
+  }
+
+  // Check 2: Audience-Complexity ceiling
+  const complexityOrder = ['Very Simple', 'Simple', 'Moderate', 'Intricate', 'Extreme Detail'];
+  const maxComplexityIndex = complexityOrder.indexOf(audience.maxComplexity);
+  const requestedComplexityIndex = complexityOrder.indexOf(resolvedComplexity);
+
+  if (requestedComplexityIndex > maxComplexityIndex) {
+    warnings.push(
+      `Audience "${audienceId}" has maximum complexity "${audience.maxComplexity}". ` +
+      `Reducing from "${resolvedComplexity}".`
+    );
+    adjustments.complexity = audience.maxComplexity;
+    resolvedComplexity = audience.maxComplexity;
+  }
+
+  // Check 3: Style-Audience suitability (soft warnings)
+  if (audienceId === 'toddlers' && ['Botanical', 'Fantasy', 'Gothic', 'Realistic'].includes(styleId)) {
+    warnings.push(
+      `Style "${styleId}" may be too complex for toddlers. Consider "Bold & Easy" or "Kawaii".`
+    );
+  }
+
+  if (audienceId === 'seniors' && style.minRegionMm < 4) {
+    warnings.push(
+      `Style "${styleId}" has small minimum regions (${style.minRegionMm}mm²) which may be difficult for seniors to see.`
+    );
+  }
+
+  return {
+    isCompatible: warnings.length === 0,
+    warnings,
+    adjustments,
+    resolvedComplexity,
+    resolvedStyle
+  };
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 6. HERO CHARACTER VALIDATION
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface HeroValidationResult {
+  isValid: boolean;
+  warnings: string[];
+  adjustedDescription: string | null;
+}
+
+const validateHeroForAudience = (
+  heroDNA: CharacterDNA,
+  audienceId: string
+): HeroValidationResult => {
+  const audience = AUDIENCE_SPECS[audienceId] || AUDIENCE_SPECS['default'];
+  const warnings: string[] = [];
+
+  const heroDescription = `${heroDNA.body} ${heroDNA.face} ${heroDNA.outfitCanon}`.toLowerCase();
+
+  // Check for prohibited content in hero description
+  for (const prohibited of audience.prohibitedContent) {
+    if (heroDescription.includes(prohibited.toLowerCase())) {
+      warnings.push(
+        `Hero character contains "${prohibited}" which is prohibited for audience "${audienceId}".`
+      );
+    }
+  }
+
+  // Check complexity of hero description vs audience
+  const descriptionWordCount = heroDescription.split(/\s+/).length;
+  if (audienceId === 'toddlers' && descriptionWordCount > 20) {
+    warnings.push(
+      `Hero description is too detailed (${descriptionWordCount} words) for toddlers. Simplify to ~10 words.`
+    );
+  }
+
+  return {
+    isValid: warnings.length === 0,
+    warnings,
+    adjustedDescription: null // Future: auto-simplification
+  };
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 7. BASE NEGATIVE PROMPT — Safety Net
+// ═══════════════════════════════════════════════════════════════════════════════
+
 const BASE_NEGATIVE = `
-  // --- MOCKUP & PHOTO BANS ---
-  photo, photograph, photorealistic, realism, 3d render,
-  staged scene, flatlay, product shot,
-  pencils, pens, crayons, markers, art supplies on table,
-  shadow, drop shadow, vignette,
-  
-  // --- TEXTURE BANS ---
-  crumpled paper, parchment, canvas grain, noise, dither,
-  
-  // --- COLOR & SHADING BANS (STRICT) ---
-  shading, gray, grey, gradient, solid black fill, filled areas, solid blocks,
-  color, pigment, paint, watercolor, red, blue, green,
-  
-  // --- CONTENT BANS ---
-  text, watermark, signature, logo, date,
-  human face (unless requested), deformed hands, extra fingers
-`;
+photo, photograph, photorealistic, 3d render, CGI,
+staged scene, flatlay, product shot, mockup,
+pencils, pens, crayons, markers, art supplies visible,
+shadow, drop shadow, cast shadow, vignette,
+crumpled paper, parchment texture, canvas grain, paper texture, noise, dither,
+shading, gray, grey, gradient, halftone,
+solid black fill, filled areas, solid black shapes, black silhouette,
+color, colour, pigment, paint, watercolor, any color,
+text, watermark, signature, logo, date, copyright,
+border, frame, decorative border, page edge,
+multiple views, reference sheet, character turnaround,
+blurry, low quality, jpeg artifacts, pixelated
+`.trim();
 
-// 7. LINE HIERARCHY (Structural Engineering) - This is now integrated into STYLE_SPECS
-// const LINE_HIERARCHY: Record<string, string> = {
-//   'default': `
-//     - **Contour Lines (Tier 1)**: Use a bold outer boundary (simulated 0.8mm) to separate the subject from the background.
-//     - **Structure Lines (Tier 2)**: Use medium weight (0.5mm) for internal forms and clothing folds.
-//     - **Detail Lines (Tier 3)**: Use fine lines (0.3mm) for textures, fur, or patterns.
-//   `.trim(),
-//   'Bold & Easy': `
-//     - **Unified Weight**: Use a consistent 4mm line weight for EVERYTHING.
-//     - **No Micro-Details**: Do not use thin lines. All lines must be bold.
-//   `.trim(),
-//   'Botanical': `
-//     - **Fine Contours**: Use a delicate 0.3mm contour.
-//     - **Texture Mapping**: Use 0.1mm micro-stippling for form definition.
-//   `.trim()
-// };
+// ═══════════════════════════════════════════════════════════════════════════════
+// 8. CONTEXTUAL NEGATIVE GENERATOR
+// ═══════════════════════════════════════════════════════════════════════════════
 
-// 8. COMPOSITIONAL PHYSICS (Layout Rules) - This is now integrated into STYLE_SPECS or AUDIENCE_RULES
-// const COMPOSITIONAL_PHYSICS: Record<string, string> = {
-//   'toddlers': 'Gravity needs to be center-weighted. Keep a 20% safe-zone margin around the edges (no bleeding). Subject must "float" in the center.',
-//   'preschool': 'Center focus with mild background elements. Keep margins clear of important details.',
-//   'kids': 'Dynamic balanced composition. Fill the frame, but keep the primary action central.',
-//   'adults': 'Full-bleed composition allowed. Infinite canvas feel. Complex layering permitted.',
-//   'default': 'Balanced composition with standard margins.'
-// };
-
-const getContextualNegatives = (prompt: string): string => {
+const getContextualNegatives = (
+  prompt: string,
+  styleId: string,
+  audienceId: string
+): string => {
   const p = prompt.toLowerCase();
   const negatives: string[] = [];
-  if (p.includes('room') || p.includes('inside')) negatives.push('mountains', 'sun');
-  if (p.includes('underwater')) negatives.push('fire', 'smoke', 'dust');
+
+  // Scene-based negatives
+  if (p.includes('room') || p.includes('inside') || p.includes('interior')) {
+    negatives.push('outdoor elements', 'sun', 'clouds', 'mountains', 'trees in background');
+  }
+  if (p.includes('underwater') || p.includes('ocean') || p.includes('sea')) {
+    negatives.push('fire', 'smoke', 'dust', 'clouds', 'land animals');
+  }
+  if (p.includes('space') || p.includes('galaxy') || p.includes('planet')) {
+    negatives.push('water', 'grass', 'trees', 'ground', 'horizon line');
+  }
+  if (p.includes('forest') || p.includes('woods') || p.includes('jungle')) {
+    negatives.push('buildings', 'cars', 'roads', 'urban elements');
+  }
+
+  // Style-specific negatives
+  const style = STYLE_SPECS[styleId];
+  if (style) {
+    negatives.push(style.negatives);
+  }
+
+  // Audience-specific negatives
+  const audience = AUDIENCE_SPECS[audienceId];
+  if (audience) {
+    negatives.push(...audience.prohibitedContent);
+  }
+
   return negatives.join(', ');
 };
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 9. PROMPT ASSEMBLY ENGINE — Constraint-First Architecture
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface BuildPromptResult {
+  fullPrompt: string;
+  fullNegativePrompt: string;
+  compatibility: CompatibilityResult;
+  heroValidation: HeroValidationResult | null;
+  resolvedParams: {
+    style: string;
+    complexity: string;
+    audience: string;
+  };
+}
 
 export const buildPrompt = (
   userPrompt: string,
   styleId: string,
-  complexity: string,
+  complexityId: string,
   requiresText: boolean,
   audiencePrompt: string,
   audienceId: string,
   styleDNA?: StyleDNA | null,
   heroDNA?: CharacterDNA
-): { fullPrompt: string; fullNegativePrompt: string } => {
+): BuildPromptResult => {
 
-  const techSpecs = STYLE_SPECS[styleId] || STYLE_SPECS['default'];
-  const complexitySpecs = COMPLEXITY_GUIDES[complexity] || COMPLEXITY_GUIDES['Moderate'];
-  const audienceSpecs = AUDIENCE_RULES[audienceId] || AUDIENCE_RULES['kids'];
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Phase 1: Compatibility Resolution
+  // ─────────────────────────────────────────────────────────────────────────────
 
-  // QA Logic
-  const specificQA = VALIDATION_CHECKLIST.styleSpecific[styleId as keyof typeof VALIDATION_CHECKLIST.styleSpecific] || [];
-  const qaInstructions = [
-    ...VALIDATION_CHECKLIST.universal,
-    ...specificQA
-  ].map(r => `- [ ] ${r}`).join('\n');
+  const compatibility = checkCompatibility(styleId, complexityId, audienceId);
+  const resolvedStyleId = compatibility.resolvedStyle;
+  const resolvedComplexityId = compatibility.resolvedComplexity;
 
-  // 1. SUBJECT CONSTRUCTION
-  let subjectDescription = userPrompt;
-  let characterConsistencyInstruction = "";
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Phase 2: Hero Validation (if applicable)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  let heroValidation: HeroValidationResult | null = null;
+  if (heroDNA) {
+    heroValidation = validateHeroForAudience(heroDNA, audienceId);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Phase 3: Fetch Resolved Specifications
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  const styleSpec = STYLE_SPECS[resolvedStyleId] || STYLE_SPECS['default'];
+  const complexitySpec = COMPLEXITY_SPECS[resolvedComplexityId] || COMPLEXITY_SPECS['Moderate'];
+  const audienceSpec = AUDIENCE_SPECS[audienceId] || AUDIENCE_SPECS['default'];
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Phase 4: Build Subject Description
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  let subjectBlock: string;
+  let characterConsistencyBlock = '';
 
   if (heroDNA) {
-    subjectDescription = `
-      The main subject is ${heroDNA.name}, ${heroDNA.role}.
-      Appearance: ${heroDNA.body}, ${heroDNA.face}, ${heroDNA.hair}.
-      Outfit: ${heroDNA.outfitCanon}.
-      Action: ${userPrompt}.
+    subjectBlock = `
+## Subject Matter
+
+**Main Character**: ${heroDNA.name}, ${heroDNA.role}
+**Appearance**: ${heroDNA.body}. ${heroDNA.face}. ${heroDNA.hair}.
+**Outfit**: ${heroDNA.outfitCanon}
+**Action/Scene**: ${userPrompt}
     `.trim();
 
-    characterConsistencyInstruction = `
-      - Ensure the character explicitly matches this description.
-      - Do not morph the character into a human if they are an animal.
-      - Maintain the scale established by the character.
-    `;
+    characterConsistencyBlock = `
+## Character Consistency Rules
+
+- The character MUST match the description above exactly
+- Do NOT transform the character (e.g., do not make an animal character human)
+- Maintain established scale and proportions
+- Preserve all identifying features across the image
+    `.trim();
+  } else {
+    subjectBlock = `
+## Subject Matter
+
+${userPrompt}
+    `.trim();
   }
 
-  // 2. STYLE & EXECUTION INSTRUCTION
-  let styleInstruction = `
-    ${techSpecs}
-    
-    COMPLEXITY PHYSICS:
-    ${complexitySpecs}
-    
-    TARGET AUDIENCE RULES:
-    ${audienceSpecs}
-  `.trim();
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Phase 5: Build Text Integration Block (if required)
+  // ─────────────────────────────────────────────────────────────────────────────
 
-  if (styleDNA) {
-    styleInstruction += `\n    **Style Mimicry**: Mimic these attributes: ${styleDNA.lineWeight}, ${styleDNA.density}, ${styleDNA.lineStyle}.`;
-  }
-
-  // 3. TEXT INTEGRATION
-  let textInstruction = "";
+  let textBlock = '';
   if (requiresText) {
     const quotedText = userPrompt.match(/"([^"]+)"/)?.[1] || userPrompt;
-    textInstruction = `
-      **Text Integration**: Incorporate the text "${quotedText}" into the design.
-      - The text must be outlined, legible, and colorable (hollow letters).
-      - Treat the text as a graphical element within the composition.
-    `;
+    textBlock = `
+## Text Integration
+
+**Text to Include**: "${quotedText}"
+**Requirements**:
+- Letters must be OUTLINED (hollow), not filled
+- Text must be clearly legible at print size
+- Treat text as a graphical element within the composition
+- Each letter interior is a colourable region
+    `.trim();
   }
 
-  // 4. THE NARRATIVE PROMPT (v3.0 - Professional Manual Format)
-  const fullPrompt = `
-    ${UNIVERSAL_HEADER}
-    
-    ### 1. SUBJECT MATTER
-    ${subjectDescription}
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Phase 6: Build Style DNA Override (if provided)
+  // ─────────────────────────────────────────────────────────────────────────────
 
-    ### 2. STYLE SPECIFICATIONS & EXECUTION
-    ${styleInstruction}
+  let styleDNABlock = '';
+  if (styleDNA) {
+    styleDNABlock = `
+## Style Mimicry Override
 
-    ### 3. TECHNICAL CONSTRAINTS
-    - **Line Quality**: Use pure black (#000000) lines on a pure white (#FFFFFF) background.
-    - **Closed Shapes**: Ensure all major shapes are closed to allow for easy coloring.
-    - **No Shading**: Do NOT apply any gray, shading, gradients, or texture. The inside of shapes should be empty white.
-    - **Composition**: Fill the canvas appropriately. Do not add borders or frames.
-    ${characterConsistencyInstruction}
-    ${textInstruction}
+Apply these specific attributes from reference:
+- **Line Weight**: ${styleDNA.lineWeight}
+- **Density**: ${styleDNA.density}
+- **Line Style**: ${styleDNA.lineStyle}
 
-    ### 4. QUALITY ASSURANCE CHECKLIST
-    Review your generated image against these rules before finalizing:
-    ${qaInstructions}
-  `.replace(/\s+/g, ' ').trim(); // Flatten whitespace for token efficiency
+These override the default style parameters where they conflict.
+    `.trim();
+  }
 
-  // 5. NEGATIVE PROMPT
-  let dynamicNegative = BASE_NEGATIVE;
-  const contextNeg = getContextualNegatives(userPrompt);
-  if (contextNeg) dynamicNegative += `, ${contextNeg}`;
-  if (!userPrompt.toLowerCase().includes('snail')) dynamicNegative += ", snail, slug";
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Phase 7: Assemble Final Prompt (Constraint-First Order)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  // CRITICAL: Constraints come BEFORE subject matter
+  // This ensures the model "decides within rules" rather than "retrofits rules to decisions"
+
+  const sections = [
+    UNIVERSAL_HEADER,
+    styleSpec.prompt,
+    complexitySpec.prompt,
+    audienceSpec.prompt,
+    styleDNABlock,
+    '---', // Section divider
+    subjectBlock,
+    characterConsistencyBlock,
+    textBlock
+  ].filter(section => section.trim() !== '');
+
+  const fullPrompt = sections.join('\n\n');
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Phase 8: Build Negative Prompt
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  const contextualNegatives = getContextualNegatives(userPrompt, resolvedStyleId, audienceId);
+  const fullNegativePrompt = [BASE_NEGATIVE, contextualNegatives]
+    .filter(n => n.trim() !== '')
+    .join(', ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Phase 9: Return Complete Result
+  // ─────────────────────────────────────────────────────────────────────────────
 
   return {
     fullPrompt,
-    fullNegativePrompt: dynamicNegative.replace(/\s+/g, ' ').trim()
+    fullNegativePrompt,
+    compatibility,
+    heroValidation,
+    resolvedParams: {
+      style: resolvedStyleId,
+      complexity: resolvedComplexityId,
+      audience: audienceId
+    }
   };
 };
 
-export const STYLE_RULES: Record<string, any> = {
-  // Configs for specific styles if needed (legacy temperature control)
-  'Cozy Hand-Drawn': { recommendedTemperature: 0.9, allowsTextureShading: false },
-  'Botanical': { recommendedTemperature: 0.7, allowsTextureShading: true },
-  'default': { recommendedTemperature: 1.0, allowsTextureShading: false }
+// ═══════════════════════════════════════════════════════════════════════════════
+// 10. EXPORTS FOR UI/VALIDATION
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Style metadata for UI dropdowns
+export const getStyleMetadata = () => {
+  return Object.entries(STYLE_SPECS).map(([id, spec]) => ({
+    id,
+    minRegionMm: spec.minRegionMm,
+    maxRegions: spec.maxRegions,
+    compatibleComplexity: spec.compatibleComplexity,
+    allowsTexture: spec.allowsTextureMarks
+  }));
 };
 
-export const SYSTEM_INSTRUCTION = "You are a professional coloring book artist.";
+// Complexity metadata for UI dropdowns
+export const getComplexityMetadata = () => {
+  return Object.entries(COMPLEXITY_SPECS).map(([id, spec]) => ({
+    id,
+    maxShapes: spec.maxShapes,
+    minGapMm: spec.minGapMm,
+    regionDensity: spec.regionDensity
+  }));
+};
+
+// Audience metadata for UI dropdowns
+export const getAudienceMetadata = () => {
+  return Object.entries(AUDIENCE_SPECS).map(([id, spec]) => ({
+    id,
+    maxComplexity: spec.maxComplexity,
+    safetyMargin: spec.safetyMargin
+  }));
+};
+
+// Validate a combination before generation
+export const validateCombination = (
+  styleId: string,
+  complexityId: string,
+  audienceId: string
+): CompatibilityResult => {
+  return checkCompatibility(styleId, complexityId, audienceId);
+};
+
+// Legacy export for backwards compatibility
+export const STYLE_RULES: Record<string, { recommendedTemperature: number; allowsTextureShading: boolean }> = {
+  'Cozy Hand-Drawn': { recommendedTemperature: 0.9, allowsTextureShading: false },
+  'Bold & Easy': { recommendedTemperature: 0.7, allowsTextureShading: false },
+  'Kawaii': { recommendedTemperature: 0.8, allowsTextureShading: false },
+  'Botanical': { recommendedTemperature: 0.7, allowsTextureShading: true },
+  'Fantasy': { recommendedTemperature: 0.85, allowsTextureShading: true },
+  'Gothic': { recommendedTemperature: 0.75, allowsTextureShading: false },
+  'Geometric': { recommendedTemperature: 0.6, allowsTextureShading: false },
+  'Wildlife': { recommendedTemperature: 0.75, allowsTextureShading: true },
+  'Mandala': { recommendedTemperature: 0.7, allowsTextureShading: false },
+  'Zentangle': { recommendedTemperature: 0.75, allowsTextureShading: true },
+  'default': { recommendedTemperature: 0.8, allowsTextureShading: false }
+};
+
+export const SYSTEM_INSTRUCTION = `You are a professional coloring book illustrator specialising in black and white line art. Your output must ALWAYS be pure black lines on pure white background with NO shading, NO fills, and ALL shapes fully closed for colouring.`;

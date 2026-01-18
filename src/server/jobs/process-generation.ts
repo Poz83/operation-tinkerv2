@@ -327,7 +327,7 @@ export const processGeneration = async (
       if (params.signal?.aborted) throw new Error('Aborted');
     }
 
-    const { fullPrompt, fullNegativePrompt } = buildPrompt(
+    const buildResult = buildPrompt(
       enhancedPrompt,
       params.style,
       params.complexity,
@@ -337,6 +337,13 @@ export const processGeneration = async (
       styleDNA || sessionStyleDNA, // Prefer Hero Ref DNA, fallback to Session DNA (Style is always applied)
       shouldIncludeHero ? params.characterDNA : undefined // ONLY pass CharacterDNA if we decided to include the hero
     );
+
+    const { fullPrompt, fullNegativePrompt } = buildResult;
+
+    // Log Compatibility Adjustments
+    if (!buildResult.compatibility.isCompatible) {
+      console.warn(`⚠️ Compatibility adjustments made for Page ${item.pageNumber}:`, buildResult.compatibility.warnings);
+    }
 
     // Determine effective reference image based on logic
     // Reference Image Hierarchy:

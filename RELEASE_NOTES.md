@@ -79,10 +79,9 @@
 
 ## [2.2.17] - Gemini 3 Pro & Style Reform
 - **Prompt Engine 3.0**: Completely refactored the prompt generation to align with **Gemini 3 Pro Image (Imagen 3)** best practices.
-- **Professional-Grade Specs (v3.0)**: Adopted a rigorous new specification standard. Each style now includes "DO" and "DO NOT" rules, metric constraints (e.g., "0.5mm nominal line weight"), and specific aesthetic goals.
-- **Spec-Driven Prompts**: The prompt engine now injects a "Universal Header" with critical rules (output only black/white) and a "QA Checklist" that forces the AI to self-verifiy against potential errors.
-- **Narrative Prompts**: Switched from robotic "Instruction Lists" to natural language narratives ("Create a high-quality line drawing..."), which the new model understands far better.
-- **Complexity Physics**: Upgraded the complexity engine to a 5-level "Physics Model", defining specific pen types and gap constraints for each level (from "Fat Marker" for toddlers to "Micro-Pen" for experts).
+- **Prompt Engine v4.0**: Implemented a "Production-Grade" architecture with a **Compatibility Matrix** that actively resolves conflicts (e.g. downgrading "Extreme" complexity if the audience is "Toddlers").
+- **Constraint-First Assembly**: The AI is now instructed on *Rules* before *Subject*, preventing it from ignoring constraints to serve the subject.
+- **Structured Logic**: Switched to a type-safe architecture (`StyleSpec`, `AudienceSpec`) for robotic consistency.
 - **Positive Framing**: Replaced confusing negative constraints ("No broken lines") with clear, positive goals ("Ensure all shapes are closed").
 - **Style Restoration**: Fixed the "Cozy Hand-Drawn" style by removing conflicting texture instructions that were causing messy shading.
 - **Text Support Fixed**: Enabled the previously ignored `requiresText` feature, allowing you to ask for specific titles to be integrated into the design.
