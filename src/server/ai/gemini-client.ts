@@ -32,7 +32,7 @@ import { CharacterDNA, StyleDNA } from '../../types';
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const GEMINI_TEXT_MODEL = 'gemini-2.0-flash-001';
-export const GEMINI_IMAGE_MODEL = 'gemini-2.0-flash-001'; // Unified multimodal model
+export const GEMINI_IMAGE_MODEL = 'gemini-3-pro-image-preview'; // Nano Banana Pro
 
 /** Retry configuration for transient errors */
 const RETRY_CONFIG = {
