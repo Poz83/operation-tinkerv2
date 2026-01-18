@@ -15,6 +15,19 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
     {
+        id: 'update-2026-01-18-performance',
+        date: '2026-01-18',
+        title: 'Performance & Infrastructure',
+        version: 'v2.1.4',
+        type: 'patch',
+        description: 'Major infrastructure optimization for faster project loading.',
+        changes: [
+            'Implemented batched signed URL generation to reduce network overhead.',
+            'Optimized project loading speed for large coloring books.',
+            'Refactored backend storage service for better scalability.'
+        ]
+    },
+    {
         id: 'update-2026-01-17-consistency',
         date: '2026-01-17',
         title: 'Auto-Consistency Lite',

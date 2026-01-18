@@ -7,7 +7,7 @@
 
 import { supabase } from '../lib/supabase';
 import type { SavedProject, ColoringPage } from '../types';
-import { uploadProjectImage, getSignedUrl } from './storageService';
+import { uploadProjectImage, getSignedUrl, getSignedUrls } from './storageService';
 
 // Type for the joined query result
 interface ProjectWithColoringData {
@@ -166,22 +166,24 @@ export async function fetchProject(publicId: string): Promise<SavedProject | nul
     }
 
     // 3. Convert DB Images to ColoringPages & Get Signed URLs
-    const pages: ColoringPage[] = await Promise.all(
-        (imagesData as DbImage[]).map(async (img) => {
-            const signedUrl = await getSignedUrl(img.storage_path);
+    // 3. Convert DB Images to ColoringPages & Get Signed URLs (Batch)
+    const allImageKeys = (imagesData as DbImage[]).map(img => img.storage_path);
+    const signedUrlsMap = await getSignedUrls(allImageKeys);
 
-            return {
-                id: img.id,
-                imageUrl: signedUrl,
-                prompt: img.generation_prompt || '',
-                // Restore metadata
-                pageIndex: img.metadata?.pageIndex ?? 0,
-                status: img.metadata?.status ?? 'complete',
-                isLoading: false,
-                isCover: img.metadata?.isCover ?? false
-            };
-        })
-    );
+    const pages: ColoringPage[] = (imagesData as DbImage[]).map((img) => {
+        const signedUrl = signedUrlsMap[img.storage_path] || '';
+
+        return {
+            id: img.id,
+            imageUrl: signedUrl,
+            prompt: img.generation_prompt || '',
+            // Restore metadata
+            pageIndex: img.metadata?.pageIndex ?? 0,
+            status: img.metadata?.status ?? 'complete',
+            isLoading: false,
+            isCover: img.metadata?.isCover ?? false
+        };
+    });
 
     // Sort by pageIndex
     pages.sort((a, b) => (a.pageIndex ?? 0) - (b.pageIndex ?? 0));
@@ -524,18 +526,20 @@ export async function fetchUserReferences(): Promise<ReferenceImage[]> {
     }
 
     // Sign URLs
-    const references: ReferenceImage[] = await Promise.all(
-        data.map(async (img) => {
-            const signedUrl = await getSignedUrl(img.storage_path);
-            return {
-                id: img.id,
-                url: signedUrl,
-                projectId: img.project_id,
-                createdAt: img.created_at,
-                type: img.type as any
-            };
-        })
-    );
+    // Sign URLs (Batch)
+    const allRefKeys = data.map(img => img.storage_path);
+    const signedUrlsMap = await getSignedUrls(allRefKeys);
+
+    const references: ReferenceImage[] = data.map((img) => {
+        const signedUrl = signedUrlsMap[img.storage_path] || '';
+        return {
+            id: img.id,
+            url: signedUrl,
+            projectId: img.project_id,
+            createdAt: img.created_at,
+            type: img.type as any
+        };
+    });
 
     // Sort by recent
     return references.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());

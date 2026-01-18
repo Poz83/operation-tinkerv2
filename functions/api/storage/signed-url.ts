@@ -18,7 +18,8 @@ interface Env {
 
 interface SignedUrlRequest {
     bucket: 'projects' | 'avatars' | 'exports' | 'feedback';
-    key: string;
+    key?: string; // Optional for single mode
+    keys?: string[]; // Optional for batch mode
     expiresIn?: number; // seconds, default 3600
     action?: 'download' | 'upload';
     contentType?: string; // required for upload action
@@ -27,12 +28,12 @@ interface SignedUrlRequest {
 export const onRequestPost: PagesFunction<Env> = async (context) => {
     try {
         const body: SignedUrlRequest = await context.request.json();
-        const { bucket, key, expiresIn = 3600, action = 'download', contentType } = body;
+        const { bucket, key, keys, expiresIn = 3600, action = 'download', contentType } = body;
 
         // Validate required fields
-        if (!bucket || !key) {
+        if (!bucket || (!key && (!keys || keys.length === 0))) {
             return new Response(
-                JSON.stringify({ error: 'Missing required fields: bucket, key' }),
+                JSON.stringify({ error: 'Missing required fields: bucket, and either key or keys' }),
                 { status: 400, headers: { 'Content-Type': 'application/json' } }
             );
         }
@@ -60,32 +61,66 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
             );
         }
 
-        // For Cloudflare R2 with Pages, we use a different approach:
-        // Generate a time-limited token that our download endpoint can verify
         const expiry = Date.now() + (expiresIn * 1000);
-        const token = btoa(JSON.stringify({
-            bucket,
-            key,
-            expiry,
-            action,
-        }));
-
-        // Build the signed URL pointing to our download endpoint
         const baseUrl = new URL(context.request.url).origin;
-        const signedUrl = action === 'download'
-            ? `${baseUrl}/api/storage/download?token=${encodeURIComponent(token)}`
-            : `${baseUrl}/api/storage/upload-presigned?token=${encodeURIComponent(token)}`;
+
+        // Helper to generate a single signed URL
+        const generateUrl = (targetKey: string) => {
+            // For Cloudflare R2 with Pages, we use a different approach:
+            // Generate a time-limited token that our download endpoint can verify
+            const token = btoa(JSON.stringify({
+                bucket,
+                key: targetKey,
+                expiry,
+                action,
+            }));
+
+            // Build the signed URL pointing to our download endpoint
+            return action === 'download'
+                ? `${baseUrl}/api/storage/download?token=${encodeURIComponent(token)}`
+                : `${baseUrl}/api/storage/upload-presigned?token=${encodeURIComponent(token)}`;
+        };
+
+        // Handle Batch Mode
+        if (keys && keys.length > 0) {
+            const results: Record<string, string> = {};
+            keys.forEach(k => {
+                results[k] = generateUrl(k);
+            });
+
+            return new Response(
+                JSON.stringify({
+                    success: true,
+                    urls: results, // Map of key -> url
+                    expiresAt: new Date(expiry).toISOString(),
+                }),
+                {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' }
+                }
+            );
+        }
+
+        // Handle Single Mode (Backward Compatibility)
+        if (key) {
+            const signedUrl = generateUrl(key);
+
+            return new Response(
+                JSON.stringify({
+                    success: true,
+                    url: signedUrl,
+                    expiresAt: new Date(expiry).toISOString(),
+                }),
+                {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' }
+                }
+            );
+        }
 
         return new Response(
-            JSON.stringify({
-                success: true,
-                url: signedUrl,
-                expiresAt: new Date(expiry).toISOString(),
-            }),
-            {
-                status: 200,
-                headers: { 'Content-Type': 'application/json' }
-            }
+            JSON.stringify({ error: 'Invalid request parameters' }),
+            { status: 400, headers: { 'Content-Type': 'application/json' } }
         );
 
     } catch (error) {

@@ -16,6 +16,7 @@
 - **Style Locking**: Heroes now carry their visual style preference (DNA) into the Studio.
 
 ### ✨ Improvements
+- **Project Load Performance**: Optimized project loading speed by implementing batched signed URL generation, reducing network requests by 90% for large projects.
 - **Magic Edit Popup**: Enhanced image editing experience with a dedicated popup and chat interface.
 - **UI Polish**: Updated Dashboard icons, renamed "Paint by Numbers" to "Color by Numbers", and refined various UI elements.
 - **Logo Update**: New "myjoe" brand logo integrated across the application.
@@ -24,3 +25,4 @@
 - **Sloth/Human Hybrid Fix**: Resolved issue where "Hero" mode was overriding specific subject prompts (like Sloths).
 - **Transfer Errors**: Fixed 400/406 errors when transferring images between Lab and Studio.
 - **Supabase Connectivity**: Resolved RLS recursion issues and missing `dna` columns.
+

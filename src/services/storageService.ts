@@ -93,16 +93,44 @@ export async function getSignedUrl(key: string): Promise<string> {
     }
 }
 
+interface BatchSignedUrlResponse {
+    success: boolean;
+    urls: Record<string, string>;
+    expiresAt: string;
+    error?: string;
+}
+
 /**
  * Batch get signed URLs for multiple keys
  */
 export async function getSignedUrls(keys: string[]): Promise<Record<string, string>> {
-    const results: Record<string, string> = {};
-    await Promise.all(
-        keys.map(async (key) => {
-            if (!key) return;
-            results[key] = await getSignedUrl(key);
-        })
-    );
-    return results;
+    try {
+        // Filter out empty keys
+        const validKeys = keys.filter(k => !!k);
+        if (validKeys.length === 0) return {};
+
+        const response = await fetch('/api/storage/signed-url', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                bucket: 'projects',
+                keys: validKeys,
+                action: 'download',
+                expiresIn: 3600 * 24 // 24 hours
+            }),
+        });
+
+        if (!response.ok) {
+            console.error('Batch signed URL request failed');
+            return {};
+        }
+
+        const data: BatchSignedUrlResponse = await response.json();
+        return data.urls || {};
+    } catch (error) {
+        console.error('Failed to get signed URLs batch:', error);
+        return {};
+    }
 }
