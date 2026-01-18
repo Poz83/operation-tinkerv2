@@ -196,12 +196,35 @@ export class ColoringStudioService {
         return [];
     }
 
-    async brainstormPrompt(rawPrompt: string, pageCount: number = 1): Promise<string> {
+    async brainstormPrompt(
+        rawPrompt: string,
+        pageCount: number = 1,
+        context?: { style: string; audience: string; heroName?: string }
+    ): Promise<string> {
         this.ensureInitialized();
+
+        // Build context-aware system instruction
+        const contextBlock = context ? `
+    [CURRENT SETTINGS]
+    - Target Audience: ${context.audience} (Adjust vocabulary and complexity to match).
+    - Art Style: ${context.style} (Include specific keywords for this style).
+    - Hero Character: ${context.heroName || 'None'} (If present, ensure they are the focus).
+
+    [CONTEXT-AWARE RULES]
+    1. If Audience is 'Toddlers' or 'Preschool': Keep the prompt SIMPLE with ONE distinct subject. Use gentle, happy tones. Maximum 30 words.
+    2. If Audience is 'Kids': Allow adventure and fun. Medium complexity. 40-50 words.
+    3. If Audience is 'Adults' or 'Seniors': Add details about texture, pattern complexity, and background elements. 60-75 words.
+    4. If Style is 'Bold & Easy': Emphasize "thick lines, no tiny details, sticker-style".
+    5. If Style is 'Botanical' or 'Mandala': Add "intricate patterns, fine details, symmetry".
+    6. If Style is 'Kawaii': Add "chibi style, cute expressions, sparkles".
+    7. If Hero is specified: Make them the clear protagonist of every scene.
+        ` : '';
 
         // Different system instruction based on page count
         const singlePageInstruction = `
-      You are a Creative Director for bestselling coloring books, specializing in evocative scene descriptions.
+      ROLE: Elite Prompt Engineer for Coloring Books.
+      TASK: Rewrite the user's simple idea into a professional image generation prompt.
+      ${contextBlock}
       
       [THINKING PROCESS DIRECTIVES]:
       1. VISUALIZE: Imagine the scene in black and white line art.
@@ -209,21 +232,16 @@ export class ColoringStudioService {
       3. SIMPLIFY: Remove any elements that rely on color to be understood (e.g. "a red apple" -> "a shiny apple with a leaf").
       4. DESCRIBE: Write the final description.
 
-      Take the user's simple idea and expand it into a captivating coloring book scene.
-      
-      YOUR GOALS:
-      1. ADD A VISUAL HOOK: What makes this image interesting to look at?
-      2. SET THE MOOD: Use adjectives that evoke feeling (cozy, majestic, playful, serene).
-      3. DESCRIBE A MOMENT: Capture a narrative moment.
-      4. SPECIFY SETTING: Ground the subject in an environment.
-      5. DIVERSIFY DETAILS: Mention specific, varied props.
-      
-      Keep it under 75 words.
+      Keep the core idea of: "${rawPrompt}".
       Focus on visual elements that translate well to black and white line art.
+      
+      OUTPUT: Return ONLY the raw improved prompt string. No conversational filler or explanations.
     `;
 
         const multiPageInstruction = `
-      You are a Creative Director for bestselling coloring books, planning a cohesive ${pageCount}-page collection.
+      ROLE: Elite Prompt Engineer for Coloring Books, planning a cohesive ${pageCount}-page collection.
+      TASK: Rewrite the user's theme into a professional multi-page collection prompt.
+      ${contextBlock}
       
       [THINKING PROCESS DIRECTIVES]:
       1. THEME ANALYSIS: Identify the core theme and potential sub-themes.
@@ -231,15 +249,12 @@ export class ColoringStudioService {
       3. FORMATTING: Ensure the output matches the required format string exactly.
 
       Take the user's theme and create a NARRATIVE ARC across ${pageCount} pages. Each page should be a distinct scene that builds on the theme.
-      
-      YOUR GOALS:
-      1. VARIETY: Each page should show a different aspect, angle, or moment of the theme.
-      2. PROGRESSION: Create a visual journey.
-      3. COHESION: All pages should feel like they belong together.
-      4. BALANCE: Mix close-up details with wider scenes.
+      Keep the core idea of: "${rawPrompt}".
       
       FORMAT YOUR RESPONSE AS:
       "A ${pageCount}-page collection exploring [theme]: Page 1 - [brief scene]. Page 2 - [brief scene]. ..." etc.
+      
+      OUTPUT: Return ONLY the formatted collection prompt. No explanations.
     `;
 
         const systemInstruction = pageCount > 1 ? multiPageInstruction : singlePageInstruction;

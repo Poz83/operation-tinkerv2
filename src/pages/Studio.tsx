@@ -452,7 +452,15 @@ const App: React.FC = () => {
   };
 
   const handleEnhance = () => {
-    generation.handleEnhancePrompt(project.userPrompt, project.pageAmount);
+    generation.handleEnhancePrompt(
+      project.userPrompt,
+      project.pageAmount,
+      {
+        style: project.visualStyle,
+        audience: project.targetAudienceId,
+        heroName: project.characterDNA?.name
+      }
+    );
   };
 
   // Keyboard Shortcuts

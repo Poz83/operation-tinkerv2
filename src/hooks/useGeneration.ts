@@ -39,14 +39,18 @@ export const useGeneration = ({
 
     // --- Actions ---
 
-    const handleEnhancePrompt = useCallback(async (currentPrompt: string, pageCount: number) => {
+    const handleEnhancePrompt = useCallback(async (
+        currentPrompt: string,
+        pageCount: number,
+        context?: { style: string; audience: string; heroName?: string }
+    ) => {
         const hasKey = await validateApiKey();
         if (!hasKey || !currentPrompt.trim()) return;
 
         setIsEnhancing(true);
         try {
-            // Pass pageCount for page-aware enhancement
-            const enhanced = await brainstormPrompt(currentPrompt, pageCount);
+            // Pass pageCount and context for context-aware enhancement
+            const enhanced = await brainstormPrompt(currentPrompt, pageCount, context);
             if (enhanced) {
                 setUserPrompt(enhanced);
             }

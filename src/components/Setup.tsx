@@ -267,7 +267,50 @@ export const Setup: React.FC<ToolbarProps> = (props) => {
             </div>
           </div>
 
-          {/* Section: Concept */}
+          {/* Section: Configuration (Moved FIRST for Wizard Flow) */}
+          <div className="space-y-5">
+            <div>
+              <label className={labelClass}>Who's This For?</label>
+              <select value={props.targetAudience} onChange={(e) => props.setTargetAudience(e.target.value)} className="glass-select">
+                {TARGET_AUDIENCES.map(a => <option key={a.id} value={a.id} className="bg-[hsl(var(--card))] text-[hsl(var(--foreground))]">{a.label}</option>)}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={labelClass}>Visual Vibe</label>
+                {settings.enableStylePreviews ? (
+                  <StyleSelector
+                    value={props.visualStyle}
+                    onChange={props.setVisualStyle}
+                    isOpen={showStyleSelector}
+                    onToggle={() => setShowStyleSelector(!showStyleSelector)}
+                  />
+                ) : (
+                  <div className="relative">
+                    <select
+                      value={isPredefinedStyle ? props.visualStyle : 'CUSTOM_OPTION'}
+                      onChange={(e) => e.target.value === 'CUSTOM_OPTION' ? props.setVisualStyle('') : props.setVisualStyle(e.target.value)}
+                      className="glass-select"
+                    >
+                      {VISUAL_STYLES.map(s => <option key={s.id} value={s.id} className="bg-[hsl(var(--card))] text-[hsl(var(--foreground))]">{s.label}</option>)}
+                      <option value="CUSTOM_OPTION" className="bg-[hsl(var(--card))] text-[hsl(var(--foreground))]">Custom...</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className={labelClass}>Detail Level</label>
+                <select value={props.complexity} onChange={(e) => props.setComplexity(e.target.value)} className="glass-select">
+                  {COMPLEXITY_LEVELS.map(c => <option key={c} value={c} className="bg-[hsl(var(--card))] text-[hsl(var(--foreground))]">{c}</option>)}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="h-px bg-gradient-to-r from-transparent via-[hsl(var(--border))] to-transparent"></div>
+
+          {/* Section: Concept (Moved AFTER Configuration) */}
           <div className="space-y-4">
             <div className="flex justify-between items-end">
               <label className={labelClass}>What Should We Create?</label>
@@ -400,46 +443,8 @@ export const Setup: React.FC<ToolbarProps> = (props) => {
 
           <div className="h-px bg-gradient-to-r from-transparent via-[hsl(var(--border))] to-transparent"></div>
 
-          {/* Section: Configuration */}
+          {/* Section: Additional Settings */}
           <div className="space-y-5">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={labelClass}>Visual Vibe</label>
-                {settings.enableStylePreviews ? (
-                  <StyleSelector
-                    value={props.visualStyle}
-                    onChange={props.setVisualStyle}
-                    isOpen={showStyleSelector}
-                    onToggle={() => setShowStyleSelector(!showStyleSelector)}
-                  />
-                ) : (
-                  <div className="relative">
-                    <select
-                      value={isPredefinedStyle ? props.visualStyle : 'CUSTOM_OPTION'}
-                      onChange={(e) => e.target.value === 'CUSTOM_OPTION' ? props.setVisualStyle('') : props.setVisualStyle(e.target.value)}
-                      className="glass-select"
-                    >
-                      {VISUAL_STYLES.map(s => <option key={s.id} value={s.id} className="bg-[hsl(var(--card))] text-[hsl(var(--foreground))]">{s.label}</option>)}
-                      <option value="CUSTOM_OPTION" className="bg-[hsl(var(--card))] text-[hsl(var(--foreground))]">Custom...</option>
-                    </select>
-                  </div>
-                )}
-              </div>
-              <div>
-                <label className={labelClass}>Detail Level</label>
-                <select value={props.complexity} onChange={(e) => props.setComplexity(e.target.value)} className="glass-select">
-                  {COMPLEXITY_LEVELS.map(c => <option key={c} value={c} className="bg-[hsl(var(--card))] text-[hsl(var(--foreground))]">{c}</option>)}
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className={labelClass}>Who's This For?</label>
-              <select value={props.targetAudience} onChange={(e) => props.setTargetAudience(e.target.value)} className="glass-select">
-                {TARGET_AUDIENCES.map(a => <option key={a.id} value={a.id} className="bg-[hsl(var(--card))] text-[hsl(var(--foreground))]">{a.label}</option>)}
-              </select>
-            </div>
-
             {/* Text Toggle */}
             <div className="flex items-center justify-between p-3 rounded-xl bg-[hsl(var(--card))]/50 border border-[hsl(var(--border))]">
               <span className="text-sm font-medium">Add text to pages?</span>
@@ -545,6 +550,7 @@ export const Setup: React.FC<ToolbarProps> = (props) => {
           </div>
 
           <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+
 
           {/* Section: Output */}
           <div className="space-y-4">

@@ -12,6 +12,11 @@
 - **Tone-Aware Generation**: Each audience setting now drives a specific emotional tone, ensuring content isn't just visually appropriate but emotionally resonant (e.g., "Innocent & Joyful" for Toddlers vs "Adventurous" for Kids).
 - **Expanded QA Vision**: The Agentic QA now specifically scans for `scary_content` and `wrong_tone`, adding an extra layer of protection before images reach the user.
 
+## [2.2.3] - Wizard Flow & Smart Enhancer
+- **Settings First Wizard**: Reorganized Studio sidebar to force Context (Audience/Style) selection BEFORE Prompt entry. This enables smarter AI-assisted prompt enhancement.
+- **Context-Aware "Make It Better"**: The prompt enhancer now reads your selected Audience, Style, and Hero settings to write age-appropriate, style-aware prompts (e.g., simpler for Toddlers, more detailed for Adults).
+- **Smarter Style Keywords**: Enhanced prompts now include specific style keywords (e.g., "thick lines, sticker-style" for Bold & Easy, "intricate patterns, symmetry" for Mandala).
+
 ## [2.2.0] - Agentic QA & Smart Repairs
 - **Agentic Quality Assurance**: Integrated Gemini 1.5 Pro to semantically analyze every image (detects unwanted text, anatomy issues, etc.).
 - **Self-Healing AI**: The new "Smart Repair" system automatically translates QA failures into precise engineering directives for retries.
