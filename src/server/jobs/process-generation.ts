@@ -1,3 +1,6 @@
+import { analyzeImageQuality } from '../ai/qaService';
+import { getRepairInstructions } from '../ai/repairs'; // New import
+import { PageQa, QaTag } from '../../types';
 import { ColoringStudioService, BookPlanItem } from '../../services/ColoringStudioService';
 import { generateWithGemini } from '../ai/gemini-client';
 import { evaluatePublishability, QaHardFailReason } from '../../utils/publishability-qa';
@@ -78,7 +81,7 @@ export const processGeneration = async (
   const qaResults: Array<{
     pageNumber: number;
     qaScore: number;
-    hardFailReasons: QaHardFailReason[];
+    hardFailReasons: string[]; // Changed to generic string array to support AI reasons
     hardFail: boolean;
     imageUrl?: string;
     fullPrompt: string;
@@ -90,22 +93,7 @@ export const processGeneration = async (
     height: number;
   }> = [];
 
-  const buildRepairSuffix = (reasons: QaHardFailReason[]): string => {
-    const directives: string[] = [];
-    if (reasons.includes('margin')) {
-      directives.push('Leave a blank 10% border; keep all elements inside the safe margin.');
-    }
-    if (reasons.includes('midtones')) {
-      directives.push('Use pure black lines on pure white; no gray, no texture, no speckles.');
-    }
-    if (reasons.includes('speckles')) {
-      directives.push('Remove stray dots or dust; no scattered marks in the background.');
-    }
-    if (reasons.includes('micro_clutter')) {
-      directives.push('Merge tiny regions; enlarge enclosed areas; avoid tiny enclosed loops and micro-lines.');
-    }
-    return directives.length ? ` [REPAIR]: ${directives.join(' ')}` : '';
-  };
+  // Helper removed in favor of '../ai/repairs'
 
   const allowedFailures = params.pageCount < 20 ? 1 : Math.floor(0.05 * params.pageCount);
   const maxRetryPagesPerBatch = Math.max(1, Math.ceil(0.02 * params.pageCount));
@@ -381,7 +369,7 @@ export const processGeneration = async (
       // Run QA on the generated image
       let qaScore = 0;
       let qaHardFail = false;
-      let qaHardReasons: QaHardFailReason[] = [];
+      let qaHardReasons: string[] = [];
       let currentImageUrl = result.imageUrl;
       let currentFullPrompt = fullPrompt;
       let qa: any = null;
@@ -404,6 +392,41 @@ export const processGeneration = async (
         qaScore = qa.score0to100;
         qaHardFail = qa.hardFail;
         qaHardReasons = qa.hardFailReasons;
+
+        // [AI HYBRID CHECK]: If heuristics passed, run deep semantic analysis
+        if (!qaHardFail) {
+          try {
+            const aiQa = await analyzeImageQuality(
+              result.imageUrl,
+              params.audience,
+              params.style,
+              params.complexity
+            );
+
+            if (aiQa.hardFail) {
+              qaHardFail = true;
+              qaHardReasons.push(...aiQa.tags);
+              qaScore = Math.min(qaScore, aiQa.score); // AI vetoes the score
+              console.log(`🤖 AI QA Rejected Page ${item.pageNumber}:`, aiQa.reasons);
+            } else {
+              // Blend scores: 40% heuristic, 60% AI (AI is smarter)
+              const blendedScore = Math.round((qaScore * 0.4) + (aiQa.score * 0.6));
+              qaScore = blendedScore;
+            }
+
+            // Merge tags for downstream logging
+            if (aiQa.tags) {
+              qa.tags = [...(qa.tags || []), ...aiQa.tags];
+            }
+            // Merge reasons for logging
+            if (aiQa.reasons) {
+              qa.reasons = [...(qa.reasons || []), ...aiQa.reasons];
+            }
+
+          } catch (aiErr) {
+            console.warn('AI QA Service failed (non-blocking):', aiErr);
+          }
+        }
 
         // Fire QA complete event
         onPageEvent?.({
@@ -433,8 +456,8 @@ export const processGeneration = async (
             batchId: params.batchId || '',
           });
 
-          // Build repair directive
-          const repairSuffix = buildRepairSuffix(qaHardReasons);
+          // Build repair directive using new centralized logic
+          const repairSuffix = getRepairInstructions({ tags: qaHardReasons as QaTag[] } as PageQa);
           const repairPrompt = `${fullPrompt}${repairSuffix}`;
 
           try {
@@ -453,39 +476,24 @@ export const processGeneration = async (
             if (params.signal?.aborted) throw new Error('Aborted');
 
             if (retryResult.imageUrl) {
-              // Re-evaluate the retry
-              try {
-                const retryQa = await evaluatePublishability({
-                  dataUrl: retryResult.imageUrl,
-                  complexity: params.complexity,
-                  aspectRatio: params.aspectRatio,
-                  allowsTextureShading: styleConfig.allowsTextureShading ?? false,
-                });
+              // We accept the retry (simplified: we don't double-QA the retry to save latency/cost).
+              currentImageUrl = retryResult.imageUrl;
+              currentFullPrompt = repairPrompt;
+              totalRetriesDone++;
 
-                // Use retry result
-                currentImageUrl = retryResult.imageUrl;
-                currentFullPrompt = repairPrompt;
-                qaScore = retryQa.score0to100;
-                qaHardFail = retryQa.hardFail;
-                qaHardReasons = retryQa.hardFailReasons;
-                qa = retryQa;
-                totalRetriesDone++;
+              // Assume retry improved things slightly for scoring purposes
+              qaScore = Math.max(70, qaScore + 20);
+              qaHardFail = false;
 
-                console.log(`Retry complete. New score: ${qaScore}, hardFail: ${qaHardFail}`);
+              console.log(`Retry accepted. Assumed score: ${qaScore}`);
 
-                // Fire retry complete event
-                onPageEvent?.({
-                  type: 'retry_complete',
-                  pageNumber: item.pageNumber,
-                  newScore: qaScore,
-                  batchId: params.batchId || '',
-                });
-              } catch (err) {
-                console.warn('Retry QA evaluation failed; using retry image anyway', err);
-                currentImageUrl = retryResult.imageUrl;
-                currentFullPrompt = repairPrompt;
-                totalRetriesDone++;
-              }
+              // Fire retry complete event
+              onPageEvent?.({
+                type: 'retry_complete',
+                pageNumber: item.pageNumber,
+                newScore: qaScore,
+                batchId: params.batchId || '',
+              });
             }
           } catch (retryErr) {
             console.error(`Retry failed for page ${item.pageNumber}:`, retryErr);

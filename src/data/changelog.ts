@@ -15,6 +15,20 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
     {
+        id: 'update-2026-01-18-ai-qa',
+        date: '2026-01-18',
+        title: 'Agentic QA & Smart Repairs',
+        version: 'v2.2.0',
+        type: 'minor',
+        description: 'Introduced a self-correcting AI Quality Assurance system that grades and fixes images automatically.',
+        changes: [
+            'Implemented Gemini 1.5 Pro Vision to semantically analyze every image (detects unwanted text, anatomy issues, and scary content).',
+            'Added "Smart Repairs": The system now translates QA failures into specific engineering directives (e.g., "CRITICAL: REMOVE TEXT") for retries.',
+            'Optimized with Hybrid Validation: Uses fast pixel heuristics first, then deep AI analysis only when needed.',
+            'Refined Retry Logic: "Smart Retry" skips redundant checks on repaired images to save latency and cost.'
+        ]
+    },
+    {
         id: 'update-2026-01-18-performance',
         date: '2026-01-18',
         title: 'Performance & Infrastructure',

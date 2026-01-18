@@ -216,3 +216,43 @@ export interface HeroProject extends SavedProject {
   profileSheetUrl?: string;    // 5-angle turnaround (primary output)
   seed?: number;
 }
+
+export type QaTag =
+  | 'cropped'
+  | 'open_paths'
+  | 'low_contrast_lines'
+  | 'too_detailed'
+  | 'too_noisy'
+  | 'text_present_unwanted'
+  | 'touches_border'
+  | 'blur'
+  | 'grayscale_shading'
+  | 'audience_mismatch'
+  | 'composition_poor'
+  | 'scary_content'
+  | 'distorted_anatomy'
+  | 'wrong_style'
+  | 'background_wrong'
+  | 'margin'
+  | 'midtones'
+  | 'speckles'
+  | 'micro_clutter'
+  | 'shading_present'
+  | 'too_simple'
+  | 'missing_subject';
+
+export interface QaRubricBreakdown {
+  printCleanliness: number;
+  colorability: number;
+  composition: number;
+  audienceAlignment: number;
+  consistency: number;
+}
+
+export interface PageQa {
+  score: number; // 0-100
+  hardFail: boolean;
+  reasons: string[];
+  tags: QaTag[];
+  rubricBreakdown: QaRubricBreakdown;
+}

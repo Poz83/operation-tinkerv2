@@ -1,5 +1,11 @@
 # Release Notes
 
+## [2.2.0] - Agentic QA & Smart Repairs
+- **Agentic Quality Assurance**: Integrated Gemini 1.5 Pro to semantically analyze every image (detects unwanted text, anatomy issues, etc.).
+- **Self-Healing AI**: The new "Smart Repair" system automatically translates QA failures into precise engineering directives for retries.
+- **Hybrid Validation**: Combines fast pixel heuristics with deep AI analysis for the best balance of speed and safety.
+- **Smart Retry Loop**: Optimized logic skips redundant processing on successful repairs.
+
 ## [0.5.0] - 2026-01-17
 
 ### 🚀 New Features

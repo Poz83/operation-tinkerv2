@@ -144,3 +144,74 @@ export const generateWithGemini = async (options: GenerateImageOptions): Promise
     return { imageUrl: null, error: message };
   }
 };
+
+// UPDATE THIS INTERFACE
+interface GenerateObjectOptions {
+  model?: string;
+  prompt: string;
+  system?: string; // Added support for system instructions
+  image?: string;
+  schema: any;     // We will pass the raw Google Schema object
+  apiKey?: string;
+  signal?: AbortSignal;
+}
+
+// UPDATE THIS FUNCTION
+export const generateObject = async <T>(options: GenerateObjectOptions): Promise<T> => {
+  try {
+    if (options.signal?.aborted) throw new Error('Aborted');
+
+    let apiKey = options.apiKey;
+    if (!apiKey) apiKey = await getStoredApiKey() ?? undefined;
+    if (!apiKey) throw new Error("Configuration Error: Gemini API Key is missing.");
+
+    const ai = new GoogleGenAI({ apiKey });
+
+    // 1. Prepare Content
+    const parts: Part[] = [{ text: options.prompt }];
+
+    if (options.image) {
+      // Handle data URI cleanup
+      const match = options.image.match(/^data:(.+);base64,(.+)$/);
+      if (match) {
+        parts.push({
+          inlineData: { mimeType: match[1], data: match[2] }
+        });
+      }
+    }
+
+    // 2. Call API with System Instruction & Schema
+    const result = await ai.models.generateContent({
+      model: options.model || 'gemini-1.5-pro',
+      contents: [{ role: 'user', parts }],
+      config: {
+        systemInstruction: options.system, // Connect the brain
+        responseMimeType: 'application/json',
+        responseSchema: options.schema,    // Pass the strict schema
+        temperature: 0.2,                  // Low temp for precise JSON
+      }
+    });
+
+    if (options.signal?.aborted) throw new Error('Aborted');
+
+    // 3. Parse Result
+    const candidate = result.candidates?.[0];
+    const part = candidate?.content?.parts?.[0];
+    const text = part?.text;
+
+    if (!text) throw new Error("No JSON returned from Gemini");
+
+    // Clean up any markdown code blocks if the model adds them (e.g. ```json ... ```)
+    const cleanJson = text.replace(/```json\n?|```/g, '').trim();
+
+    return JSON.parse(cleanJson) as T;
+
+  } catch (e: any) {
+    if (e.name === 'AbortError' || e.message === 'Aborted' || options.signal?.aborted) {
+      throw new Error('Aborted');
+    }
+    console.error("Gemini Structured Output Error:", e);
+    // Return a safe fallback or rethrow depending on your preference
+    throw e;
+  }
+};
