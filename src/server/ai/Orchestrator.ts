@@ -85,7 +85,7 @@ export interface GenerateAndValidateRequest {
     /** Direct API key */
     apiKey?: string;
     /** Pipeline configuration */
-    config?: PipelineConfig;
+    config?: Partial<PipelineConfig>;
 }
 
 /**

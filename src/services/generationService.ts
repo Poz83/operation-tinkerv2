@@ -1,7 +1,7 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
  * GENERATION SERVICE v1.0 — Unified UI Service Layer
- * Paint-by-Numbers SaaS
+ * Color-by-Numbers SaaS
  * ═══════════════════════════════════════════════════════════════════════════════
  *
  * This is the PRIMARY service layer for UI components to interact with
@@ -44,7 +44,11 @@ import {
     PipelineConfig,
     PipelineProgress,
     AttemptResult,
-} from '../server/ai/orchestrator';
+} from '../server/ai/Orchestrator';
+
+import {
+    QaResult,
+} from '../server/ai/qaService';
 
 import { getStoredApiKey } from '../lib/crypto';
 // import { saveProject, fetchProject } from './projectsService'; 
@@ -68,6 +72,7 @@ import type {
 } from '../types';
 
 import type { StyleId, ComplexityId, AudienceId } from './ColoringStudioService';
+import type { PageQa, QaTag } from '../types';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TYPE DEFINITIONS
@@ -289,6 +294,27 @@ const adaptProgress = (
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// QA MAPPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Map Orchestrator QA result to UI PageQa format
+ */
+const mapQaToPageQa = (qaResult: QaResult): PageQa => ({
+    score: qaResult.overallScore,
+    hardFail: !qaResult.passed,
+    reasons: qaResult.issues.map(i => i.description),
+    tags: qaResult.issues.map(i => i.code as unknown as QaTag),
+    rubricBreakdown: {
+        printCleanliness: qaResult.rubric.lineQuality,
+        colorability: qaResult.rubric.regionIntegrity,
+        composition: qaResult.rubric.composition,
+        audienceAlignment: qaResult.rubric.audienceAlignment,
+        consistency: qaResult.rubric.styleCompliance
+    }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // SINGLE PAGE GENERATION
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -420,11 +446,7 @@ export const generatePage = async (
             isLoading: false,
             isCover: request.pageIndex === 0,
             qa: orchestratorResult.finalQaResult
-                ? {
-                    score: orchestratorResult.qualityScore,
-                    passed: orchestratorResult.finalQaResult.passed,
-                    issues: orchestratorResult.finalQaResult.issues.map(i => i.code),
-                }
+                ? mapQaToPageQa(orchestratorResult.finalQaResult)
                 : undefined,
         }
         : null;
@@ -748,7 +770,7 @@ const savePageToProject = async (
             pageIndex: page.pageIndex,
             status: page.status,
             isCover: page.isCover || false,
-            qa: page.qa,
+            qa: page.qa as unknown as any, // Cast to any for Supabase Json compatibility
         },
     });
 
