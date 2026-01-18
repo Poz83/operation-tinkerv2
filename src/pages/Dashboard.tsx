@@ -233,7 +233,7 @@ export const Dashboard: React.FC = () => {
             </main>
 
             <footer className="w-full py-6 text-center text-xs text-zinc-600 font-mono">
-                {CHANGELOG[0].version} ({'fac209d'})
+                {CHANGELOG[0].version} ({'b42e715'})
             </footer>
 
             {/* Dev Password Modal */}
