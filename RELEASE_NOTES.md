@@ -77,6 +77,14 @@
 - **QA Compassion**: The Quality Assurance AI has been taught that "Simple" != "Bad". It now awards high scores to bold, simple toddler pages instead of failing them for "lack of detail".
 - **Prompt Balance**: Relaxed the "Toddler" rules to ensure the AI generates *bold* lines instead of confusing "giant shapes only" scribbles.
 
+## [2.2.17] - Gemini 3 Pro & Style Reform
+- **Prompt Engine 3.0**: Completely refactored the prompt generation to align with **Gemini 3 Pro Image (Imagen 3)** best practices.
+- **Narrative Prompts**: Switched from robotic "Instruction Lists" to natural language narratives ("Create a high-quality line drawing..."), which the new model understands far better.
+- **Positive Framing**: Replaced confusing negative constraints ("No broken lines") with clear, positive goals ("Ensure all shapes are closed").
+- **Style Restoration**: Fixed the "Cozy Hand-Drawn" style by removing conflicting texture instructions that were causing messy shading.
+- **Text Support Fixed**: Enabled the previously ignored `requiresText` feature, allowing you to ask for specific titles to be integrated into the design.
+- **Zero-Color Enforcement**: Overhauled negative prompts to strictly ban shading, grays, and solid fills, ensuring pure coloring-book-ready output.
+
 
 
 
