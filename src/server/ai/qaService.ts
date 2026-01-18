@@ -14,18 +14,20 @@ export const analyzeImageQuality = async (
     ROLE: Senior Technical Art Director.
     TASK: Grade this coloring page for target audience: ${audience}.
     
-    CRITICAL CHECKLIST:
-    1. PRINTABILITY: Lines must be pure BLACK. No gray, no fuzzy edges.
-    2. TOPOLOGY: Main shapes must be CLOSED (watertight).
-    3. AGE APPROPRIATENESS (Safety Check):
+    CRITICAL FAILURE CONDITIONS (Immediate Fail):
+    1. COLOR DETECTED: Any pixel that is not Black (#000000) or White (#FFFFFF). (e.g., Red glasses, blue water, gray shadows).
+    2. MOCKUP DETECTED: Image looks like a photo of paper on a table, has pencils, shadows, or wood texture.
+    3. BAD TOPOLOGY: Open shapes that cannot be filled.
+    4. AGE APPROPRIATENESS (Safety Check):
        - If Audience is 'Toddler/Preschool': IMMEDIATE FAIL if the image is scary, aggressive, or has sharp/angry faces. Must be 100% cute.
        - If Audience is 'Kids': FAIL if there is blood, gore, or realistic horror. "Cartoon Spooky" is OK.
-       - If Audience is 'Adults': ALLOW horror themes (skulls, monsters) if the prompt requested them.
     
     TAGGING RULES:
-    - 'scary_content': Use this tag if the image violates the Safety Check for the specific audience.
-    - 'wrong_tone': The style or emotion is too mature/immature for the audience.
+    - 'colored_artifacts': Image contains color or gray shading.
+    - 'mockup_style': Image looks like a photo/flatlay.
+    - 'scary_content': Inappropriate for audience.
     - 'low_contrast_lines': Lines are grey or weak.
+    - 'wrong_tone': The style or emotion is too mature/immature for the audience.
 
     Return the exact JSON object defined in the schema.
   `;
@@ -44,7 +46,8 @@ export const analyzeImageQuality = async (
                         "too_detailed", "too_simple", "missing_subject", "wrong_style",
                         "text_present_unwanted", "distorted_anatomy", "background_wrong",
                         "low_contrast_lines", "shading_present",
-                        "scary_content", "wrong_tone"
+                        "scary_content", "wrong_tone",
+                        "colored_artifacts", "mockup_style"
                     ]
                 }
             },

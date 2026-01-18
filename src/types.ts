@@ -244,7 +244,10 @@ export type QaTag =
   | 'micro_clutter'
   | 'shading_present'
   | 'too_simple'
-  | 'missing_subject';
+  | 'missing_subject'
+  | 'colored_artifacts'
+  | 'mockup_style'
+  | 'wrong_tone';
 
 export interface QaRubricBreakdown {
   printCleanliness: number;

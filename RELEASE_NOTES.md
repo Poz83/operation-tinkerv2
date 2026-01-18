@@ -47,6 +47,11 @@
 - **Artifact Protection**: Forces the AI to ask itself: "Is this a photo of paper?" before outputting. If YES, it fails and retries (internally).
 - **Zero-Gray Policy**: Strict enforcement of #000000 and #FFFFFF only.
 
+## [2.2.10] - Strict QA Auditing
+- **New Audit Rules**: The "Inspector" (QA AI) now strictly fails any image containing colored pixels (red/blue leaks) or "mockup" aesthetics.
+- **Smart Tags**: Added `colored_artifacts` and `mockup_style` tags to help the retry system understand *why* it failed and correct it faster.
+
+
 
 
 
