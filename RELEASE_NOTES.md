@@ -72,6 +72,12 @@
 - **Audience Physics**: Refined rules for "Adults" to permit complexity while keeping "Toddlers" strictly simple.
 - **Negative Prompts**: Overhauled the ban list to be smarter about context (e.g., allowing "clouds" unless indoors).
 
+## [2.2.16] - Vault Rescue & Gentle QA
+- **Vault 500 Fix**: Simplified the dashboard data loading to prevent server crashes/timeouts when loading your project list.
+- **QA Compassion**: The Quality Assurance AI has been taught that "Simple" != "Bad". It now awards high scores to bold, simple toddler pages instead of failing them for "lack of detail".
+- **Prompt Balance**: Relaxed the "Toddler" rules to ensure the AI generates *bold* lines instead of confusing "giant shapes only" scribbles.
+
+
 
 
 

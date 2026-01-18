@@ -19,7 +19,7 @@ const STYLE_SPECS: Record<string, string> = {
 
 // 2. AUDIENCE PHYSICS (Adjusted "Adults" to allow texture)
 const AUDIENCE_RULES: Record<string, string> = {
-  'toddlers': 'CRITICAL: Ultra-low detail. Giant shapes only. Line weight 8px minimum. No background details. Zoomed in. No tiny artifacts.',
+  'toddlers': 'Simple shapes. clear outlines. Bold lines (4px+). minimal detail. Focus on the main subject. Easy to color.',
   'preschool': 'Very simple shapes. Clear separation. Minimal background. Thick lines.',
   'kids': 'Standard coloring book complexity. Clear separation of shapes. Storytelling elements. Medium line weight. No shading.',
   'teens': 'Dynamic poses, moderate detail, stylish lines. Pop culture aesthetic.',

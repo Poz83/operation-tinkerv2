@@ -85,18 +85,7 @@ export async function fetchUserProjects(): Promise<SavedProject[]> {
             visibility,
             created_at,
             updated_at,
-            tool_type,
-            coloring_studio_data (
-                style,
-                audience,
-                complexity,
-                page_count
-            ),
-            hero_lab_data (
-                dna,
-                base_image_url,
-                seed
-            )
+            tool_type
         `)
         .eq('user_id', user.id)
         .in('tool_type', ['coloring_studio', 'hero_lab'])
@@ -443,7 +432,7 @@ async function persistProjectImages(projectId: string, pages: ColoringPage[]): P
                     pageIndex: page.pageIndex,
                     status: page.status,
                     isCover: page.isCover || false,
-                    qa: page.qa
+                    qa: page.qa as any
                 }
             });
 

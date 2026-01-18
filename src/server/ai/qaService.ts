@@ -13,7 +13,12 @@ export const analyzeImageQuality = async (
     const prompt = `
     ROLE: Senior Technical Art Director.
     TASK: Grade this coloring page for target audience: ${audience}.
+    CONTEXT: Style=${style || 'Default'}, Complexity=${complexity || 'Standard'}.
     
+    [SCORING ADJUSTMENT]:
+    - If Complexity is 'Simple' or 'Very Simple': GIVE HIGH SCORES (80+) for clear, bold, simple shapes. Do NOT penalize for lack of detail. Simplicity is the goal.
+    - If Audience is 'Toddlers' or 'Preschool': 100% Bold Lines and Empty Space is PERFECT.
+
     CRITICAL FAILURE CONDITIONS (Immediate Fail):
     1. COLOR DETECTED: Any pixel that is not Black (#000000) or White (#FFFFFF). (e.g., Red glasses, blue water, gray shadows).
     2. MOCKUP DETECTED: Image looks like a photo of paper on a table, has pencils, shadows, or wood texture.
