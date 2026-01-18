@@ -24,7 +24,12 @@ export const brainstormPrompt = async (
     // Lazy instantiate service with the specific key
     const backendService = new ColoringStudioService(apiKey);
 
-    return await backendService.brainstormPrompt(prompt, pageCount, context);
+    // Pass pageCount and context for context-aware enhancement
+    return await backendService.brainstormPrompt(prompt, pageCount, context ? {
+      style: context.style as any,
+      audience: context.audience as any,
+      heroName: context.heroName
+    } : undefined);
   } catch (error) {
     console.error("Failed to enhance prompt:", error);
     // Fail gracefully by returning original prompt

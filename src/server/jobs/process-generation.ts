@@ -2,9 +2,8 @@ import { analyzeImageQuality } from '../ai/qaService';
 import { getRepairInstructions } from '../ai/repairs'; // New import
 import { PageQa, QaTag } from '../../types';
 import { ColoringStudioService, BookPlanItem } from '../../services/ColoringStudioService';
-import { generateWithGemini } from '../ai/gemini-client';
+
 import { evaluatePublishability, QaHardFailReason } from '../../utils/publishability-qa';
-import { buildPrompt, STYLE_RULES } from '../ai/prompts';
 import { PageGenerationEvent } from '../../logging/events';
 import { TARGET_AUDIENCES, CREATIVE_VARIATION_OPTIONS, CreativeVariation, CharacterDNA } from '../../types';
 import { getStoredApiKey } from '../../lib/crypto';
@@ -47,43 +46,7 @@ export interface ProcessGenerationParams {
   signal?: AbortSignal;
 }
 
-/**
- * Compute the final temperature based on style, complexity, audience, and user override.
- * Returns a value between 0.7 and 1.2.
- */
-const computeTemperature = (
-  style: string,
-  complexity: string,
-  audience: string,
-  creativeVariation: CreativeVariation
-): number => {
-  // If user manually selected, use their choice
-  if (creativeVariation !== 'auto') {
-    const option = CREATIVE_VARIATION_OPTIONS.find(o => o.id === creativeVariation);
-    return option?.temp ?? 1.0;
-  }
 
-  // Auto: derive from style, with complexity/audience modifiers
-  const styleConfig = STYLE_RULES[style] || STYLE_RULES['default'];
-  let temp = styleConfig.recommendedTemperature ?? 1.0;
-
-  // Complexity modifiers
-  if (complexity === 'Very Simple' || complexity === 'Simple') {
-    temp -= 0.1; // Simpler = more precision needed
-  } else if (complexity === 'Extreme Detail') {
-    temp += 0.1; // More complex = can handle more variation
-  }
-
-  // Audience modifiers
-  if (audience.includes('Toddlers') || audience.includes('Preschool')) {
-    temp -= 0.1; // Kids need consistency
-  } else if (audience.includes('S.E.N.')) {
-    temp -= 0.15; // Sensory-friendly needs predictability
-  }
-
-  // Clamp to safe range
-  return Math.max(0.7, Math.min(1.2, temp));
-};
 
 export const processGeneration = async (
   params: ProcessGenerationParams,
@@ -147,17 +110,18 @@ export const processGeneration = async (
   if (params.signal?.aborted) throw new Error('Aborted');
 
   // 1. Generate Book Plan
-  let plan = await coloringService.generateBookPlan(
-    params.userIdea,
-    params.pageCount,
-    params.audience,
-    params.style,
-    params.hasHeroRef,
-    params.includeText,
-    params.complexity,
-    params.heroPresence,
-    params.signal
-  );
+  let plan = await coloringService.generateBookPlan({
+    userIdea: params.userIdea,
+    pageCount: params.pageCount,
+    audience: params.audience as any,
+    style: params.style as any,
+    complexity: params.complexity as any,
+    hasHeroRef: params.hasHeroRef,
+    includeText: params.includeText,
+    heroPresence: params.heroPresence,
+    heroName: params.characterDNA?.name,
+    signal: params.signal
+  });
 
   if (params.signal?.aborted) throw new Error('Aborted');
 
@@ -293,6 +257,7 @@ export const processGeneration = async (
     // PACING: Adaptive cool-down based on resolution tier
     const coolDown = targetResolution === '4K' ? 12000 :
       targetResolution === '2K' ? 8000 : 4000;
+
     if (item.pageNumber > 1) {
       // Fire cooldown start event
       onPageEvent?.({
@@ -327,24 +292,6 @@ export const processGeneration = async (
       if (params.signal?.aborted) throw new Error('Aborted');
     }
 
-    const buildResult = buildPrompt(
-      enhancedPrompt,
-      params.style,
-      params.complexity,
-      item.requiresText,
-      audiencePrompt,
-      params.audience, // Pass the raw audience label for border calibration
-      styleDNA || sessionStyleDNA, // Prefer Hero Ref DNA, fallback to Session DNA (Style is always applied)
-      shouldIncludeHero ? params.characterDNA : undefined // ONLY pass CharacterDNA if we decided to include the hero
-    );
-
-    const { fullPrompt, fullNegativePrompt } = buildResult;
-
-    // Log Compatibility Adjustments
-    if (!buildResult.compatibility.isCompatible) {
-      console.warn(`⚠️ Compatibility adjustments made for Page ${item.pageNumber}:`, buildResult.compatibility.warnings);
-    }
-
     // Determine effective reference image based on logic
     // Reference Image Hierarchy:
     // 1. Hero Image (ONLY if shouldIncludeHero is TRUE)
@@ -355,23 +302,59 @@ export const processGeneration = async (
         ? sessionReferenceImage
         : undefined;
 
-    // Compute temperature - StyleDNA overrides if available
-    const temperature = (styleDNA || sessionStyleDNA)?.temperature ?? computeTemperature(
-      params.style,
-      params.complexity,
-      params.audience,
-      params.creativeVariation
-    );
+    // Unified Orchestration Call (v2.0)
+    // This handles validation, prompt building, and API calls internally with retries
+    const startTime = (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now());
 
+    const orchestrationResult = await import('../ai/gemini-client').then(m => m.generateColoringPage({
+      userPrompt: enhancedPrompt,
+      styleId: params.style,
+      complexityId: params.complexity,
+      audienceId: params.audience,
+      aspectRatio: params.aspectRatio,
+      requiresText: item.requiresText,
+      heroDNA: shouldIncludeHero ? params.characterDNA : undefined,
+      styleDNA: styleDNA || sessionStyleDNA,
+      referenceImage: effectiveReferenceImage,
+      signal: params.signal,
+      enableLogging: true, // Enable detailed structured logs
+    }));
+
+    const {
+      imageUrl: generatedImageUrl,
+      error,
+      fullPrompt,
+      negativePrompt: fullNegativePrompt,
+      compatibility,
+      metadata
+    } = orchestrationResult;
+
+    // Log Compatibility Adjustments (from orchestration result)
+    if (!compatibility.isCompatible) {
+      console.warn(`⚠️ Compatibility adjustments made for Page ${item.pageNumber}:`, compatibility.warnings);
+    }
+
+    // Create a result object to match previous local shape for downstream logic
+    const result = {
+      imageUrl: generatedImageUrl,
+      error: error
+    };
+
+    // Calculate latency from metadata or fallback
+    let latencyMs = metadata?.durationMs || 0;
     const startedAtIso = new Date().toISOString();
-    const startTime = typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now();
+    let finishedAtIso = new Date().toISOString();
 
+    // Use resolved params for logging (orchestration might have adjusted compliance)
+    const finalResolution = metadata?.resolution || targetResolution;
+
+    // Fire Start Event (Back-filled for compatibility since orchestration does it internally now)
     onPageEvent?.({
       type: 'start',
       pageNumber: item.pageNumber,
       batchId: params.batchId || '',
       aspectRatio: params.aspectRatio,
-      resolution: targetResolution,
+      resolution: finalResolution,
       width: finalWidth,
       height: finalHeight,
       fullPrompt,
@@ -382,24 +365,14 @@ export const processGeneration = async (
       console.log(`🎨 Using reference image for Page ${item.pageNumber} (${shouldIncludeHero ? 'Hero' : 'Session/Style'})`);
     }
 
-    // Trigger generation (per-page) after cool-down
-    const result = await generateWithGemini({
-      prompt: fullPrompt,
-      negativePrompt: fullNegativePrompt,
-      aspectRatio: params.aspectRatio,
-      resolution: targetResolution,
-      width: finalWidth,
-      height: finalHeight,
-      referenceImage: effectiveReferenceImage,
-      signal: params.signal,
-      temperature: temperature
-    });
+    if (params.signal?.aborted) throw new Error('Aborted');
 
     if (params.signal?.aborted) throw new Error('Aborted');
 
-    const finishedAtIso = new Date().toISOString();
-    const latencyMs = (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now()) - startTime;
+    finishedAtIso = new Date().toISOString();
+    latencyMs = (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now()) - startTime;
 
+    // Retry logic uses generateWithGemini directly
     if (result.imageUrl) {
       // Future: Add Vectorizer call here
 
@@ -410,7 +383,8 @@ export const processGeneration = async (
       let currentImageUrl = result.imageUrl;
       let currentFullPrompt = fullPrompt;
       let qa: any = null;
-      const styleConfig = STYLE_RULES[params.style] || STYLE_RULES['default'];
+      // const styleConfig = STYLE_RULES[params.style] || STYLE_RULES['default']; // Legacy, removed
+
 
       try {
         // Fire QA start event
@@ -424,7 +398,8 @@ export const processGeneration = async (
           dataUrl: result.imageUrl,
           complexity: params.complexity,
           aspectRatio: params.aspectRatio,
-          allowsTextureShading: styleConfig.allowsTextureShading ?? false,
+          allowsTextureShading: false, // Default to strict until we re-wire style config lookup if needed or use inferred
+
         });
         qaScore = qa.score0to100;
         qaHardFail = qa.hardFail;

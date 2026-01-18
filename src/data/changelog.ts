@@ -15,6 +15,21 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
     {
+        id: 'update-2026-01-18-genai-v2',
+        date: '2026-01-18',
+        title: 'GenAI 2.0: Unified Intelligence',
+        version: 'v2.3.0',
+        type: 'major',
+        description: 'A complete overhaul of the generation pipeline, introducing a unified Orchestrator, self-repairing workflows, and enhanced style enforcement.',
+        changes: [
+            'Unified Orchestrator: Centralized all generation logic into a single intelligence layer that handles retries, repairs, and parameter optimization automatically.',
+            'GenAI 2.0 Services: Upgraded Coloring Studio, Hero Lab, and Image Editing services to v2.0, sharing a common intelligence core.',
+            'Style System v4: Enforced stricter styling rules (line weight, closure) across all modes using the new prompts-v4 engine.',
+            'Integrated QA Pipeline: Every generation is now automatically graded. Failed images are auto-repaired or regenerated without user intervention.',
+            'Unified Generation Service: Consolidated all UI-facing generation logic into a single generationService.ts for consistent behavior across the app.'
+        ]
+    },
+    {
         id: 'update-2026-01-18-cinematics',
         date: '2026-01-18',
         title: 'Cinematic Intelligence',
