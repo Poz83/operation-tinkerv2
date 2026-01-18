@@ -28,6 +28,11 @@
 - **Enhanced Color Bans**: Stricter rules against color leakage (red/blue/green) and 3D anaglyph effects.
 - **Smart Context Hygiene**: Automatically removes nature debris from indoor scenes and fire/dust from underwater scenes.
 
+## [2.2.6] - Gallery & Network Optimization
+- **Smart Network Caching**: Signed URLs for gallery images are now cached in memory for 24 hours.
+- **Browser Disk Usage**: By stabilizing signed URLs, your browser can now effectively disk-cache community images, making navigation instant.
+- **Bandwidth Reduction**: Significantly reduced unnecessary R2 signing requests.
+
 ## [2.2.0] - Agentic QA & Smart Repairs
 - **Agentic Quality Assurance**: Integrated Gemini 1.5 Pro to semantically analyze every image (detects unwanted text, anatomy issues, etc.).
 - **Self-Healing AI**: The new "Smart Repair" system automatically translates QA failures into precise engineering directives for retries.

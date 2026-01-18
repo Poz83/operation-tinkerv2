@@ -62,11 +62,29 @@ export async function uploadProjectImage(
     }
 }
 
+// --- In-Memory Cache for Signed URLs ---
+// Prevents re-signing the same key repeatedly, which changes the URL and breaks browser caching.
+interface CachedUrl {
+    url: string;
+    expiresAt: number;
+}
+
+const signedUrlCache = new Map<string, CachedUrl>();
+const CACHE_DURATION_MS = 23 * 60 * 60 * 1000; // 23 hours (buffer for 24h expiry)
+
 /**
  * Get a signed URL for a private file in the 'projects' bucket.
+ * Uses in-memory cache to stabilize URLs.
  */
 export async function getSignedUrl(key: string): Promise<string> {
     try {
+        // 1. Check Cache
+        const cached = signedUrlCache.get(key);
+        if (cached && cached.expiresAt > Date.now()) {
+            return cached.url;
+        }
+
+        // 2. Fetch New
         const response = await fetch('/api/storage/signed-url', {
             method: 'POST',
             headers: {
@@ -81,12 +99,21 @@ export async function getSignedUrl(key: string): Promise<string> {
         });
 
         if (!response.ok) {
-            // If file doesn't exist or other error, return empty
             return '';
         }
 
         const data: SignedUrlResponse = await response.json();
-        return data.url;
+
+        // 3. Update Cache
+        if (data.success && data.url) {
+            signedUrlCache.set(key, {
+                url: data.url,
+                expiresAt: Date.now() + CACHE_DURATION_MS
+            });
+            return data.url;
+        }
+
+        return '';
     } catch (error) {
         console.error('Failed to get signed URL:', error);
         return '';
@@ -102,13 +129,32 @@ interface BatchSignedUrlResponse {
 
 /**
  * Batch get signed URLs for multiple keys
+ * smart-batches: only fetches missing keys from server
  */
 export async function getSignedUrls(keys: string[]): Promise<Record<string, string>> {
     try {
-        // Filter out empty keys
         const validKeys = keys.filter(k => !!k);
         if (validKeys.length === 0) return {};
 
+        const results: Record<string, string> = {};
+        const missingKeys: string[] = [];
+
+        // 1. Check Cache
+        for (const key of validKeys) {
+            const cached = signedUrlCache.get(key);
+            if (cached && cached.expiresAt > Date.now()) {
+                results[key] = cached.url;
+            } else {
+                missingKeys.push(key);
+            }
+        }
+
+        // If all found in cache, successful early return
+        if (missingKeys.length === 0) {
+            return results;
+        }
+
+        // 2. Fetch Missing
         const response = await fetch('/api/storage/signed-url', {
             method: 'POST',
             headers: {
@@ -116,7 +162,7 @@ export async function getSignedUrls(keys: string[]): Promise<Record<string, stri
             },
             body: JSON.stringify({
                 bucket: 'projects',
-                keys: validKeys,
+                keys: missingKeys,
                 action: 'download',
                 expiresIn: 3600 * 24 // 24 hours
             }),
@@ -124,11 +170,25 @@ export async function getSignedUrls(keys: string[]): Promise<Record<string, stri
 
         if (!response.ok) {
             console.error('Batch signed URL request failed');
-            return {};
+            // Return whatever we had cached at least
+            return results;
         }
 
         const data: BatchSignedUrlResponse = await response.json();
-        return data.urls || {};
+
+        // 3. Update Cache & Merge
+        if (data.urls) {
+            Object.entries(data.urls).forEach(([key, url]) => {
+                signedUrlCache.set(key, {
+                    url,
+                    expiresAt: Date.now() + CACHE_DURATION_MS
+                });
+                results[key] = url;
+            });
+        }
+
+        return results;
+
     } catch (error) {
         console.error('Failed to get signed URLs batch:', error);
         return {};
