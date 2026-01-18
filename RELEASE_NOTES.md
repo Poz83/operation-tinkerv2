@@ -37,6 +37,12 @@
 - **Magic Pencil Animation**: Replaced the standard loading spinner with a whimsical "Magic Pencil" animation that sketches while you wait.
 - **Dynamic Status**: Floating icons and cycling messages ("Dreaming...", "Inking...") keep the wait engaging.
 
+## [2.2.8] - Engineering Logic Upgrade
+- **Smart Enhancer Upgrade**: The "Make it Better" brain now understands **Coloring Book Engineering**.
+- **Constraint Awareness**: It explicitly knows to ask for "closed shapes", "distinct outlines", and "center composition".
+- **Translation Logic**: It knows how to translate "glowing" into "radiating lines" and "furry" into "texture lines" for perfect B&W results.
+
+
 
 ## [2.2.0] - Agentic QA & Smart Repairs
 - **Agentic Quality Assurance**: Integrated Gemini 1.5 Pro to semantically analyze every image (detects unwanted text, anatomy issues, etc.).

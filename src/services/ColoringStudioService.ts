@@ -226,6 +226,12 @@ export class ColoringStudioService {
       TASK: Rewrite the user's simple idea into a professional image generation prompt.
       ${contextBlock}
       
+      [COLORING BOOK ENGINEERING]:
+      1. CLOSED SHAPES: Describe objects as having "distinct outlines". Avoid "fog", "mist", or "blur".
+      2. COMPOSITION: Center the main subject. Ensure clear separation between foreground and background.
+      3. LIGHTING TRANSLATION: Do not describe "light" or "glow". Instead, describe the *lines* that represent it (e.g. "radiating lines", "sparkle shapes").
+      4. TEXTURE TRANSLATION: Do not say "furry". Say "texture lines representing fur".
+
       [THINKING PROCESS DIRECTIVES]:
       1. VISUALIZE: Imagine the scene in black and white line art.
       2. PHYSICS CHECK: Are simple objects floating? Are liquids behaving correctly? Ensure physical logic.
@@ -243,6 +249,11 @@ export class ColoringStudioService {
       TASK: Rewrite the user's theme into a professional multi-page collection prompt.
       ${contextBlock}
       
+      [COLORING BOOK ENGINEERING]:
+      1. VARIETY: Ensure pages vary in composition (close-ups, wide shots, patterns).
+      2. CONSISTENCY: Keep the "Universe" rules consistent (e.g. if animals wear clothes, they always wear clothes).
+      3. CLARITY: Each scene must be distinct and printable.
+
       [THINKING PROCESS DIRECTIVES]:
       1. THEME ANALYSIS: Identify the core theme and potential sub-themes.
       2. ARC PLANNING: Plan a progression (e.g. season change, journey, or varying angles).
