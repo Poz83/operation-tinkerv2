@@ -170,6 +170,12 @@ export const useProject = (
     // Load project on mount if URL ID exists
     useEffect(() => {
         if (urlProjectId) {
+            // [Fix]: When switching projects, clear the previous state immediately to prevent "Zombie State" pollution
+            // if the fetch fails or takes time.
+            if (currentProjectId && currentProjectId !== urlProjectId) {
+                handleClear();
+            }
+
             async function load() {
                 try {
                     const proj = await fetchProject(urlProjectId!);
@@ -177,10 +183,13 @@ export const useProject = (
                         handleLoadProject(proj);
                     } else {
                         console.log('Project not found, treating as new:', urlProjectId);
+                        // [Fix]: Ensure we don't carry over old state if project doesn't exist yet
+                        handleClear();
                         setCurrentProjectId(urlProjectId);
                     }
                 } catch (err) {
                     console.error('Failed to load project:', err);
+                    showToast("error", "Failed to load project", "⚠️");
                 }
             }
             load();

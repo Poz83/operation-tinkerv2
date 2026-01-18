@@ -59,6 +59,11 @@
 - **Planning Visibility**: Wired up the "Magic Pencil" to appear immediately when you click Generate (during the "Planning" phase), not just when images start loading.
 - **Fixed Wiring**: The `Book` view was ignoring the global `isGenerating` signal. Fixed it.
 
+## [2.2.13] - Ghost Data Patch
+- **Anti-Leak**: Fixed a rare bug where images from a previous project would "haunt" a new project if the network glitched.
+- **Strict Clearing**: The studio now aggressively wipes the slate clean when you switch projects, ensuring no data pollution.
+
+
 
 
 
