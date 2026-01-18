@@ -105,7 +105,7 @@ export const useProject = (
         }
     }, [currentProjectState, urlProjectId, navigate, showToast]);
 
-    const handleLoadProject = useCallback((project: SavedProject) => {
+    const handleLoadProject = useCallback(async (project: SavedProject) => {
         setProjectName(project.projectName);
         setPageAmount(project.pageAmount);
         setPageSizeId(project.pageSizeId);
@@ -123,7 +123,26 @@ export const useProject = (
         setCinematics(project.cinematics || 'dynamic');
 
         if (project.pages) {
-            setPages(project.pages);
+            // Hydrate pages from local cache for instant loading
+            const { getCachedImage, cacheFromUrl } = await import('../services/ImageCacheService');
+
+            const hydratedPages = await Promise.all(
+                project.pages.map(async (page) => {
+                    if (!page.imageUrl || !page.id) return page;
+
+                    // Try to get from local cache first
+                    const cachedUrl = await getCachedImage(page.id);
+                    if (cachedUrl) {
+                        return { ...page, imageUrl: cachedUrl };
+                    }
+
+                    // Not cached - trigger background caching for next time
+                    cacheFromUrl(page.id, page.imageUrl, page.id);
+                    return page;
+                })
+            );
+
+            setPages(hydratedPages);
         }
 
         showToast("success", `Loaded "${project.projectName}"`, "📂");

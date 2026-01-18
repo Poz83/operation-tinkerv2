@@ -242,10 +242,21 @@ export const useGeneration = ({
                     setPages(newPages);
                     totalTasks = newPages.length;
                 },
-                // 2. On Page Complete
-                (pageNumber, imageUrl) => {
+                // 2. On Page Complete - Cache and update state
+                async (pageNumber, imageUrl) => {
+                    // Get the page ID for caching
+                    const pageId = `page-${pageNumber}`;
+
+                    // Update state immediately with the image URL
                     setPages(prev => prev.map(p => p.pageIndex === pageNumber - 1 ? { ...p, imageUrl, isLoading: false } : p));
                     updateProgress();
+
+                    // Background: Cache the image for instant loading on next visit
+                    import('../services/ImageCacheService').then(({ cacheFromUrl }) => {
+                        cacheFromUrl(pageId, imageUrl, pageId).catch(() => {
+                            // Silent fail - caching is optional
+                        });
+                    });
                 },
                 // 3. Page Event
                 (event) => {

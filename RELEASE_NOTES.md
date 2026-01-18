@@ -17,6 +17,11 @@
 - **Context-Aware "Make It Better"**: The prompt enhancer now reads your selected Audience, Style, and Hero settings to write age-appropriate, style-aware prompts (e.g., simpler for Toddlers, more detailed for Adults).
 - **Smarter Style Keywords**: Enhanced prompts now include specific style keywords (e.g., "thick lines, sticker-style" for Bold & Easy, "intricate patterns, symmetry" for Mandala).
 
+## [2.2.4] - Instant Image Loading
+- **Client-Side Caching**: Generated images are now cached in your browser's IndexedDB, enabling instant loading when switching between pages.
+- **LRU Eviction**: Cache automatically clears old images when it exceeds 500MB, keeping your browser light.
+- **Memory Management**: Blob URLs are properly revoked to prevent memory leaks during long sessions.
+
 ## [2.2.0] - Agentic QA & Smart Repairs
 - **Agentic Quality Assurance**: Integrated Gemini 1.5 Pro to semantically analyze every image (detects unwanted text, anatomy issues, etc.).
 - **Self-Healing AI**: The new "Smart Repair" system automatically translates QA failures into precise engineering directives for retries.
