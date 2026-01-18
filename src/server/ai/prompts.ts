@@ -30,13 +30,13 @@ const STYLE_SPECS: Record<string, string> = {
   'default': 'Technical Spec: Standard commercial coloring book. Line Quality: Clean, continuous vector lines. Background: Pure white.'
 };
 
-// 2. COMPLEXITY GUIDES (Narrative Instructions)
+// 2. COMPLEXITY GUIDES (Engineering-Grade Physics)
 const COMPLEXITY_GUIDES: Record<string, string> = {
-  'Very Simple': 'Construct the image using large, distinct shapes with minimal internal detail. Focus on bold, clear outlines suitable for standard crayons. Avoid intricate patterns.',
-  'Simple': 'Keep the composition clean and uncramped. Use clear separation between elements and avoid tiny details.',
-  'Moderate': 'Balance clear outlines with interesting internal details. A standard coloring page complexity.',
-  'Intricate': 'Incorporate fine details and textures within the main shapes. The design should take time to color.',
-  'Extreme Detail': 'Fill the composition with intricate, microscopic patterns and textures. Use fine linework to create a "Where is Waldo" level of density.'
+  'Very Simple': 'Physics: "Fat Marker" Standard. Constraint: Maximum 3-5 major shapes. Min Gap: 5mm (crayon safe). Internal Detail: ZERO. No patterns, no shading. Focus: Instant recognition.',
+  'Simple': 'Physics: "Standard Marker" Standard. Constraint: Clear separation between elements. Min Gap: 3mm. Internal Detail: Minimal (only defining features like eyes/mouth). Background: Sparse or empty.',
+  'Moderate': 'Physics: "Sharp Pencil" Standard. Constraint: Balanced foreground/background interactions. Min Gap: 1mm. Internal Detail: Standard coloring book level. Use variation in line weight to separate forms.',
+  'Intricate': 'Physics: "Fine Liner" Standard. Constraint: High element density. Textures: Allowed (fur, wood grain, leaves). Min Gap: 0.5mm. Focus: Engaging for adults, requiring fine motor control.',
+  'Extreme Detail': 'Physics: "Micro-Pen" Standard. Constraint: Fractal subdivision. Fill 90% of negative space with patterns (Zentangle-style). Recursive detail: large shapes should contain smaller shapes. "Hidden Object" density.'
 };
 
 // 3. AUDIENCE PHYSICS (Narrative Rules)
