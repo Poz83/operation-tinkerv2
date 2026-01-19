@@ -10,6 +10,44 @@ import type { SavedProject, ColoringPage } from '../types';
 import { uploadProjectImage, getSignedUrl, getSignedUrls } from './storageService';
 import { cacheProject, getCachedProject, cacheProjectList, getCachedProjectList, deleteCachedProject } from './offlineStore';
 
+/**
+ * Helper to remove invalid URLs (blob:) from project before caching.
+ * Blob URLs are session-specific and cause errors if loaded in a new session.
+ */
+function sanitizeForCache(project: SavedProject): SavedProject {
+    const p = { ...project };
+
+    // 1. Sanitize Thumbnail
+    if (p.thumbnail && p.thumbnail.startsWith('blob:')) {
+        p.thumbnail = undefined;
+    }
+
+    // 2. Sanitize Pages
+    if (p.pages) {
+        p.pages = p.pages.map(page => {
+            if (page.imageUrl && page.imageUrl.startsWith('blob:')) {
+                return { ...page, imageUrl: '' }; // Clear invalid URL
+            }
+            return page;
+        });
+    }
+
+    // 3. Sanitize Hero Images
+    if (p.heroImage && (p.heroImage as any).base64 && (p.heroImage as any).base64.startsWith('blob:')) {
+        // base64 field shouldn't have blob, but checking just in case of misuse
+        // actually heroImage is usually { base64: string, mimeType: string } 
+        // so real base64 is fine.
+    }
+
+    // 4. Sanitize Hero Lab specific fields
+    const anyP = p as any;
+    if (anyP.baseImageUrl && anyP.baseImageUrl.startsWith('blob:')) anyP.baseImageUrl = undefined;
+    if (anyP.referenceImageUrl && anyP.referenceImageUrl.startsWith('blob:')) anyP.referenceImageUrl = undefined;
+    if (anyP.profileSheetUrl && anyP.profileSheetUrl.startsWith('blob:')) anyP.profileSheetUrl = undefined;
+
+    return p;
+}
+
 // Type for the joined query result
 interface ProjectWithColoringData {
     id: string;
@@ -126,8 +164,9 @@ async function fetchUserProjectsNetwork(userId: string): Promise<SavedProject[]>
     // Map without pages (list view doesn't need full pages)
     const projects = (data as unknown as ProjectWithColoringData[]).map(r => mapDbToSavedProject(r));
 
-    // Update Cache
-    await cacheProjectList('user_projects', projects);
+    // Update Cache (Sanitized)
+    const sanitizedProjects = projects.map(p => sanitizeForCache(p));
+    await cacheProjectList('user_projects', sanitizedProjects);
 
     return projects;
 }
@@ -243,7 +282,7 @@ async function fetchProjectNetwork(publicId: string): Promise<SavedProject | nul
     }
 
     // Update Cache
-    await cacheProject(project);
+    await cacheProject(sanitizeForCache(project));
 
     return project;
 }
@@ -405,7 +444,7 @@ export async function saveProject(project: SavedProject): Promise<SavedProject> 
     };
 
     // Update Cache
-    await cacheProject(finalProject);
+    await cacheProject(sanitizeForCache(finalProject));
 
     return finalProject;
 }
