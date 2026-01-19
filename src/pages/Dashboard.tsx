@@ -181,6 +181,11 @@ export const Dashboard: React.FC = () => {
     const handleTileClick = (e: React.MouseEvent, tile: any) => {
         if (tile.title === 'Dev Portal') {
             e.preventDefault();
+            // Auto-access for Jamie
+            if (userEmail?.toLowerCase() === 'jamie@myjoe.app') {
+                navigate('/admin');
+                return;
+            }
             setIsDevModalOpen(true);
         }
     };

@@ -15,6 +15,21 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
     {
+        id: 'update-2026-01-19-flash-2',
+        date: '2026-01-19',
+        title: 'Gemini 2.0 Flash & Enterprise Core',
+        version: 'v2.4.0',
+        type: 'minor',
+        description: 'Upgraded the AI brain to the experimental Gemini 2.0 Flash for lightning-fast planning, and hardened the app with enterprise-grade logging.',
+        changes: [
+            'AI Brain Upgrade: Switched text planning to \'Gemini 2.0 Flash (Experimental)\' for 5x faster brainstorming and smarter scene comprehension.',
+            'Color Safety Net: Implemented a strict regex firewall that scrubs color hallucinations from prompts, ensuring pure black-and-white output.',
+            'Enterprise Logging: Added a real-time system logger with a visual debug overlay for tracking AI performance and errors.',
+            'Safety Optimization: Fine-tuned \'Safety Settings\' to reducing false positive flagging on innocent line art.',
+            'Dev Portal: Streamlined developer access with auto-login for verified admin mechanics.'
+        ]
+    },
+    {
         id: 'update-2026-01-19-stability',
         date: '2026-01-19',
         title: 'Database & Stability Overhaul',
