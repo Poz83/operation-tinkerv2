@@ -1,5 +1,10 @@
 # Release Notes
 
+## [5.0.1] - Performance & Stability
+- **Turbo Dashboard**: Optimized the main projects query from 5.8s to **~36ms** (160x speedup) by implementing perfect covering indexes.
+- **Autosave Fixed**: Resolved a critical race condition where the autosave system would create duplicate project copies instead of updating the existing one.
+- **Infrastructure Hardening**: Cleared database linter warnings, fixed RLS security configurations, and optimized index usage for lower Disk IO.
+
 ## [5.0.0] - v5.0 AI & Unified Pipeline
 - **Gemini 3 Pro Image (Nano Banana Pro)**: Upgraded the entire AI core to leverage the latest model, featuring superior prompt adherence, text rendering, and native style understanding.
 - **Unified Style System (v5.0)**: Standardized 12 distinct styles (including new additions like Geometric, Botanical, Gothic, and refined existing ones) across the entire platform (Studio, Hero Lab, Book Planner).

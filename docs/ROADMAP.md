@@ -161,8 +161,8 @@
 - [ ] Character definitions
 - [ ] Page-by-page generation
 
-#### Paint by Numbers
-> `paint_by_numbers_data` table
+#### Color by Numbers
+> `color_by_numbers_data` table
 - [ ] Photo upload
 - [ ] Color count selection
 - [ ] Difficulty presets

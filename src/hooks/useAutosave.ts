@@ -50,9 +50,13 @@ export function useAutosave({ project, onSave, interval = 3000, enabled = true }
 
             const saved = await onSave(projectRef.current);
 
+            // CRITICAL FIX: Update the ref to match the saved project (with real ID)
+            // This prevents the next autosave cycle from detecting the ID change as a "new" change
+            projectRef.current = saved;
+
             setLastSavedAt(new Date());
             setStatus('saved');
-            lastSavedProjectJson.current = JSON.stringify(saved); // Update baseline
+            lastSavedProjectJson.current = JSON.stringify(saved); // Update baseline to saved state
 
             return saved;
         } catch (err) {

@@ -368,6 +368,7 @@ COMPOSITION:
 - ${effectiveComplexitySpec.backgroundRule}
 - ${effectiveComplexitySpec.restAreaRule}
 - ${effectiveComplexitySpec.detailLevel}
+- PRINT MARGINS: Keep main subjects within the CENTER 85% of the canvas. Leave breathing room at all edges (at least 7% margin on each side). Content too close to edges may be trimmed during printing.
 
 OUTPUT: A single black and white coloring book page illustration. Pure black lines on pure white background. Every area is a closed shape that can be colored in.
 

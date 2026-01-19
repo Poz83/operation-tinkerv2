@@ -390,7 +390,7 @@ SCENE: ${userPrompt}
 
 STYLE: ${styleSpec.lineWeight}. ${styleSpec.visualRequirements.join('. ')}.
 
-COMPOSITION: ${complexitySpec.regionRange}. ${complexitySpec.backgroundRule}. ${complexitySpec.restAreaRule}. ${complexitySpec.detailLevel}.
+COMPOSITION: ${complexitySpec.regionRange}. ${complexitySpec.backgroundRule}. ${complexitySpec.restAreaRule}. ${complexitySpec.detailLevel}. PRINT MARGINS: Keep main subjects within the CENTER 85% of the canvas, leaving at least 7% margin on all edges for print safety.
 
 OUTPUT: A single black and white coloring book page. Pure black lines on pure white background. Every area is a closed shape that can be colored in.
 

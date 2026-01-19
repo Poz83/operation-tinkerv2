@@ -74,21 +74,25 @@ export const Vault: React.FC = () => {
         if (selectedIds.size === 0) return;
 
         if (window.confirm(`Are you sure you want to delete ${selectedIds.size} projects? This cannot be undone.`)) {
+            // Optimistic UI Update
+            const idsToDelete = Array.from(selectedIds);
+            const remainingProjects = projects.filter(p => !selectedIds.has(p.id));
+
+            // 1. Update UI immediately
+            setProjects(remainingProjects);
+            setSelectedIds(new Set());
+            setIsSelectionMode(false);
+
+            // 2. Perform actual delete in background
             try {
-                setIsDeleting(true);
-                await deleteProjects(Array.from(selectedIds));
-
-                // Update local state
-                setProjects(projects.filter(p => !selectedIds.has(p.id)));
-
-                // Reset selection
-                setSelectedIds(new Set());
-                setIsSelectionMode(false);
+                // Show a non-blocking toast or just indicator if we had one, 
+                // but for now just do it.
+                await deleteProjects(idsToDelete);
             } catch (err) {
-                console.error('Failed to delete projects:', err);
-                alert('Failed to delete projects. Please try again.');
-            } finally {
-                setIsDeleting(false);
+                console.error('Failed to delete projects in backend:', err);
+                // Optional: Revert state or Show Error Toast
+                // For now, alerting user is safer than silent fail, but we don't want to jar them if it was a minor timeout.
+                // We'll trust the "nuclear" sync to clean it up next reload if it failed.
             }
         }
     };

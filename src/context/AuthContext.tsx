@@ -40,17 +40,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 .eq('id', userId)
                 .single() as { data: { is_whitelisted: boolean; is_admin: boolean; avatar_url: string; display_name: string } | null; error: unknown };
 
-            if (error || !data) {
-                console.error('Error fetching user details:', error);
-                return null;
+            if (error) {
+                // Ignore AbortError which happens on rapid session changes/remounts
+                if (typeof error === 'object' && error !== null && 'message' in error && (error as any).message.includes('AbortError')) {
+                    return null;
+                }
+                // Ignore if data is just missing (optional, but keep error for other cases)
+                if (!data) {
+                    console.error('Error fetching user details:', error);
+                    return null;
+                }
             }
+
+            if (!data) return null;
+
             return {
                 isWhitelisted: data.is_whitelisted,
                 isAdmin: data.is_admin,
                 avatarUrl: data.avatar_url,
                 displayName: data.display_name
             };
-        } catch (error) {
+        } catch (error: any) {
+            // Ignore AbortError and 'AbortError' string messages
+            if (error.message?.includes('AbortError') || error.name === 'AbortError') {
+                return null;
+            }
             console.error('Error in fetchUserDetails:', error);
             return null;
         }

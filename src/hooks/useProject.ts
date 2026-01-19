@@ -70,8 +70,18 @@ export const useProject = (
     const { status: saveStatus, lastSavedAt } = useAutosave({
         project: currentProjectState,
         onSave: async (proj) => {
-            const saved = await saveProject(proj);
+            // [Fix]: Autosave Duplication Logic
+            // If we have a currentProjectId, ensure we use it to overwrite, not create new.
+            // The logic in saveProject handles 'CB'/'HL' updates, but we need to make sure 'proj' has the ID.
+            const projectToSave = {
+                ...proj,
+                id: currentProjectId || proj.id
+            };
+
+            const saved = await saveProject(projectToSave);
+
             if (saved.id !== currentProjectId) {
+                console.log('Autosave: Project ID updated from', currentProjectId, 'to', saved.id);
                 setCurrentProjectId(saved.id);
                 // Silent URL update
                 navigate(`/studio/project/${saved.id}`, { replace: true });
@@ -79,13 +89,17 @@ export const useProject = (
 
             // Update pages (populates DB IDs and signed URLs if fresh)
             if (saved.pages) {
-                setPages(saved.pages);
+                // Only update pages if we're not actively generating to avoid race conditions
+                if (!isGenerating) {
+                    setPages(saved.pages);
+                }
             }
 
             return saved;
         },
-        enabled: !!(projectName || userPrompt) && pages.length > 0 && !isGenerating,
-        interval: 5000 // 5 seconds debounce
+        // Only enabled if we have content and we are not currently generating (to avoid partial state saves)
+        enabled: !!(projectName || userPrompt) && (pages.length > 0 || !!characterDNA) && !isGenerating,
+        interval: 3000 // 3 seconds debounce
     });
 
     // --- Actions ---

@@ -554,7 +554,14 @@ Generate the plan now.
     // ═══════════════════════════════════════════════════════════════════════════
 
     /**
-     * Expand a simple idea into a detailed, style-appropriate prompt
+     * Expand a simple idea into a detailed scene description.
+     * 
+     * IMPORTANT: This is a SCENE DESCRIPTION WRITER, not a prompt engineer.
+     * All technical coloring book instructions (line styles, constraints, etc.)
+     * are added later by buildPromptForGemini3() in prompts.ts.
+     * 
+     * This prevents double-instruction conflicts where both the enhancer
+     * AND the prompt assembler tell the image gen the same things differently.
      */
     async brainstormPrompt(
         rawPrompt: string,
@@ -563,10 +570,7 @@ Generate the plan now.
     ): Promise<string> {
         await this.ensureInitialized();
 
-        // Get specifications if context provided
-        const styleSpec = context?.style
-            ? STYLE_CHARACTERISTICS[context.style]
-            : null;
+        // Get specifications if context provided (used for CONTENT decisions only)
         const audienceSpec = context?.audience
             ? AUDIENCE_CHARACTERISTICS[context.audience]
             : null;
@@ -574,77 +578,111 @@ Generate the plan now.
             ? COMPLEXITY_CHARACTERISTICS[context.complexity]
             : null;
 
-        const contextBlock = context ? `
+        // Build context for CONTENT guidance only (no technical instructions)
+        const contentGuidance = context ? `
 ═══════════════════════════════════════════════════════════════════════════════
-CURRENT SETTINGS (Apply these to your output)
+CONTENT GUIDANCE (Use for scene appropriateness, NOT technical style)
 ═══════════════════════════════════════════════════════════════════════════════
-
-STYLE: ${context.style}
-${styleSpec ? `- Line Quality: ${styleSpec.lineDescription}
-- Best For: ${styleSpec.bestFor}
-- Avoid: ${styleSpec.avoid}` : ''}
 
 AUDIENCE: ${context.audience}
 ${audienceSpec ? `- Tone: ${audienceSpec.toneAdjustment}
-- Prohibited: ${audienceSpec.prohibited.join(', ')}` : ''}
+- Prohibited Content: ${audienceSpec.prohibited.join(', ')}
+- Required Characteristics: ${audienceSpec.required.join(', ')}` : ''}
 
-${complexitySpec ? `COMPLEXITY: ${context.complexity}
-- Detail Level: ${complexitySpec.detailLevel}
-- Regions: ${complexitySpec.regionCount}` : ''}
+${complexitySpec ? `SCENE DENSITY: ${context.complexity}
+- ${complexitySpec.detailLevel}
+- Approximately ${complexitySpec.regionCount}` : ''}
 
-${context.heroName ? `HERO: "${context.heroName}" should be the clear protagonist.` : ''}
+${context.heroName ? `PROTAGONIST: "${context.heroName}" should be the clear main character in the scene.` : ''}
+`.trim() : '';
 
-[AUDIENCE-SPECIFIC WORD LIMITS]:
-- Toddlers/Preschool: Maximum 30 words, ONE distinct subject
-- Kids: 40-50 words, medium complexity
-- Adults/Seniors: 60-75 words, can include texture and pattern details
-    `.trim() : '';
+        // Word limits based on audience and complexity
+        const wordLimits = audienceSpec
+            ? (context?.audience === 'toddlers' || context?.audience === 'preschool')
+                ? 'Maximum 30 words. Describe ONE clear subject.'
+                : (context?.audience === 'kids')
+                    ? 'Maximum 50 words. Medium scene complexity.'
+                    : 'Maximum 75 words. Rich scene detail allowed.'
+            : 'Maximum 60 words.';
 
         const systemInstruction = pageCount > 1
             ? `
-ROLE: Elite Prompt Engineer for Coloring Books (Multi-Page Collection).
-TASK: Transform the user's theme into a cohesive ${pageCount}-page collection prompt.
+ROLE: Scene Description Writer for a ${pageCount}-page illustrated collection.
+TASK: Transform the user's theme into vivid scene descriptions.
 
-${contextBlock}
+${contentGuidance}
 
-[COLORING BOOK ENGINEERING]:
-1. VARIETY: Ensure pages vary in composition (close-ups, wide shots, patterns)
-2. CONSISTENCY: Keep the "universe" rules consistent throughout
-3. CLARITY: Each scene must be distinct and printable as line art
+═══════════════════════════════════════════════════════════════════════════════
+YOUR JOB: DESCRIBE SCENES ONLY
+═══════════════════════════════════════════════════════════════════════════════
 
-[THINKING PROCESS]:
-1. Identify core theme and potential sub-themes
-2. Plan a progression (journey, season change, varying angles)
-3. Ensure each page adds something new
+OUTPUT: Pure visual descriptions of what appears in each scene.
+
+✅ INCLUDE:
+- What subjects/characters are in the scene
+- Their poses, expressions, actions
+- Composition (what's in foreground, background, focal point)
+- Setting and environment details
+- Objects and props
+
+❌ DO NOT INCLUDE (another system adds these):
+- Art style instructions ("coloring book", "line art", "black and white")
+- Technical requirements ("clean outlines", "closed shapes", "no shading")
+- Texture descriptions ("outlined sections", "distinct outlines")
+- Any mention of lines, strokes, or drawing technique
+- Negative instructions ("no color", "avoid grey")
+
+WORD LIMIT: ${wordLimits}
+
+VARIETY: Mix close-ups, medium shots, wide shots, and pattern compositions.
 
 OUTPUT FORMAT:
-"A ${pageCount}-page collection exploring [theme]: Page 1 - [scene]. Page 2 - [scene]. ..." etc.
+"Page 1: [scene description]. Page 2: [scene description]. ..." etc.
 
-Return ONLY the formatted collection prompt. No explanations.
-      `.trim()
+Return ONLY the scene descriptions. No explanations. No style instructions.
+`.trim()
             : `
-ROLE: Elite Prompt Engineer for Coloring Books (Single Page).
-TASK: Transform the user's simple idea into a professional image generation prompt.
+ROLE: Scene Description Writer.
+TASK: Transform a simple idea into a vivid, detailed scene description.
 
-${contextBlock}
+${contentGuidance}
 
-[COLORING BOOK ENGINEERING]:
-1. CLOSED SHAPES: Describe objects as having "distinct outlines". Avoid fog, mist, blur.
-2. COMPOSITION: Center the main subject. Clear separation between foreground/background.
-3. LIGHTING TRANSLATION: Don't describe "light" or "glow". Describe the LINES (radiating lines, sparkle shapes).
-4. TEXTURE TRANSLATION: Don't say "furry". Say "texture represented by outlined sections".
+═══════════════════════════════════════════════════════════════════════════════
+YOUR JOB: DESCRIBE THE SCENE ONLY
+═══════════════════════════════════════════════════════════════════════════════
 
-[THINKING PROCESS]:
-1. VISUALIZE the scene in black and white line art
-2. PHYSICS CHECK: Are objects floating? Are liquids behaving correctly?
-3. SIMPLIFY: Remove elements that rely on color to be understood
-4. DESCRIBE: Write the final prompt
+Think of yourself as a SCREENPLAY WRITER describing a shot, not a prompt engineer.
 
-Keep the core idea of: "${rawPrompt}"
-Focus on visual elements that translate well to black and white line art.
+✅ INCLUDE:
+- What is the main subject? Describe it vividly.
+- What pose/expression/action are they in?
+- What is the composition? (centered, off-center, close-up, wide shot)
+- What is in the foreground?
+- What is in the background?
+- What supporting elements or props are visible?
+- What is the setting/environment?
 
-Return ONLY the improved prompt. No explanations.
-      `.trim();
+❌ DO NOT INCLUDE (another system adds these later):
+- Art style instructions ("coloring book page", "line art", "illustration")
+- Technical requirements ("clean outlines", "closed shapes")
+- Texture descriptions ("outlined sections", "distinct outlines")
+- Line descriptions ("bold lines", "fine lines", "smooth curves")
+- Color mentions ("black and white", "no color", "pure white")
+- Shading mentions ("no shading", "no gradients")
+- Any negative instructions about what NOT to include
+
+PRESERVE USER INTENT:
+- Keep specific subjects the user mentioned (don't substitute)
+- Keep named characters or species exactly as stated
+- Keep explicit composition directions
+- Keep quantity/number specifications
+
+WORD LIMIT: ${wordLimits}
+
+INPUT: "${rawPrompt}"
+
+Return ONLY the enhanced scene description. No explanations. No technical instructions.
+`.trim();
 
         try {
             const response = await this.ai!.models.generateContent({
