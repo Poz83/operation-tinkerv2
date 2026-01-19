@@ -24,7 +24,11 @@ import { GoogleGenAI } from '@google/genai';
 import { GEMINI_TEXT_MODEL } from '../server/ai/gemini-client';
 import { getStoredApiKey } from '../lib/crypto';
 import type { CharacterDNA } from '../types';
-import { VALID_STYLE_IDS, VALID_AUDIENCE_IDS, type StyleId, type AudienceId } from './ColoringStudioService';
+import { TARGET_AUDIENCES, VISUAL_STYLES } from '../types';
+import type { StyleId, AudienceId } from '../server/ai/gemini-client';
+
+const VALID_STYLE_IDS = VISUAL_STYLES.map(s => s.id as StyleId);
+const VALID_AUDIENCE_IDS = TARGET_AUDIENCES.map(a => a.id as AudienceId);
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // AUDIENCE SAFETY RULES

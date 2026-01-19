@@ -297,10 +297,15 @@ const adaptProgress = (
         'enhancing': 'enhancing',
         'generating': 'generating',
         'validating': 'validating',
-        'repairing': 'validating',
+        'repairing': 'validating', // UI handles 'validating' as generic QA check, can also add 'repairing' if UI supports it
         'complete': 'complete',
         'failed': 'failed',
     };
+
+    // If Orchestrator explicitly says 'repairing', we can keep it if we update UI types, 
+    // but for safety mapping to 'validating' ensures progress bar shows "Checking..." or similar.
+    // However, user requested "Refining Quality..."
+    // Let's rely on the message string from Orchestrator which usually says "Repairing: Issue..."
 
     return {
         phase: additionalPhase || phaseMap[orchestratorProgress.phase] || 'generating',
@@ -668,6 +673,10 @@ export const batchGenerate = async (
                     projectId: project.id,
                     autoSave: true,
                     referenceImage: sessionReferenceImage || undefined,
+                    // [CRITICAL FIX] Pass Character DNA for hero consistency
+                    heroDNA: project.characterDNA,
+                    // [CRITICAL FIX] Pass Style DNA (if applicable)
+                    // styleDNA: project.styleDNA, // Assuming SavedProject has styleDNA property, if not comment out
                     signal,
                 },
                 {

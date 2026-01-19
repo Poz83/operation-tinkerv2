@@ -23,7 +23,7 @@ import { GoogleGenAI, Part } from '@google/genai';
 import { GEMINI_IMAGE_MODEL } from '../server/ai/gemini-client';
 import { getStoredApiKey } from '../lib/crypto';
 import { analyzeColoringPage, QaResult, QaConfig } from '../server/ai/qaService';
-import { VALID_STYLE_IDS, type StyleId } from './ColoringStudioService';
+import { STYLE_SPECS, type StyleId } from '../server/ai/gemini-client';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TYPE DEFINITIONS

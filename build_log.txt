@@ -1,0 +1,6 @@
+src/pages/Vault.tsx(90,38): error TS2345: Argument of type 'unknown[]' is not assignable to parameter of type 'string[]'.
+  Type 'unknown' is not assignable to type 'string'.
+src/services/HeroLabService.ts(27,10): error TS2305: Module '"./ColoringStudioService"' has no exported member 'VALID_STYLE_IDS'.
+src/services/HeroLabService.ts(27,27): error TS2305: Module '"./ColoringStudioService"' has no exported member 'VALID_AUDIENCE_IDS'.
+src/services/HeroLabService.ts(27,52): error TS2459: Module '"./ColoringStudioService"' declares 'StyleId' locally, but it is not exported.
+src/services/HeroLabService.ts(27,66): error TS2459: Module '"./ColoringStudioService"' declares 'AudienceId' locally, but it is not exported.

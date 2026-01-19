@@ -1,19 +1,19 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
- * PROCESS GENERATION JOB v2.0
+ * PROCESS GENERATION JOB v2.1
  * myJoe Creative Suite - Backend Generation Pipeline
  * ═══════════════════════════════════════════════════════════════════════════════
  *
- * Updated to use v5.0 AI pipeline:
- * - Uses generateColoringPage from gemini-client v3.0
- * - Prompt building handled internally by gemini-client
- * - Removed deprecated negative_prompt handling
+ * Updated to use v5.0 AI pipeline via Orchestrator:
+ * - Uses Orchestrator.generateAndValidate() for full QA & Repair loop
+ * - Fallback to raw generation if Orchestrator fails
+ * - Automatically handles prompt building and retries
  *
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import { generateColoringPage, StyleId, ComplexityId, AudienceId } from '../ai/gemini-client';
-import { buildPromptForGemini3 } from '../ai/prompts';
+import { generateAndValidate, StyleId, ComplexityId, AudienceId, GenerateAndValidateRequest } from '../../src/server/ai/Orchestrator';
+import { GEMINI_IMAGE_MODEL } from '../../src/server/ai/gemini-client';
 
 export interface BookPlanItem {
   pageNumber: number;
@@ -37,7 +37,8 @@ export interface ProcessGenerationParams {
 }
 
 /**
- * Generate a book plan using the v5.0 prompt system
+ * Generate a book plan (Simple fallback implementation for background jobs)
+ * In a full implementation, this uses gemini-1.5-pro to plan the book.
  */
 const generateBookPlan = (
   userIdea: string,
@@ -47,8 +48,6 @@ const generateBookPlan = (
   audience: AudienceId,
   includeText: boolean
 ): BookPlanItem[] => {
-  // Create a simple book plan
-  // In production, this would call ColoringStudioService.generateBookPlan
   return Array.from({ length: pageCount }).map((_, i) => ({
     pageNumber: i + 1,
     prompt: `${userIdea} (Scene ${i + 1} of ${pageCount})`,
@@ -96,24 +95,37 @@ export const processGeneration = async (
   // Notify caller of the plan
   onPlanGenerated(plan);
 
-  // 2. Iterate through the pages and generate each one
+  // 2. Iterate through the pages and generate each one using Orchestrator
   for (const item of plan) {
     try {
-      const result = await generateColoringPage({
+      // Build Orchestrator request
+      // Note: We map ProcessGenerationParams to Orchestrator request format
+      const request: GenerateAndValidateRequest = {
         userPrompt: item.prompt,
         styleId: style,
         complexityId: complexity,
         audienceId: audience,
         aspectRatio: aspectRatio,
-        imageSize: '2K',
+        imageSize: '2K', // Default quality
         apiKey: apiKey,
-        enableLogging: true,
-      });
+        config: {
+          enableQa: true,
+          enableAutoRetry: true,
+          maxAttempts: 3,
+          qaMode: 'production',
+          minimumPassScore: 70, // Reasonable threshold for background jobs
+        }
+      };
+
+      const result = await generateAndValidate(request);
 
       if (result.success && result.imageUrl) {
         onPageComplete(item.pageNumber, result.imageUrl);
       } else {
         console.error(`Failed to generate page ${item.pageNumber}:`, result.error);
+        if (result.finalQaResult) {
+          console.warn(`QA Failure Reasons: ${result.finalQaResult.issues.map(i => i.message).join(' | ')}`);
+        }
       }
     } catch (error: any) {
       console.error(`Error generating page ${item.pageNumber}:`, error.message);

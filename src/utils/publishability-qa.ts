@@ -39,7 +39,6 @@ export interface EvaluateOptions {
   complexity: string; // e.g., 'Very Simple' | 'Simple' | 'Moderate' | 'Intricate' | 'Extreme Detail'
   aspectRatio: string; // e.g., '1:1' or '3:4'
   maxAnalysisSize?: number; // default 512
-  allowsTextureShading?: boolean; // Botanical, Fantasy styles allow stippling/hatching
 }
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
@@ -263,8 +262,8 @@ export const evaluatePublishability = async (opts: EvaluateOptions): Promise<Pub
 
   const bandFail = band > 0.01; // >1% of margin band dirty
   const midFail = mid > (width * height * 0.01); // >1% midtones
-  // Texture-allowed styles (Botanical, Fantasy) get a higher speckle threshold
-  const speckleThreshold = opts.allowsTextureShading ? 0.15 : 0.10;
+  // Strict clean-line enforcement (aligned with v3.0 prompts) - Was 0.10/0.15
+  const speckleThreshold = 0.05;
   const speckleFail = speckles > speckleThreshold;
 
   const banding = complexityBands[opts.complexity] || complexityBands['Moderate'];

@@ -5,7 +5,7 @@
 */
 
 import { GoogleGenAI, Type } from '@google/genai';
-import { GEMINI_TEXT_MODEL } from '../server/ai/gemini-client';
+import { GEMINI_TEXT_MODEL } from '../src/server/ai/gemini-client';
 
 export interface BookPlanItem {
   pageNumber: number;
@@ -30,10 +30,10 @@ export class DirectPromptService {
     hasHeroRef: boolean,
     includeText: boolean
   ): Promise<BookPlanItem[]> {
-    
-    const textControlInstruction = includeText 
-        ? "TEXT CONTROL: IF `includeText` is TRUE: You MAY include text if the user's idea asks for it (e.g. 'A birthday card'). Set `requiresText` to true for those pages."
-        : "TEXT CONTROL: IF `includeText` is FALSE: You are STRICTLY FORBIDDEN from suggesting text. Set `requiresText` to false for ALL pages. Do not include words in the scene description.";
+
+    const textControlInstruction = includeText
+      ? "TEXT CONTROL: IF `includeText` is TRUE: You MAY include text if the user's idea asks for it (e.g. 'A birthday card'). Set `requiresText` to true for those pages."
+      : "TEXT CONTROL: IF `includeText` is FALSE: You are STRICTLY FORBIDDEN from suggesting text. Set `requiresText` to false for ALL pages. Do not include words in the scene description.";
 
     const systemInstruction = `
       ROLE: Creative Director for a professional coloring book series.

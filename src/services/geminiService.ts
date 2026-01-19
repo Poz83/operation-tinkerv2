@@ -15,14 +15,15 @@ export interface EnhanceContext {
 export const brainstormPrompt = async (
   prompt: string,
   pageCount: number = 1,
-  context?: EnhanceContext
+  context?: EnhanceContext,
+  apiKey?: string
 ): Promise<string> => {
   try {
-    // Retrieve BYOK key if available
-    const apiKey = await getStoredApiKey() || undefined;
+    // Use provided key or retrieve stored one
+    const validKey = apiKey || await getStoredApiKey() || undefined;
 
     // Lazy instantiate service with the specific key
-    const backendService = new ColoringStudioService(apiKey);
+    const backendService = new ColoringStudioService(validKey);
 
     // Pass pageCount and context for context-aware enhancement
     return await backendService.brainstormPrompt(prompt, pageCount, context ? {

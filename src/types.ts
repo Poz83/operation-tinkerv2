@@ -23,9 +23,6 @@ export const VISUAL_STYLES = [
   { id: 'Gothic', label: 'Gothic (Stained Glass)' },
   { id: 'Cozy', label: 'Cozy (Hygge)' },
   { id: 'Geometric', label: 'Geometric (Low Poly)' },
-  { id: 'Wildlife', label: 'Wildlife (Realistic)' },
-  { id: 'Floral', label: 'Floral (Pattern)' },
-  { id: 'Abstract', label: 'Abstract (Flow)' },
   { id: 'Realistic', label: 'Realistic (Fine Art)' }
 ];
 

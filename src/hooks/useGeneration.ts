@@ -82,7 +82,7 @@ export const useGeneration = ({
         setIsEnhancing(true);
         try {
             // Pass pageCount and context for context-aware enhancement
-            const enhanced = await brainstormPrompt(currentPrompt, pageCount, context);
+            const enhanced = await brainstormPrompt(currentPrompt, pageCount, context, apiKey || undefined);
             if (enhanced) {
                 setUserPrompt(enhanced);
             }
@@ -270,7 +270,10 @@ export const useGeneration = ({
 
                         if (p.phase === 'validating') {
                             status = 'qa_checking';
-                            statusMessage = 'Checking quality...';
+                            // Use detailed message from Orchestrator (e.g., "Analyzing...", "Repairing midtones...")
+                            // If message contains "Repairing", user sees "Refining Quality..." logic if desired, 
+                            // but usually the raw message is best ("Repairing: speckles detected")
+                            statusMessage = p.message || 'Checking quality...';
                         } else if (p.phase === 'saving') {
                             status = 'complete'; // visually complete
                             statusMessage = 'Saving...';

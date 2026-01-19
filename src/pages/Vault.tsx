@@ -75,7 +75,7 @@ export const Vault: React.FC = () => {
 
         if (window.confirm(`Are you sure you want to delete ${selectedIds.size} projects? This cannot be undone.`)) {
             // Optimistic UI Update
-            const idsToDelete = Array.from(selectedIds);
+            const idsToDelete = Array.from(selectedIds) as string[];
             const remainingProjects = projects.filter(p => !selectedIds.has(p.id));
 
             // 1. Update UI immediately

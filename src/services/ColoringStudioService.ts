@@ -21,60 +21,9 @@
 /// <reference types="vite/client" />
 
 import { GoogleGenAI, Type } from '@google/genai';
-import { GEMINI_TEXT_MODEL } from '../server/ai/gemini-client';
+import { GEMINI_TEXT_MODEL, StyleId, ComplexityId, AudienceId, STYLE_SPECS } from '../server/ai/gemini-client';
 import { getStoredApiKey } from '../lib/crypto';
 import type { StyleDNA } from '../types';
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// STYLE SPECIFICATIONS (Aligned with prompts-v5.0)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Valid style IDs - must match prompts-v5.0 exactly
- */
-export const VALID_STYLE_IDS = [
-    'Cozy Hand-Drawn',
-    'Bold & Easy',
-    'Kawaii',
-    'Whimsical',
-    'Cartoon',
-    'Botanical',
-    'Realistic',
-    'Geometric',
-    'Fantasy',
-    'Gothic',
-    'Mandala',
-    'Zentangle',
-] as const;
-
-export type StyleId = typeof VALID_STYLE_IDS[number];
-
-/**
- * Valid complexity IDs - must match prompts-v5.0 exactly
- */
-export const VALID_COMPLEXITY_IDS = [
-    'Very Simple',
-    'Simple',
-    'Moderate',
-    'Intricate',
-    'Extreme Detail',
-] as const;
-
-export type ComplexityId = typeof VALID_COMPLEXITY_IDS[number];
-
-/**
- * Valid audience IDs - must match prompts-v5.0 exactly
- */
-export const VALID_AUDIENCE_IDS = [
-    'toddlers',
-    'preschool',
-    'kids',
-    'teens',
-    'adults',
-    'seniors',
-] as const;
-
-export type AudienceId = typeof VALID_AUDIENCE_IDS[number];
 
 /**
  * Style characteristics for book planning
@@ -747,7 +696,7 @@ OUTPUT FORMAT (JSON only, no markdown)
   "whiteSpaceRatio": "[percentage, e.g. '40%']",
   "hasBorder": true/false,
   "borderStyle": "[thick-rounded|thin-rectangular|decorative|none]",
-  "styleFamily": "[MUST be one of: ${VALID_STYLE_IDS.join(', ')}]",
+  "styleFamily": "[MUST be one of: ${Object.keys(STYLE_SPECS).join(', ')}]",
   "temperature": [0.6-1.0],
   "promptFragment": "[2-3 sentences describing exact visual style for prompt injection]"
 }
@@ -824,11 +773,13 @@ RESPOND WITH JSON ONLY. No explanations.
                 try {
                     const parsed = JSON.parse(response.text) as StyleDNA;
 
-                    // Validate styleFamily is a valid ID
-                    if (parsed.styleFamily && !VALID_STYLE_IDS.includes(parsed.styleFamily as any)) {
+                    // Validate styleFamily is a valid ID from the known specs
+                    // We use Object.keys(STYLE_SPECS) to check validity
+                    const knownStyles = Object.keys(STYLE_SPECS);
+                    if (parsed.styleFamily && !knownStyles.includes(parsed.styleFamily)) {
                         console.warn(`Invalid styleFamily "${parsed.styleFamily}", defaulting to closest match`);
                         // Attempt to find closest match
-                        const closestMatch = VALID_STYLE_IDS.find(id =>
+                        const closestMatch = knownStyles.find(id =>
                             parsed.styleFamily?.toLowerCase().includes(id.toLowerCase()) ||
                             id.toLowerCase().includes(parsed.styleFamily?.toLowerCase() || '')
                         );
