@@ -19,13 +19,23 @@ export const HeroLabLaunchpad: React.FC = () => {
         async function loadProjects() {
             try {
                 setIsLoading(true);
-                const allProjects = await fetchUserProjects();
-                // Filter for Hero Lab projects (we'll need to ensure we save them with this type)
-                // For now, let's just show all to be safe or filter if we can distinguish
-                // In a real app we'd filter by tool_type = 'hero_lab'
-                // Assuming we'll add that property to saved projects soon.
-                const heroProjects = allProjects.filter(p => (p as any).toolType === 'hero_lab');
-                setProjects(heroProjects.sort((a, b) => b.updatedAt - a.updatedAt));
+
+                const processProjects = (allProjects: SavedProject[]) => {
+                    const heroProjects = allProjects.filter(p => (p as any).toolType === 'hero_lab');
+                    setProjects(heroProjects.sort((a, b) => b.updatedAt - a.updatedAt));
+                };
+
+                // 1. Cache First
+                const cached = await fetchUserProjects('cache-first');
+                if (cached.length > 0) {
+                    processProjects(cached);
+                    setIsLoading(false);
+                }
+
+                // 2. Network Update
+                const fresh = await fetchUserProjects('network-only');
+                processProjects(fresh);
+
             } catch (err) {
                 console.error('Failed to load heroes:', err);
             } finally {

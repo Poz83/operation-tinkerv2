@@ -21,15 +21,27 @@ export const Vault: React.FC = () => {
                 setError(null);
 
                 if (activeTab === 'projects') {
-                    const data = await fetchUserProjects();
-                    setProjects(data);
+                    // Manual SWR for Projects
+                    const cached = await fetchUserProjects('cache-first');
+                    if (cached.length > 0) {
+                        setProjects(cached);
+                        setIsLoading(false);
+                    }
+
+                    const fresh = await fetchUserProjects('network-only');
+                    setProjects(fresh);
                 } else {
+                    // References (Assume standard fetch for now, can optimize later)
                     const data = await fetchUserReferences();
                     setReferences(data);
                 }
             } catch (err) {
                 console.error('Failed to load data:', err);
-                setError('Failed to load data. Please try again.');
+                if (activeTab === 'projects' && projects.length === 0) {
+                    setError('Failed to load data. Please try again.');
+                } else if (activeTab !== 'projects') {
+                    setError('Failed to load data. Please try again.');
+                }
             } finally {
                 setIsLoading(false);
             }

@@ -15,12 +15,21 @@ export const StudioLaunchpad: React.FC = () => {
         async function loadProjects() {
             try {
                 setIsLoading(true);
-                const data = await fetchUserProjects();
-                // Sort by most recently updated
-                setProjects(data.sort((a, b) => b.updatedAt - a.updatedAt));
+                // 1. Cache First (Instant)
+                const cached = await fetchUserProjects('cache-first');
+                if (cached.length > 0) {
+                    setProjects(cached.sort((a, b) => b.updatedAt - a.updatedAt));
+                    setIsLoading(false); // Show content immediately
+                }
+
+                // 2. Network Update (Fresh)
+                const fresh = await fetchUserProjects('network-only');
+                setProjects(fresh.sort((a, b) => b.updatedAt - a.updatedAt));
             } catch (err) {
                 console.error('Failed to load projects:', err);
-                setError('Failed to load recent projects.');
+                if (projects.length === 0) {
+                    setError('Failed to load recent projects.');
+                }
             } finally {
                 setIsLoading(false);
             }

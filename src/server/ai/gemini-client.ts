@@ -585,7 +585,7 @@ Enhance this into a detailed scene description:
         systemInstruction: ENHANCER_SYSTEM_PROMPT,
         temperature: 0.8,
         maxOutputTokens: 200,
-      },
+      } as any,
     });
 
     if (signal?.aborted) {

@@ -8,6 +8,7 @@
 import { supabase } from '../lib/supabase';
 import type { SavedProject, ColoringPage } from '../types';
 import { uploadProjectImage, getSignedUrl, getSignedUrls } from './storageService';
+import { cacheProject, getCachedProject, cacheProjectList, getCachedProjectList, deleteCachedProject } from './offlineStore';
 
 // Type for the joined query result
 interface ProjectWithColoringData {
@@ -65,14 +66,39 @@ function generatePublicId(toolType?: string): string {
 
 /**
  * Fetch all projects for the current user
+ * Strategies:
+ * - 'network-only': Default behavior (current)
+ * - 'cache-first': Returns cache if available, then updates in background (requires UI handling of promise/callback, simplified here to just return cache if present for speed, trusting swr hooks or manual refresh)
+ * - 'stale-while-revalidate': (Not fully implemented in this simple promise return, but mimicking cache-first)
  */
-export async function fetchUserProjects(): Promise<SavedProject[]> {
+export async function fetchUserProjects(strategy: 'network-only' | 'cache-first' = 'network-only'): Promise<SavedProject[]> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
         console.warn('No authenticated user');
         return [];
     }
 
+    // 1. Try Cache
+    if (strategy === 'cache-first') {
+        const cached = await getCachedProjectList('user_projects');
+        if (cached && cached.length > 0) {
+            // Trigger background update? 
+            // For now, simpler: if we have cache, return it. 
+            // Caller is responsible for triggering a refresh if needed, 
+            // or we could fire a promise that resolves later... but that's complex without observables.
+            // Let's do: Return cache, but ALSO fire the network request to update cache for NEXT time.
+            fetchUserProjectsNetwork(user.id).catch(console.error);
+            return cached;
+        }
+    }
+
+    return fetchUserProjectsNetwork(user.id);
+}
+
+/**
+ * Internal network fetch for projects
+ */
+async function fetchUserProjectsNetwork(userId: string): Promise<SavedProject[]> {
     const { data, error } = await supabase
         .from('projects')
         .select(`
@@ -87,7 +113,7 @@ export async function fetchUserProjects(): Promise<SavedProject[]> {
             updated_at,
             tool_type
         `)
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .in('tool_type', ['coloring_studio', 'hero_lab'])
         .eq('is_archived', false)
         .order('updated_at', { ascending: false });
@@ -98,14 +124,37 @@ export async function fetchUserProjects(): Promise<SavedProject[]> {
     }
 
     // Map without pages (list view doesn't need full pages)
-    return (data as unknown as ProjectWithColoringData[]).map(r => mapDbToSavedProject(r));
+    const projects = (data as unknown as ProjectWithColoringData[]).map(r => mapDbToSavedProject(r));
+
+    // Update Cache
+    await cacheProjectList('user_projects', projects);
+
+    return projects;
 }
 
 /**
  * Fetch a single project by its public ID
  * Now also fetches and signs image URLs
  */
-export async function fetchProject(publicId: string): Promise<SavedProject | null> {
+export async function fetchProject(publicId: string, strategy: 'network-only' | 'cache-first' = 'network-only'): Promise<SavedProject | null> {
+
+    // 1. Try Cache
+    if (strategy === 'cache-first') {
+        const cached = await getCachedProject(publicId);
+        if (cached) {
+            // Background revalidate
+            fetchProjectNetwork(publicId).catch(console.error);
+            return cached;
+        }
+    }
+
+    return fetchProjectNetwork(publicId);
+}
+
+/**
+ * Internal network fetch for single project
+ */
+async function fetchProjectNetwork(publicId: string): Promise<SavedProject | null> {
     // 1. Fetch Project Data
     const { data: projectData, error } = await supabase
         .from('projects')
@@ -154,7 +203,6 @@ export async function fetchProject(publicId: string): Promise<SavedProject | nul
         return mapDbToSavedProject(projectData as unknown as ProjectWithColoringData);
     }
 
-    // 3. Convert DB Images to ColoringPages & Get Signed URLs
     // 3. Convert DB Images to ColoringPages & Get Signed URLs (Batch)
     const allImageKeys = (imagesData as DbImage[]).map(img => img.storage_path);
     const signedUrlsMap = await getSignedUrls(allImageKeys);
@@ -179,7 +227,6 @@ export async function fetchProject(publicId: string): Promise<SavedProject | nul
     pages.sort((a, b) => (a.pageIndex ?? 0) - (b.pageIndex ?? 0));
 
     // 4. Combine and return
-    // 4. Combine and return
     const project = mapDbToSavedProject(projectData as unknown as ProjectWithColoringData);
     project.pages = pages;
 
@@ -194,6 +241,9 @@ export async function fetchProject(publicId: string): Promise<SavedProject | nul
             }
         }
     }
+
+    // Update Cache
+    await cacheProject(project);
 
     return project;
 }
@@ -346,12 +396,18 @@ export async function saveProject(project: SavedProject): Promise<SavedProject> 
     }
 
     // Return updated project
-    return {
+    // Return updated project
+    const finalProject = {
         ...project,
         id: publicId,
         pages: updatedPages,
         updatedAt: Date.now()
     };
+
+    // Update Cache
+    await cacheProject(finalProject);
+
+    return finalProject;
 }
 
 /**
@@ -490,6 +546,9 @@ export async function deleteProject(publicId: string): Promise<void> {
         console.error('Error deleting project:', error);
         throw error;
     }
+
+    // Remove from cache
+    await deleteCachedProject(publicId);
 }
 
 export interface ReferenceImage {

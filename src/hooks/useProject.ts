@@ -178,7 +178,7 @@ export const useProject = (
 
             async function load() {
                 try {
-                    const proj = await fetchProject(urlProjectId!);
+                    const proj = await fetchProject(urlProjectId!, 'cache-first');
                     if (proj) {
                         handleLoadProject(proj);
                     } else {
