@@ -141,13 +141,13 @@ interface StyleSpec {
 const STYLE_SPECS: Record<StyleId, StyleSpec> = {
   'Cozy Hand-Drawn': {
     styleKeyword: 'hand-drawn coloring book illustration',
-    positiveDescription: 'warm inviting hand-drawn style with organic slightly wobbly lines suggesting handmade charm',
-    lineWeight: 'medium weight lines (0.5-1mm) consistent throughout',
+    positiveDescription: 'warm organic style with smooth handmade charm',
+    lineWeight: 'medium weight organic lines (0.8mm) with varying thickness',
     visualRequirements: [
-      'Clean outlined shapes only',
-      'Rounded corners on all objects',
-      'Every shape is a closed colorable region',
-      'Texture shown through shape variety not line patterns',
+      'Clean organic outlines',
+      'Rounded friendly shapes',
+      'Hand-drawn aesthetic but professional quality',
+      'Inviting compositions',
     ],
   },
   'Bold & Easy': {
@@ -292,10 +292,10 @@ const COMPLEXITY_SPECS: Record<ComplexityId, ComplexitySpec> = {
     detailLevel: 'Single iconic subject with minimal internal detail',
   },
   'Simple': {
-    regionRange: '10-25 colorable regions',
-    backgroundRule: 'Minimal background with simple ground line or basic element',
-    restAreaRule: 'At least 50% white space',
-    detailLevel: 'Main subject with 1-2 supporting elements',
+    regionRange: '15-30 large colorable regions',
+    backgroundRule: 'Clear background with essential context only',
+    restAreaRule: 'Balanced white space for visual clarity',
+    detailLevel: 'Focus on main subject with strong clear outlines',
   },
   'Moderate': {
     regionRange: '40-80 colorable regions',
@@ -385,30 +385,35 @@ const buildPrompt = (
   const complexitySpec = COMPLEXITY_SPECS[effectiveComplexity];
 
   // Build the prompt with constraints at END (Gemini 3 requirement)
+  // Build the prompt with constraints at END (Gemini 3 requirement)
+  // FIX: Inject Audience Guidance and Aspect Ratio Layout
   const prompt = `
-A high-quality ${styleSpec.styleKeyword}, ${styleSpec.positiveDescription}.
+A high-quality ${styleSpec.styleKeyword}, ${styleSpec.positiveDescription}. designed for ${audienceId} audience.
 
 SCENE: ${userPrompt}
 
+AUDIENCE GUIDANCE: ${audienceSpec.contentGuidance}
+
 STYLE: ${styleSpec.lineWeight}. ${styleSpec.visualRequirements.join('. ')}.
 
-COMPOSITION: ${complexitySpec.regionRange}. ${complexitySpec.backgroundRule}. ${complexitySpec.restAreaRule}. ${complexitySpec.detailLevel}. PRINT MARGINS: Keep main subjects within the CENTER 85% of the canvas, leaving at least 7% margin on all edges for print safety.
+COMPOSITION: ${complexitySpec.regionRange}. ${complexitySpec.backgroundRule}. ${complexitySpec.detailLevel}. 
+LAYOUT: Full-bleed composition filling the entire canvas. No borders. No frames. Direct 2D flat view.
 
-OUTPUT: A single high-contrast black and white coloring book page. Pure black lines on pure white background. Every area is a closed shape that can be colored in.
+OUTPUT: A single high-contrast black and white coloring book page. Pure black lines on pure white background.
 
-CRITICAL REQUIREMENTS - COLORING BOOK PAGE:
+CRITICAL REQUIREMENTS - PROFESSIONAL DIGITAL VECTOR ART:
 
-1. COLORS: Pure black lines on pure white ONLY. Zero grey. Zero gradients. Zero shading. Zero tints.
+1. DIGITAL INK: Pure black (#000000) lines on pure white (#FFFFFF) background. Vector quality. Sharp edges. No pixelation.
 
-2. LINES: Clean outlines only. Zero stippling (no dots). Zero hatching (no parallel shading lines). Zero cross-hatching. Zero sketchy lines. Zero decorative texture strokes.
+2. NO GREYSCALE: Zero shading. Zero gradients. Zero tints. Zero grey areas. This is strictly line art.
 
-3. TEXTURE AS SHAPES: Fur and hair as enclosed sections not strands. Fabric as outlined shapes not texture lines. Water as enclosed wave shapes not wavy lines. Wood as outlined planks not grain lines.
+3. CLEAN LINES: Solid continuous lines. No sketching. No disconnects. No "hairline" gaps.
 
-4. CLOSED REGIONS: Every area is a closed shape. All lines connect. No gaps. No open paths.
+4. CLOSED SHAPES: Every element must be a closed loop for coloring.
 
-5. NO FILLS: Zero solid black areas. Pupils are outlined circles. Dark areas are empty regions.
+5. NO "MOCKUP" ARTIFACTS: Do NOT draw paper, pencils, tables, or shadows. This is the raw digital image file, not a photo of a drawing.
 
-6. SINGLE IMAGE: One illustration filling canvas. Not a mockup. Not multiple images. Not a photo of paper.
+6. SINGLE MAIN IMAGE: One unified illustration.
 `.trim();
 
   return { prompt, effectiveComplexity };

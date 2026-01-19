@@ -394,7 +394,9 @@ PLANNING DIRECTIVES
 
 [THINKING PROCESS]:
 1. ANALYZE the user's idea and the audience constraints
-2. ADAPT the idea to match audience rules (e.g., "Haunted House" + "toddlers" → "Cute Pumpkin House")
+2. ADAPT the idea to match audience rules:
+   - IF AUDIENCE IS 'TEENS' OR 'ADULTS': Do NOT make it "cute" or "childish". Use sophisticated language, dynamic poses, and edgy/cool composition. Avoid words like "fluffy", "adorable", or "friendly".
+   - IF AUDIENCE IS 'TODDLERS' OR 'PRESCHOOL': Prioritize "cute", "friendly", "simple", and "safe".
 3. PLAN a narrative arc with beginning, middle, and end
 4. ENSURE variety: mix close-ups, medium shots, wide shots, and pattern pages
 5. VERIFY no two consecutive pages are too similar
