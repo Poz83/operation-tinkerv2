@@ -13,7 +13,7 @@
  * 5. Added support for 1K/2K/4K resolution selection
  *
  * ARCHITECTURE:
- * - Text Planning: Gemini 1.5 Pro (prompt enhancement)
+ * - Text Planning: Gemini 2.0 Flash (Dev Mode)
  * - Image Generation: Gemini 3 Pro Image (Nano Banana Pro)
  *
  * ═══════════════════════════════════════════════════════════════════════════════
@@ -27,11 +27,11 @@ import { Logger } from '../../lib/logger';
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /** Text model for planning/enhancement */
-export const GEMINI_TEXT_MODEL = 'gemini-1.5-pro';
+export const GEMINI_TEXT_MODEL = 'gemini-2.0-flash-exp';
 
 /** Image generation model */
 export const GEMINI_IMAGE_MODEL = 'gemini-3-pro-image-preview';
-export const GEMINI_FLASH_MODEL = 'gemini-2.5-flash-lite-preview';
+export const GEMINI_FLASH_MODEL = 'gemini-2.0-flash-exp';
 
 /** Alias for clarity */
 export const NANO_BANANA_PRO = GEMINI_IMAGE_MODEL;
@@ -613,7 +613,14 @@ Enhance this into a detailed scene description:
       throw new Error('Aborted');
     }
 
-    const enhancedPrompt = response.text?.trim() || userPrompt;
+    let enhancedPrompt = response.text?.trim() || userPrompt;
+
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // OPTIMIZATION: Color Safety Net (Gemini 2.0 Flash specific)
+    // The new model is smarter but hallucinates colors. We strictly scrub them here.
+    // ═══════════════════════════════════════════════════════════════════════════════
+    const colorBlocklist = /\b(red|blue|green|yellow|purple|orange|pink|brown|colored|colorful|shading|shaded|gradient|tinted|hued)\b/gi;
+    enhancedPrompt = enhancedPrompt.replace(colorBlocklist, '').replace(/\s+/g, ' ').trim();
 
     return {
       success: true,
