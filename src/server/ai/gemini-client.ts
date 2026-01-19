@@ -580,9 +580,9 @@ Enhance this into a detailed scene description:
 
     const response = await ai.models.generateContent({
       model: GEMINI_TEXT_MODEL,
-      systemInstruction: ENHANCER_SYSTEM_PROMPT,
       contents: userMessage,
       config: {
+        systemInstruction: ENHANCER_SYSTEM_PROMPT,
         temperature: 0.8,
         maxOutputTokens: 200,
       },

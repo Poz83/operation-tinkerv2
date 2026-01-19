@@ -446,7 +446,10 @@ export async function editAndValidate(
             {
                 mode: options.qaConfig?.mode || 'preview',
                 minimumPassScore: options.qaConfig?.minimumPassScore || 60,
-                ...options.qaConfig,
+                strictTextureCheck: options.qaConfig?.strictTextureCheck ?? true,
+                strictColorCheck: options.qaConfig?.strictColorCheck ?? true,
+                checkRestAreas: options.qaConfig?.checkRestAreas ?? true,
+                checkMockupFormat: options.qaConfig?.checkMockupFormat ?? true,
             }
         );
 

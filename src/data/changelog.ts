@@ -15,6 +15,20 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
     {
+        id: 'update-2026-01-19-stability',
+        date: '2026-01-19',
+        title: 'Database & Stability Overhaul',
+        version: 'v2.3.1',
+        type: 'patch',
+        description: 'Critical database optimizations and stability improvements for the Pro Micro plan.',
+        changes: [
+            'Database Optimization: Rewrote RLS policies to eliminate 500 errors and timeouts. Added 15+ missing indexes for faster load times.',
+            'Schema Hygiene: Resolved all Supabase Linter warnings (extensions, duplicate policies, permissive rules) for a clean bill of health.',
+            'Pro Micro Upgrade: Tuned database configuration for the new compute plan features.',
+            'Stability Fixes: Fixed Gemini API key issues (Error 400) and resolved TypeScript errors in the AI pipeline.'
+        ]
+    },
+    {
         id: 'update-2026-01-18-genai-v2',
         date: '2026-01-18',
         title: 'GenAI 2.0: Unified Intelligence',
