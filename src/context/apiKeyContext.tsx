@@ -76,6 +76,10 @@ export const ApiKeyProvider: React.FC<ApiKeyProviderProps> = ({ children }) => {
                         console.warn('Local key corrupted', e);
                         localStorage.removeItem(STORAGE_KEY);
                     }
+                } else if (!currentKey && import.meta.env.VITE_GEMINI_API_KEY?.startsWith('AIza')) {
+                    // Fallback to env variable if no local key
+                    currentKey = import.meta.env.VITE_GEMINI_API_KEY;
+                    setApiKeyState(currentKey);
                 }
 
                 // 2. Check Supabase for cloud backup

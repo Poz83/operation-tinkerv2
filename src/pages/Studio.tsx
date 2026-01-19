@@ -24,7 +24,7 @@ import { useGeneration } from '../hooks/useGeneration';
 import { DesignersTip } from '../components/DesignersTip';
 
 const App: React.FC = () => {
-  const { hasApiKey } = useApiKeyContext();
+  const { apiKey, hasApiKey } = useApiKeyContext();
   const [showApiKeyDialog, setShowApiKeyDialog] = useState(false);
   const toast = useToast();
   const { settings, toggleTheme } = useSettings();
@@ -162,7 +162,7 @@ const App: React.FC = () => {
   const userPromptSetterRef = useRef<((s: string) => void) | null>(null);
 
   const generation = useGeneration({
-    apiKey: hasApiKey ? 'valid' : null, // Hook just checks truthiness of apiKey usually or we pass check
+    apiKey: apiKey || null, // Pass actual key (even if from env/storage)
     validateApiKey,
     settings,
     showToast,

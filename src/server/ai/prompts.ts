@@ -226,14 +226,14 @@ interface ComplexitySpec {
 const COMPLEXITY_SPECS: Record<ComplexityId, ComplexitySpec> = {
   'Very Simple': {
     regionRange: '3-8 large colorable regions',
-    backgroundRule: 'Pure white background, no background elements',
-    restAreaRule: 'Entire background is white space',
+    backgroundRule: 'Pure white background for children; for adults add a simple decorative border frame',
+    restAreaRule: 'Children: entire background is white. Adults: border provides colorable content',
     detailLevel: 'Single iconic subject with minimal internal detail',
   },
   'Simple': {
     regionRange: '10-25 colorable regions',
-    backgroundRule: 'Minimal background (simple ground line or basic element)',
-    restAreaRule: 'At least 50% white space',
+    backgroundRule: 'Children: simple ground line. Adults: add decorative border frame with patterns',
+    restAreaRule: 'Children: 50% white space. Adults: reduce white space to 25% with border fill',
     detailLevel: 'Main subject with 1-2 supporting elements',
   },
   'Moderate': {
@@ -244,13 +244,13 @@ const COMPLEXITY_SPECS: Record<ComplexityId, ComplexitySpec> = {
   },
   'Intricate': {
     regionRange: '80-120 colorable regions',
-    backgroundRule: 'Detailed environment throughout',
+    backgroundRule: 'Detailed environment throughout with decorative elements filling any gaps',
     restAreaRule: 'Include 2-4 rest areas (minimum 10% of image)',
     detailLevel: 'Rich detailed scene with patterns and textures as shapes',
   },
   'Extreme Detail': {
     regionRange: '120-150+ colorable regions',
-    backgroundRule: 'Maximum detail throughout',
+    backgroundRule: 'Maximum detail throughout, edge-to-edge content',
     restAreaRule: 'Include 2-3 small rest areas for visual relief',
     detailLevel: 'Expert-level complexity with shapes within shapes',
   },
@@ -264,6 +264,8 @@ interface AudienceSpec {
   maxComplexity: ComplexityId;
   contentGuidance: string;
   toneGuidance: string;
+  /** How to fill the page - adults want edge-to-edge, children need simpler layouts */
+  pageFillStrategy: string;
 }
 
 const AUDIENCE_SPECS: Record<AudienceId, AudienceSpec> = {
@@ -271,31 +273,37 @@ const AUDIENCE_SPECS: Record<AudienceId, AudienceSpec> = {
     maxComplexity: 'Very Simple',
     contentGuidance: 'Single friendly recognizable object, extremely simple, no scary elements',
     toneGuidance: 'Friendly, cute, instantly recognizable',
+    pageFillStrategy: 'Center the main subject large on the page. Keep background completely white or with minimal elements. Big simple shapes are easier for small hands.',
   },
   'preschool': {
     maxComplexity: 'Simple',
     contentGuidance: 'Friendly characters and simple scenes, educational themes welcome',
     toneGuidance: 'Cheerful, simple, age-appropriate',
+    pageFillStrategy: 'Main subject should be large and centered. Simple background elements like ground, sky line, or basic shapes. Keep at least 40% white space.',
   },
   'kids': {
     maxComplexity: 'Moderate',
     contentGuidance: 'Fun engaging scenes, adventure themes, appropriate for ages 6-12',
     toneGuidance: 'Fun, exciting, imaginative',
+    pageFillStrategy: 'Fill the scene with interesting elements. Background should have colorable details. Keep some white space (20-30%) for rest areas.',
   },
   'teens': {
     maxComplexity: 'Intricate',
     contentGuidance: 'Stylish dynamic scenes, more sophisticated themes for ages 13-17',
     toneGuidance: 'Cool, stylish, dynamic',
+    pageFillStrategy: 'Fill most of the page with detailed content. Add decorative patterns or environmental details in background areas. Minimal white space (15%).',
   },
   'adults': {
     maxComplexity: 'Extreme Detail',
     contentGuidance: 'Sophisticated artistic designs for relaxation and meditation',
     toneGuidance: 'Artistic, meditative, sophisticated',
+    pageFillStrategy: 'FILL THE PAGE EDGE-TO-EDGE with colorable content. Add a decorative border frame around the main scene using patterns that match the style (geometric tiles, floral vines, organic shapes, or themed elements). The main scene occupies 60-70% center, with decorative border patterns filling remaining space. Minimal white space - every area should have something to color.',
   },
   'seniors': {
     maxComplexity: 'Moderate',
     contentGuidance: 'Clear visible designs, nostalgic themes, avoid tiny details',
     toneGuidance: 'Clear, nostalgic, relaxing',
+    pageFillStrategy: 'Fill the page but keep elements large and clearly defined. Use decorative borders with larger, simpler patterns. Avoid tiny intricate details in border areas.',
   },
 };
 
@@ -369,6 +377,9 @@ COMPOSITION:
 - ${effectiveComplexitySpec.restAreaRule}
 - ${effectiveComplexitySpec.detailLevel}
 - PRINT MARGINS: Keep main subjects within the CENTER 85% of the canvas. Leave breathing room at all edges (at least 7% margin on each side). Content too close to edges may be trimmed during printing.
+
+PAGE FILL STRATEGY (${audienceId} audience):
+${audienceSpec.pageFillStrategy}
 
 OUTPUT: A single black and white coloring book page illustration. Pure black lines on pure white background. Every area is a closed shape that can be colored in.
 

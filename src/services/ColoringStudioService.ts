@@ -309,7 +309,9 @@ export class ColoringStudioService {
      * Initialize or reinitialize with an API key
      */
     async initialize(apiKey?: string): Promise<void> {
-        const key = apiKey || await getStoredApiKey() || undefined;
+        // Check sources in order: 1. Passed arg, 2. Storage, 3. Env variable
+        const envKey = import.meta.env.VITE_GEMINI_API_KEY;
+        const key = apiKey || await getStoredApiKey() || (envKey && envKey.startsWith('AIza') ? envKey : undefined);
 
         if (!key) {
             console.warn('ColoringStudioService: No API key available');
