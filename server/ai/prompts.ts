@@ -1,298 +1,527 @@
 /**
- * @license
- * SPDX-License-Identifier: Apache-2.0
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * PROMPTS v5.0 — Optimized for Gemini 3 Pro Image (Nano Banana Pro)
+ * myJoe Creative Suite - Coloring Book Studio
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * KEY INSIGHTS FROM GOOGLE DOCUMENTATION:
+ * 
+ * 1. NEGATIVE PROMPTS ARE DEPRECATED in Imagen 3+ / Gemini 3 Pro Image
+ *    - We cannot use `negative_prompt` parameter
+ *    - All prohibitions must be IN the main prompt
+ *
+ * 2. CONSTRAINT PLACEMENT IS CRITICAL
+ *    - Gemini 3 may DROP constraints that appear too early
+ *    - Negative constraints (what NOT to do) must be at the END
+ *    - Core request + critical restrictions = FINAL LINE
+ *
+ * 3. PROMPT STRUCTURE (Google Recommended)
+ *    - Be precise and direct
+ *    - Use consistent structure (XML tags or Markdown)
+ *    - Define parameters explicitly
+ *    - Place constraints at the end
+ *
+ * 4. STYLE KEYWORDS MATTER
+ *    - "A sketch of..." vs "A painting of..." dramatically changes output
+ *    - "coloring book page" is a recognized style keyword
+ *    - Quality modifiers like "high-quality" affect output
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-// ============================================================================
-// 1. Type Definitions & Interfaces
-// ============================================================================
+// ═══════════════════════════════════════════════════════════════════════════════
+// STYLE DEFINITIONS
+// ═══════════════════════════════════════════════════════════════════════════════
 
-export interface StyleRule {
-  id: string;
-  label: string;
-  positivePrompt: string;
-  negativePrompt: string;
-  technicalDirectives: string;
-  isFloodFillFriendly: boolean;
+export type StyleId =
+  | 'Cozy Hand-Drawn'
+  | 'Bold & Easy'
+  | 'Kawaii'
+  | 'Whimsical'
+  | 'Cartoon'
+  | 'Botanical'
+  | 'Realistic'
+  | 'Geometric'
+  | 'Fantasy'
+  | 'Gothic'
+  | 'Mandala'
+  | 'Zentangle';
+
+export type ComplexityId =
+  | 'Very Simple'
+  | 'Simple'
+  | 'Moderate'
+  | 'Intricate'
+  | 'Extreme Detail';
+
+export type AudienceId =
+  | 'toddlers'
+  | 'preschool'
+  | 'kids'
+  | 'teens'
+  | 'adults'
+  | 'seniors';
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// STYLE SPECIFICATIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface StyleSpec {
+  /** Style keyword for Gemini to recognize */
+  styleKeyword: string;
+  /** Positive description of what we want */
+  positiveDescription: string;
+  /** Line weight description */
+  lineWeight: string;
+  /** Specific visual requirements */
+  visualRequirements: string[];
 }
 
-export interface ComplexityRule {
-  id: string;
-  label: string;
-  objectDensityInstruction: string;
-  lineWeightInstruction: string;
-  backgroundInstruction: string;
-  negativePrompt: string;
-}
-
-// ============================================================================
-// 2. The Ultimate Configuration Matrix (All 13 Styles)
-// ============================================================================
-
-export const STYLE_RULES: Record<string, StyleRule> = {
-  // --- 1. Bold & Easy ---
+const STYLE_SPECS: Record<StyleId, StyleSpec> = {
+  'Cozy Hand-Drawn': {
+    styleKeyword: 'hand-drawn coloring book illustration',
+    positiveDescription: 'warm, inviting hand-drawn style with organic slightly wobbly lines suggesting handmade charm',
+    lineWeight: 'medium weight lines (0.5-1mm), consistent throughout',
+    visualRequirements: [
+      'Clean outlined shapes only',
+      'Rounded corners on all objects',
+      'Every shape is a closed colorable region',
+      'Texture shown through shape variety, not line patterns',
+    ],
+  },
   'Bold & Easy': {
-    id: 'kawaii_bold',
-    label: 'Bold & Easy',
-    positivePrompt: `kawaii aesthetic, cute rounded vector illustration, thick uniform black outlines, simple geometric shapes, bold line art, mascot style, sticker art, clean white background, minimal detail, joyous expression, rounded corners, soft edges, children's book illustration style, Adobe Illustrator vector, no shading, flat 2D.`,
-    negativePrompt: `shading, gradients, greyscale, hatching, cross-hatching, stippling, sharp angles, scary, horror, intricate detail, thin lines, scratchy lines, distorted anatomy, noise, dithering, realism, sketch, rough sketch, texture, fur texture, dirty lines.`,
-    technicalDirectives: `Render with a simulated stroke width of 4px to 6px (Bold). Ensure all shapes are convex or simple concave. Maintain a minimum gap size of 5mm between lines. Enforce closed paths for all major shapes (Watertight). Add a white offset border around the main subject (Sticker cutline).`,
-    isFloodFillFriendly: true,
+    styleKeyword: 'simple bold outline coloring page',
+    positiveDescription: 'extremely simple bold-line coloring page suitable for young children, sticker-like aesthetic',
+    lineWeight: 'very thick uniform lines (4mm+)',
+    visualRequirements: [
+      'Maximum 30 colorable regions',
+      'Thick bold outlines only',
+      'Large simple shapes',
+      'No fine details whatsoever',
+    ],
   },
-
-  // --- 2. Kawaii ---
   'Kawaii': {
-    id: 'kawaii_classic',
-    label: 'Kawaii',
-    positivePrompt: `Japanese Kawaii mascot style, chibi proportions (1:1 head body), shimmering anime eyes, floating sparkles and bubbles, soft rounded vector shapes, marshmallow aesthetic, extremely cute, innocent expression, thick smooth ink lines.`,
-    negativePrompt: `realistic anatomy, scary, sharp edges, rough sketch, hatching, shading, grime, dirty, serious, aggressive.`,
-    technicalDirectives: `Use uniform rounded line caps. No sharp points. Eyes must be large and distinct.`,
-    isFloodFillFriendly: true,
+    styleKeyword: 'kawaii cute coloring page',
+    positiveDescription: 'adorable kawaii style with chibi proportions, all rounded soft shapes, cute friendly expressions',
+    lineWeight: 'thick smooth lines (3mm)',
+    visualRequirements: [
+      'All corners rounded (no sharp angles)',
+      'Large heads, small bodies (chibi)',
+      'Friendly smiling expressions',
+      'Soft bubble-like shapes',
+    ],
   },
-
-  // --- 3. Whimsical ---
   'Whimsical': {
-    id: 'whimsical_storybook',
-    label: 'Whimsical',
-    positivePrompt: `whimsical storybook illustration, hand-drawn dip pen style, playful distortion, floating elements, magical atmosphere, curling vines, swirling wind lines, soft organic shapes, fairy tale aesthetic, charming and gentle.`,
-    negativePrompt: `rigid geometry, mechanical lines, scary, horror, stiff, corporate vector, technical drawing, heavy black fills.`,
-    technicalDirectives: `Use variable line width (thick swells and thin tapers) to mimic a nib pen. Allow slight physics-defying placement of objects.`,
-    isFloodFillFriendly: true,
+    styleKeyword: 'whimsical fairy tale coloring book illustration',
+    positiveDescription: 'dreamy whimsical style with flowing graceful lines, elongated fairy-tale proportions',
+    lineWeight: 'variable flowing lines (0.5-1.5mm)',
+    visualRequirements: [
+      'Flowing curved lines',
+      'Elongated elegant proportions',
+      'Magical fairy-tale atmosphere',
+      'Sparkles as star shapes (not dots)',
+    ],
   },
-
-  // --- 4. Cartoon ---
   'Cartoon': {
-    id: 'cartoon_action',
-    label: 'Cartoon',
-    positivePrompt: `classic Saturday morning cartoon style, dynamic action lines, squash and stretch deformation, exaggerated facial expressions, distinct character silhouettes, energetic pose, clear vector outlines, western animation style.`,
-    negativePrompt: `static, stiff, realistic proportions, anime style, sketchy, rough, dirty lines, excessive detail, cross-hatching.`,
-    technicalDirectives: `Prioritize silhouette readability. Use 'Speed Lines' for motion. Lines should be uniform thickness vector strokes.`,
-    isFloodFillFriendly: true,
+    styleKeyword: 'cartoon coloring book page',
+    positiveDescription: 'clean dynamic cartoon style with clear bold outlines and expressive poses',
+    lineWeight: 'bold outlines (1.5-2mm) with thinner internal lines (0.5mm)',
+    visualRequirements: [
+      'Clear silhouettes',
+      'Expressive character poses',
+      'Strong line hierarchy',
+      'Clean professional outlines',
+    ],
   },
-
-  // --- 5. Botanical ---
   'Botanical': {
-    id: 'botanical_scientific',
-    label: 'Botanical',
-    positivePrompt: `vintage scientific botanical illustration, lithograph style, detailed leaf veins, elegant floral composition, organic line art, accurate plant anatomy, fine ink pen style, nature study, contour drawing.`,
-    negativePrompt: `cartoon, heavy outlines, sticker border, messy roots, dirt, dead leaves, low resolution, pixelated, marker style.`,
-    technicalDirectives: `Use 'Contour Hatching' (fine parallel lines) to show petal curvature. Lines should be very fine (0.5mm).`,
-    isFloodFillFriendly: false, // Hatching breaks flood fills
+    styleKeyword: 'botanical illustration coloring page',
+    positiveDescription: 'scientific botanical illustration style with precise fine linework showing plant anatomy',
+    lineWeight: 'fine precise lines (0.3-0.5mm)',
+    visualRequirements: [
+      'Accurate plant anatomy',
+      'Fine detailed linework',
+      'Each petal/leaf is a closed shape',
+      'Clean scientific illustration style',
+    ],
   },
-
-  // --- 6. Mandala ---
-  'Mandala': {
-    id: 'mandala_sacred',
-    label: 'Mandala',
-    positivePrompt: `complex mandala design, radial symmetry, sacred geometry, kaleidoscope pattern, precise vector geometry, mathematical patterns, tessellation, perfectly centered, circular composition, crisp architectural lines, meditative pattern.`,
-    negativePrompt: `asymmetry, organic chaos, broken lines, sketching, shading, grey fill, humans, faces, animals, text, signature, blurry lines, zentangle.`,
-    technicalDirectives: `Enforce strict 8-fold or 12-fold radial symmetry. Lines must be mechanically consistent weight. No solid black fills > 5%.`,
-    isFloodFillFriendly: true,
+  'Realistic': {
+    styleKeyword: 'realistic line art coloring page',
+    positiveDescription: 'realistic proportions rendered in clean uniform line art, Ligne Claire style',
+    lineWeight: 'uniform lines throughout (0.6mm)',
+    visualRequirements: [
+      'Accurate realistic proportions',
+      'Uniform line weight (no variation)',
+      'Clean contour lines only',
+      'No sketchy or loose lines',
+    ],
   },
-
-  // --- 7. Zentangle ---
-  'Zentangle': {
-    id: 'zentangle_meditative',
-    label: 'Zentangle',
-    positivePrompt: `zentangle art style, repetitive structured patterns, non-representational, intricate doodling, black ink on white tiles, "no mistakes" philosophy, organic tile-based patterns, meditative flow, detailed textures (orbs, hatching, woven lines), high contrast.`,
-    negativePrompt: `radial symmetry, mandala, rigid grid, perfectly straight lines, realism, shading, greyscale, coloring book outline only.`,
-    technicalDirectives: `Do NOT use radial symmetry. Fill distinct "strings" or zones with varying patterns. Hand-drawn feel but persistent line weight.`,
-    isFloodFillFriendly: true,
-  },
-
-  // --- 7. Fantasy ---
-  'Fantasy': {
-    id: 'fantasy_rpg',
-    label: 'Fantasy',
-    positivePrompt: `epic fantasy RPG bestiary art, Dungeons and Dragons manual style, woodcut influence, dramatic lighting rendered in ink, stippling texture for scales/armor, magical smoke swirls, runes, ancient artifacts, legendary atmosphere.`,
-    negativePrompt: `cute, kawaii, modern, sci-fi, smooth vector, flat, minimal, blurry, low detail, sketch.`,
-    technicalDirectives: `Use 'Stippling' (dots) for shading. Use broken lines for battle damage/wear. High detail density.`,
-    isFloodFillFriendly: false, // Stippling breaks fills
-  },
-
-  // --- 8. Gothic ---
-  'Gothic': {
-    id: 'gothic_stained_glass',
-    label: 'Gothic',
-    positivePrompt: `stained glass window design, thick bold leadlines, gothic arch frame, mosaic style, strong separation of regions, ecclesiastical art style, high contrast black ironwork lines, interconnected geometry, rose window aesthetics.`,
-    negativePrompt: `thin lines, open paths, floating elements, soft shading, watercolor style, gradient, transparency, photorealism.`,
-    technicalDirectives: `Simulate 'leading' with very thick lines (min 3px). Every region must be a closed polygon. Connect foreground to frame.`,
-    isFloodFillFriendly: true,
-  },
-
-  // --- 9. Cozy ---
-  'Cozy': {
-    id: 'cozy_hygge',
-    label: 'Cozy',
-    positivePrompt: `hygge aesthetic line art, warm and inviting, soft textures, heaped composition (books, blankets, tea), rounded organic shapes, relaxing atmosphere, home comfort, knitwear patterns, steam swirls.`,
-    negativePrompt: `cold, sharp, industrial, scary, aggressive, high energy, dynamic action, empty space.`,
-    technicalDirectives: `Use short curved strokes to suggest soft textures (wool, fur). Perspective should be intimate and close-up.`,
-    isFloodFillFriendly: true,
-  },
-
-  // --- 10. Geometric ---
   'Geometric': {
-    id: 'geometric_poly',
-    label: 'Geometric',
-    positivePrompt: `low poly vector art, sacred geometry, crystalline structures, straight lines only, sharp angles, polygonal mesh, mathematical aesthetic, abstract facets, digital constructivism.`,
-    negativePrompt: `curves, organic shapes, circles, messy sketch, hand-drawn, soft, blurry, realistic.`,
-    technicalDirectives: `STRICTLY NO CURVES. Use straight ruler lines only. Suggest depth via subdivision of triangles.`,
-    isFloodFillFriendly: true,
+    styleKeyword: 'geometric low-poly coloring page',
+    positiveDescription: 'geometric faceted style using ONLY straight lines, polygonal tessellated construction',
+    lineWeight: 'uniform straight lines (0.8mm)',
+    visualRequirements: [
+      'ONLY straight lines (absolutely no curves)',
+      'All shapes are polygons',
+      'Faceted crystalline aesthetic',
+      'Low-poly style construction',
+    ],
   },
-
-  // --- 11. Wildlife ---
-  'Wildlife': {
-    id: 'wildlife_naturalist',
-    label: 'Wildlife',
-    positivePrompt: `naturalist field sketch, realistic animal anatomy, detailed fur texture rendering, natural habitat background, respectful representation, wildlife conservation art, fine ink details.`,
-    negativePrompt: `cartoon, caricature, big head, anthropomorphic, clothes on animals, sticker style, simple outlines.`,
-    technicalDirectives: `Use directional strokes to mimic fur/feather flow. Proportions must be biologically accurate.`,
-    isFloodFillFriendly: false, // Fur texture usually breaks fills
+  'Fantasy': {
+    styleKeyword: 'fantasy coloring book illustration',
+    positiveDescription: 'epic fantasy illustration style with dramatic compositions and detailed world-building',
+    lineWeight: 'varied dramatic lines (0.5-2mm)',
+    visualRequirements: [
+      'Epic dramatic compositions',
+      'Detailed fantasy elements',
+      'Clear outlined regions',
+      'Rich imaginative details',
+    ],
   },
-
-  // --- 13. Floral ---
-  'Floral': {
-    id: 'floral_pattern',
-    label: 'Floral',
-    positivePrompt: `floral design, tossed layout, random distribution, organic visual flow, varied flower sizes, botanical line art, elegant sworls, garden aesthetic, nature pattern.`,
-    negativePrompt: `geometric grid, stiff repetition, dead space, single flower, heavy outlines.`,
-    technicalDirectives: `Use a 'Tossed Layout': distribute elements randomly regardless of orientation. Layer larger blooms first, then fill gaps with smaller elements.`,
-    isFloodFillFriendly: true,
+  'Gothic': {
+    styleKeyword: 'gothic dark art coloring page',
+    positiveDescription: 'elegant gothic style with ornate details, dramatic atmosphere, and intricate patterns',
+    lineWeight: 'fine to medium varied lines',
+    visualRequirements: [
+      'Ornate decorative details',
+      'Gothic architectural elements',
+      'Dramatic atmospheric composition',
+      'Intricate pattern work',
+    ],
   },
-
-  // --- 13. Abstract ---
-  'Abstract': {
-    id: 'abstract_flow',
-    label: 'Abstract',
-    positivePrompt: `abstract line art, fluid doodle style, zentangle patterns, non-representational, organic flow, repetitive textures (scales, dots, stripes), hypnotic curves, stream of consciousness drawing.`,
-    negativePrompt: `identifiable objects, faces, animals, buildings, rigid grid, straight lines.`,
-    technicalDirectives: `Focus on line quality and rhythm. Create distinct 'zones' for coloring with varied internal patterns.`,
-    isFloodFillFriendly: true,
+  'Mandala': {
+    styleKeyword: 'mandala coloring page',
+    positiveDescription: 'circular symmetrical mandala design with repeating geometric patterns radiating from center',
+    lineWeight: 'fine uniform lines (0.5mm)',
+    visualRequirements: [
+      'Perfect circular symmetry',
+      'Repeating radial patterns',
+      'Geometric precision',
+      'Meditative balanced design',
+    ],
   },
-
-  // --- Fallback ---
-  'default': {
-    id: 'standard',
-    label: 'Standard',
-    positivePrompt: 'clean black and white line art, coloring book page, high contrast, vector style, white background',
-    negativePrompt: 'shading, grayscale, gradients, noise, text, watermark, color',
-    technicalDirectives: 'Standard line weight, distinct shapes, closed paths where possible.',
-    isFloodFillFriendly: true
-  }
+  'Zentangle': {
+    styleKeyword: 'zentangle pattern coloring page',
+    positiveDescription: 'zentangle-inspired pattern art with structured repetitive patterns filling defined spaces',
+    lineWeight: 'fine uniform lines (0.5mm)',
+    visualRequirements: [
+      'Structured repeating patterns',
+      'Defined pattern boundaries',
+      'Meditative repetitive elements',
+      'Clean precise linework',
+    ],
+  },
 };
 
-// ============================================================================
-// 3. Complexity Rules (Cognitive Load)
-// ============================================================================
+// ═══════════════════════════════════════════════════════════════════════════════
+// COMPLEXITY SPECIFICATIONS
+// ═══════════════════════════════════════════════════════════════════════════════
 
-export const COMPLEXITY_RULES: Record<string, ComplexityRule> = {
+interface ComplexitySpec {
+  regionRange: string;
+  backgroundRule: string;
+  restAreaRule: string;
+  detailLevel: string;
+}
+
+const COMPLEXITY_SPECS: Record<ComplexityId, ComplexitySpec> = {
   'Very Simple': {
-    id: 'level_1',
-    label: 'Level 1: Minimalist (Bold)', // WAS: "Toddler"
-    objectDensityInstruction: `Generate EXACTLY ONE central object. It must occupy 60-80% of the canvas. NO background elements; pure white void.`,
-    lineWeightInstruction: `Use EXTREMELY THICK outlines (3mm-4mm). Min gap: 10mm.`,
-    backgroundInstruction: 'White void. No patterns.',
-    negativePrompt: `background, texture, tiny details, complex patterns, multiple objects, text, hatching.`,
+    regionRange: '3-8 large colorable regions',
+    backgroundRule: 'Pure white background, no background elements',
+    restAreaRule: 'Entire background is white space',
+    detailLevel: 'Single iconic subject with minimal internal detail',
   },
   'Simple': {
-    id: 'level_2',
-    label: 'Level 2: Simple (Clear)', // WAS: "Kids"
-    objectDensityInstruction: `Simple scene, 1-3 primary subjects. Basic background hints only. Clear separation.`,
-    lineWeightInstruction: `Bold outlines (2mm) for main subjects. Min gap: 5mm.`,
-    backgroundInstruction: `Simple contextual background. No pattern fills.`,
-    negativePrompt: `intricate, hatching, tiny stars, excessive foliage, abstract noise, grayscale shading.`,
+    regionRange: '10-25 colorable regions',
+    backgroundRule: 'Minimal background (simple ground line or basic element)',
+    restAreaRule: 'At least 50% white space',
+    detailLevel: 'Main subject with 1-2 supporting elements',
   },
   'Moderate': {
-    id: 'level_3',
-    label: 'Level 3: Moderate (Standard)', // WAS: "Teen"
-    objectDensityInstruction: `Full scene. Balance detailed focal points with resting space.`,
-    lineWeightInstruction: `Standard line weight (0.8mm - 1mm). Min gap: 2mm.`,
-    backgroundInstruction: `Complete scene. Background can be stylized.`,
-    negativePrompt: `vast empty spaces, messy sketch, blurry lines.`,
+    regionRange: '40-80 colorable regions',
+    backgroundRule: 'Full scene with foreground, midground, background',
+    restAreaRule: 'Include 4-6 clear white space rest areas (minimum 15% of image)',
+    detailLevel: 'Complete scene with balanced detail distribution',
   },
   'Intricate': {
-    id: 'level_4',
-    label: 'Level 4: Intricate (Detailed)', // WAS: "Adult Expert"
-    objectDensityInstruction: `High density. "Horror Vacui" style. Every part of canvas offers a coloring opportunity.`,
-    lineWeightInstruction: `Fine line work (0.3mm - 0.5mm). Min gap: 1mm.`,
-    backgroundInstruction: `Detailed background. Use patterns/flora to occupy negative space.`,
-    negativePrompt: `large empty areas, simple shapes, thick lines, blurry details.`,
+    regionRange: '80-120 colorable regions',
+    backgroundRule: 'Detailed environment throughout',
+    restAreaRule: 'Include 2-4 rest areas (minimum 10% of image)',
+    detailLevel: 'Rich detailed scene with patterns and textures as shapes',
   },
   'Extreme Detail': {
-    id: 'level_5',
-    label: 'Level 5: Masterwork (Micro)', // WAS: "Extreme Detail"
-    objectDensityInstruction: `Maximum density. Hidden object style. Microscopic details.`,
-    lineWeightInstruction: `Micro-fine lines (0.1mm - 0.2mm).`,
-    backgroundInstruction: `Fractal density. No white space larger than 1cm.`,
-    negativePrompt: `simple, easy, empty space, thick lines.`,
-  }
+    regionRange: '120-150+ colorable regions',
+    backgroundRule: 'Maximum detail throughout',
+    restAreaRule: 'Include 2-3 small rest areas for visual relief',
+    detailLevel: 'Expert-level complexity with shapes within shapes',
+  },
 };
 
-// ============================================================================
-// 4. System Prompt & Construction Helpers
-// ============================================================================
+// ═══════════════════════════════════════════════════════════════════════════════
+// AUDIENCE SPECIFICATIONS
+// ═══════════════════════════════════════════════════════════════════════════════
 
-export const SYSTEM_INSTRUCTION = `
-You are a professional Coloring Book Illustrator and Vector Artist.
-Your goal is to generate high-quality, black-and-white line art suitable for printing or digital coloring.
+interface AudienceSpec {
+  maxComplexity: ComplexityId;
+  contentGuidance: string;
+  toneGuidance: string;
+}
 
-STRICT RULES:
-1. OUTPUT MUST BE PURE BLACK AND WHITE. No gray, no shading, no gradients. (1-Bit Logic).
-2. LINES MUST BE CRISP AND CONTINUOUS. Emulate vector art.
-3. COMPOSITION MUST FIT THE CANVAS. Do not crop the main subject.
-4. RESPECT THE COMPLEXITY LEVEL.
-5. NO TEXT OR WATERMARKS (unless explicitly requested).
-6. TOPOLOGY: Ensure paths are closed loops (watertight) for digital flood fill where possible.
+const AUDIENCE_SPECS: Record<AudienceId, AudienceSpec> = {
+  'toddlers': {
+    maxComplexity: 'Very Simple',
+    contentGuidance: 'Single friendly recognizable object, extremely simple, no scary elements',
+    toneGuidance: 'Friendly, cute, instantly recognizable',
+  },
+  'preschool': {
+    maxComplexity: 'Simple',
+    contentGuidance: 'Friendly characters and simple scenes, educational themes welcome',
+    toneGuidance: 'Cheerful, simple, age-appropriate',
+  },
+  'kids': {
+    maxComplexity: 'Moderate',
+    contentGuidance: 'Fun engaging scenes, adventure themes, appropriate for ages 6-12',
+    toneGuidance: 'Fun, exciting, imaginative',
+  },
+  'teens': {
+    maxComplexity: 'Intricate',
+    contentGuidance: 'Stylish dynamic scenes, more sophisticated themes for ages 13-17',
+    toneGuidance: 'Cool, stylish, dynamic',
+  },
+  'adults': {
+    maxComplexity: 'Extreme Detail',
+    contentGuidance: 'Sophisticated artistic designs for relaxation and meditation',
+    toneGuidance: 'Artistic, meditative, sophisticated',
+  },
+  'seniors': {
+    maxComplexity: 'Moderate',
+    contentGuidance: 'Clear visible designs, nostalgic themes, avoid tiny details',
+    toneGuidance: 'Clear, nostalgic, relaxing',
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MAIN PROMPT BUILDER
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface BuildPromptOptions {
+  userPrompt: string;
+  styleId: StyleId;
+  complexityId: ComplexityId;
+  audienceId: AudienceId;
+  aspectRatio?: string;
+  imageSize?: '1K' | '2K' | '4K';
+}
+
+export interface BuildPromptResult {
+  prompt: string;
+  warnings: string[];
+}
+
+/**
+ * Build a prompt optimized for Gemini 3 Pro Image
+ * 
+ * Structure follows Google's recommendations:
+ * 1. Style keyword + positive description (what we want)
+ * 2. Subject/scene description (user's content)
+ * 3. Technical specifications (complexity, regions)
+ * 4. CRITICAL CONSTRAINTS AT THE END (what to avoid)
+ */
+export const buildPromptForGemini3 = (options: BuildPromptOptions): BuildPromptResult => {
+  const { userPrompt, styleId, complexityId, audienceId } = options;
+  const warnings: string[] = [];
+
+  // Get specifications
+  const styleSpec = STYLE_SPECS[styleId] || STYLE_SPECS['Cozy Hand-Drawn'];
+  const complexitySpec = COMPLEXITY_SPECS[complexityId] || COMPLEXITY_SPECS['Moderate'];
+  const audienceSpec = AUDIENCE_SPECS[audienceId] || AUDIENCE_SPECS['adults'];
+
+  // Check complexity vs audience max
+  const complexityOrder: ComplexityId[] = ['Very Simple', 'Simple', 'Moderate', 'Intricate', 'Extreme Detail'];
+  const requestedIdx = complexityOrder.indexOf(complexityId);
+  const maxIdx = complexityOrder.indexOf(audienceSpec.maxComplexity);
+
+  let effectiveComplexity = complexityId;
+  let effectiveComplexitySpec = complexitySpec;
+
+  if (requestedIdx > maxIdx) {
+    effectiveComplexity = audienceSpec.maxComplexity;
+    effectiveComplexitySpec = COMPLEXITY_SPECS[effectiveComplexity];
+    warnings.push(`Complexity reduced from "${complexityId}" to "${effectiveComplexity}" for ${audienceId} audience`);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // BUILD THE PROMPT
+  // Google recommends: positive description first, constraints at END
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  const prompt = `
+A high-quality ${styleSpec.styleKeyword}, ${styleSpec.positiveDescription}.
+
+SCENE: ${userPrompt}
+
+STYLE DETAILS:
+- ${styleSpec.lineWeight}
+- ${styleSpec.visualRequirements.join('\n- ')}
+
+COMPOSITION:
+- ${effectiveComplexitySpec.regionRange}
+- ${effectiveComplexitySpec.backgroundRule}
+- ${effectiveComplexitySpec.restAreaRule}
+- ${effectiveComplexitySpec.detailLevel}
+
+OUTPUT: A single black and white coloring book page illustration. Pure black lines on pure white background. Every area is a closed shape that can be colored in.
+
+═══════════════════════════════════════════════════════════════════════════════
+CRITICAL REQUIREMENTS (must follow exactly):
+═══════════════════════════════════════════════════════════════════════════════
+
+This is a COLORING BOOK PAGE. The output requirements are strict:
+
+1. COLORS: Pure black lines (#000000) on pure white background (#FFFFFF) ONLY.
+   - Zero grey tones
+   - Zero gradients
+   - Zero shading
+   - Zero color tints
+
+2. LINE WORK: Clean outlined shapes only.
+   - Zero stippling (no dots for texture)
+   - Zero hatching (no parallel lines for shading)
+   - Zero cross-hatching
+   - Zero sketchy overlapping lines
+   - Zero decorative texture strokes
+
+3. TEXTURE REPRESENTATION: Show texture through SHAPE OUTLINES only.
+   - Fur/hair = enclosed sections (not individual strands)
+   - Fabric/knit = outlined geometric shapes (not texture lines)
+   - Water/waves = enclosed wave shapes (not wavy lines)
+   - Wood = outlined planks (not grain lines)
+
+4. REGIONS: Every single area must be a CLOSED shape.
+   - All lines connect at endpoints
+   - No gaps in outlines
+   - No open paths
+   - Each region can be flood-filled
+
+5. FILLS: Zero solid black filled areas.
+   - Pupils = outlined circles
+   - Dark areas = empty regions to color dark
+   - No silhouettes
+
+6. FORMAT: Single illustration filling the canvas.
+   - Not a mockup or product photo
+   - Not multiple images
+   - Not a photo of paper on a table
+   - Just the line art illustration itself
+`.trim();
+
+  return {
+    prompt,
+    warnings,
+  };
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ALTERNATIVE: ULTRA-MINIMAL PROMPT
+// For when the verbose prompt isn't working
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const buildMinimalPrompt = (options: BuildPromptOptions): BuildPromptResult => {
+  const { userPrompt, styleId } = options;
+  const styleSpec = STYLE_SPECS[styleId] || STYLE_SPECS['Cozy Hand-Drawn'];
+
+  // Ultra-direct, minimal prompt
+  const prompt = `
+Black and white coloring book page, ${styleSpec.styleKeyword}.
+
+${userPrompt}
+
+Clean black outlines on white background. Closed shapes only. No shading, no grey, no stippling, no hatching, no texture marks. Every area is colorable.
+`.trim();
+
+  return {
+    prompt,
+    warnings: [],
+  };
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PROMPT VARIATIONS FOR A/B TESTING
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const buildPromptVariantA = (options: BuildPromptOptions): string => {
+  const { userPrompt, styleId } = options;
+  const styleSpec = STYLE_SPECS[styleId] || STYLE_SPECS['Cozy Hand-Drawn'];
+
+  // Variant A: Lead with "coloring book" keyword heavily
+  return `
+Coloring book page illustration. Black and white line art for coloring.
+
+${styleSpec.styleKeyword}: ${userPrompt}
+
+Style: ${styleSpec.positiveDescription}
+Lines: ${styleSpec.lineWeight}
+
+Pure black outlines on white. All shapes closed for coloring. No grey, no shading, no stippling, no hatching.
+`.trim();
+};
+
+export const buildPromptVariantB = (options: BuildPromptOptions): string => {
+  const { userPrompt, styleId } = options;
+  const styleSpec = STYLE_SPECS[styleId] || STYLE_SPECS['Cozy Hand-Drawn'];
+
+  // Variant B: Use "line art" terminology
+  return `
+Professional line art illustration for adult coloring book.
+
+Scene: ${userPrompt}
+
+Art style: ${styleSpec.positiveDescription}
+Line weight: ${styleSpec.lineWeight}
+
+Technical requirements: Black ink lines on white paper. Every shape is a closed outline ready to color. No fills, no shading, no grey tones, no dot textures, no line textures.
+`.trim();
+};
+
+export const buildPromptVariantC = (options: BuildPromptOptions): string => {
+  const { userPrompt, styleId } = options;
+  const styleSpec = STYLE_SPECS[styleId] || STYLE_SPECS['Cozy Hand-Drawn'];
+
+  // Variant C: Mimic successful coloring book description
+  return `
+${userPrompt}
+
+Rendered as a ${styleSpec.styleKeyword} in the style of a professional published coloring book. Clean black outlines on white background. ${styleSpec.lineWeight}. All areas are enclosed shapes designed to be colored with markers or pencils. No pre-filled areas, no shading effects, no grey tones.
+`.trim();
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// HELPER: ENHANCE USER PROMPT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Enhance a user's basic prompt with coloring-book-specific details
+ * Can be used with Gemini 1.5 Pro as the planner
+ */
+export const PROMPT_ENHANCER_SYSTEM = `
+You are a coloring book prompt engineer. Your job is to take a user's basic idea and expand it into a detailed scene description optimized for AI image generation.
+
+RULES:
+1. Keep the enhanced prompt under 100 words
+2. Focus on VISUAL elements only (shapes, objects, composition)
+3. Describe what IS there, not what isn't
+4. Include composition guidance (foreground, background, focal point)
+5. Add details that create interesting colorable regions
+6. Do NOT mention colors, shading, or textures
+7. Do NOT add technical instructions (the generation system adds those)
+
+EXAMPLE INPUT: "A dragon"
+EXAMPLE OUTPUT: "A friendly dragon sitting on a pile of treasure coins and gems. The dragon has large expressive eyes, curved horns, folded wings with membrane sections, and a long tail curling around the treasure. Medieval castle visible in background. Dragon is the focal point, centered, taking up 60% of frame."
+
+Now enhance this prompt:
 `;
 
-export const buildPrompt = (
-  userSubject: string,
-  styleKey: string,
-  complexityKey: string,
-  includeText: boolean = false
-): { fullPrompt: string; fullNegativePrompt: string } => {
-  const style = STYLE_RULES[styleKey] || STYLE_RULES['default'];
-  const complexity = COMPLEXITY_RULES[complexityKey] || COMPLEXITY_RULES['Moderate'];
+// ═══════════════════════════════════════════════════════════════════════════════
+// EXPORTS
+// ═══════════════════════════════════════════════════════════════════════════════
 
-  const typographyInstruction = includeText
-    ? `[TYPOGRAPHY RULES]: Include the text "${userSubject}" or related words styled as HOLLOW OUTLINES (bubble letters). Never fill with black.`
-    : ``;
-
-  // Filter out text-related negative prompts if text is requested
-  let negativePrompts = `
-    ${style.negativePrompt},
-    ${complexity.negativePrompt},
-    color, coloured, colorful, photography, photorealistic, 3d render,
-    gradient, shadow, ambient occlusion, greyscale, gray,
-    watermark, signature, logo, copyright,
-    blurry, low resolution, jpeg artifacts, pixelated,
-    cropped, out of frame, cut off,
-    distorted hands, bad anatomy, extra fingers, missing limbs, mutated,
-    messy, smudge, dirt, noise,
-    double lines, loose sketch, rough draft.
-  `;
-
-  if (!includeText) {
-    negativePrompts += ", text";
-  }
-
-  // Construct the narrative prompt using 'Chain of Thought' logic
-  const fullPrompt = `
-   [ROLE]: Professional Vector Illustrator.
-   [SUBJECT]: ${userSubject}
-   [STYLE]: ${style.label} - ${style.positivePrompt}
-   [COMPLEXITY]: ${complexity.label} - ${complexity.objectDensityInstruction}
-   [TECHNICAL_SPECS]: 
-      - Line Weight: ${complexity.lineWeightInstruction}
-      - Rendering: ${style.technicalDirectives}
-      - Background: ${complexity.backgroundInstruction}
-      - Topology: ${style.isFloodFillFriendly ? 'Closed Paths (Watertight)' : 'Open/Hatched Paths allowed'}
-   ${typographyInstruction}
-   [OUTPUT_FORMAT]: High-resolution line art, 300 DPI, Vector style, Black Ink on White Paper.
-  `.trim().replace(/\s+/g, ' ');
-
-  // Clean up negative prompt
-  const fullNegativePrompt = negativePrompts.trim().replace(/\s+/g, ' ');
-
-  return { fullPrompt, fullNegativePrompt };
-};
+export { STYLE_SPECS, COMPLEXITY_SPECS, AUDIENCE_SPECS };
