@@ -38,7 +38,7 @@ export interface ProcessGenerationParams {
 
 /**
  * Generate a book plan (Simple fallback implementation for background jobs)
- * In a full implementation, this uses gemini-1.5-pro to plan the book.
+ * In a full implementation, this uses gemini-2.0-flash-exp to plan the book.
  */
 const generateBookPlan = (
   userIdea: string,
