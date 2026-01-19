@@ -1,865 +1,659 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
- * GEMINI CLIENT v2.0 — Production-Grade Image Generation
- * Paint-by-Numbers SaaS
+ * GEMINI CLIENT v3.0 — Optimized for Gemini 3 Pro Image (Nano Banana Pro)
+ * myJoe Creative Suite - Coloring Book Studio
  * ═══════════════════════════════════════════════════════════════════════════════
  *
- * Features:
- * - Style-aware temperature selection
- * - Complexity-aware resolution mapping
- * - Pre-flight compatibility validation
- * - Exponential backoff retry for transient errors
- * - Structured request/response logging
- * - Unified orchestration function
- * - Cost estimation tracking
+ * KEY CHANGES FROM v2:
+ * 
+ * 1. REMOVED negative_prompt parameter (deprecated in Imagen 3+)
+ * 2. All constraints now embedded IN the main prompt at the END
+ * 3. Prompt structure follows Google's Gemini 3 recommendations
+ * 4. Temperature kept at 1.0 (Google recommended for Gemini 3)
+ * 5. Added support for 1K/2K/4K resolution selection
+ *
+ * ARCHITECTURE:
+ * - Text Planning: Gemini 1.5 Pro (prompt enhancement)
+ * - Image Generation: Gemini 3 Pro Image (Nano Banana Pro)
  *
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import { GoogleGenAI, Part } from '@google/genai';
-import {
-  buildPrompt,
-  BuildPromptResult,
-  validateCombination,
-  STYLE_RULES,
-  SYSTEM_INSTRUCTION
-} from './prompts';
-import { getStoredApiKey } from '../../lib/crypto';
-import { CharacterDNA, StyleDNA } from '../../types';
+import { GoogleGenAI } from '@google/genai';
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// CONSTANTS & CONFIGURATION
+// MODEL CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export const GEMINI_TEXT_MODEL = 'gemini-2.0-flash-001';
-export const GEMINI_IMAGE_MODEL = 'gemini-3-pro-image-preview'; // Nano Banana Pro
+/** Text model for planning/enhancement */
+export const GEMINI_TEXT_MODEL = 'gemini-1.5-pro';
 
-/** Retry configuration for transient errors */
-const RETRY_CONFIG = {
-  maxRetries: 3,
-  baseDelayMs: 1000,
-  maxDelayMs: 10000,
-  retryableStatusCodes: [429, 503, 500],
-};
+/** Image generation model */
+export const GEMINI_IMAGE_MODEL = 'gemini-3-pro-image-preview';
 
-/** Resolution tiers mapped to complexity */
-const COMPLEXITY_RESOLUTION_MAP: Record<string, '1K' | '2K' | '4K'> = {
-  'Very Simple': '1K',
-  'Simple': '1K',
-  'Moderate': '2K',
-  'Intricate': '2K',
-  'Extreme Detail': '4K',
-};
-
-/** Estimated cost per generation (for tracking/budgeting) */
-const ESTIMATED_COST_PER_GENERATION: Record<string, number> = {
-  '1K': 0.02,
-  '2K': 0.04,
-  '4K': 0.08,
-};
+/** Alias for clarity */
+export const NANO_BANANA_PRO = GEMINI_IMAGE_MODEL;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TYPE DEFINITIONS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export interface GenerateImageOptions {
-  prompt: string;
-  negativePrompt?: string;
-  referenceImage?: { base64: string; mimeType: string };
-  aspectRatio: string;
-  resolution?: '1K' | '2K' | '4K';
-  width?: number;
-  height?: number;
-  temperature?: number;
-  signal?: AbortSignal;
-  apiKey?: string;
-  /** Enable detailed logging for debugging */
-  enableLogging?: boolean;
-  /** Request ID for correlation */
-  requestId?: string;
-}
+export type StyleId =
+  | 'Cozy Hand-Drawn'
+  | 'Bold & Easy'
+  | 'Kawaii'
+  | 'Whimsical'
+  | 'Cartoon'
+  | 'Botanical'
+  | 'Realistic'
+  | 'Geometric'
+  | 'Fantasy'
+  | 'Gothic'
+  | 'Mandala'
+  | 'Zentangle';
 
-export interface GenerateImageResult {
-  imageUrl: string | null;
-  error?: string;
-  /** Metadata about the generation */
-  metadata?: GenerationMetadata;
-}
+export type ComplexityId =
+  | 'Very Simple'
+  | 'Simple'
+  | 'Moderate'
+  | 'Intricate'
+  | 'Extreme Detail';
 
-export interface GenerationMetadata {
-  requestId: string;
-  model: string;
-  resolution: '1K' | '2K' | '4K';
-  temperature: number;
-  estimatedCost: number;
-  durationMs: number;
-  retryCount: number;
-  promptTokenEstimate: number;
-  timestamp: string;
-}
+export type AudienceId =
+  | 'toddlers'
+  | 'preschool'
+  | 'kids'
+  | 'teens'
+  | 'adults'
+  | 'seniors';
 
-/** Unified input for the orchestrated generation function */
-export interface ColoringPageRequest {
-  /** User's natural language description */
+export type ImageSize = '1K' | '2K' | '4K';
+
+export interface GenerateImageRequest {
+  /** User's scene description */
   userPrompt: string;
-  /** Visual style ID (e.g., 'Bold & Easy', 'Botanical') */
-  styleId: string;
+  /** Visual style */
+  styleId: StyleId;
   /** Complexity level */
-  complexityId: string;
-  /** Target audience ID */
-  audienceId: string;
-  /** Aspect ratio for output */
-  aspectRatio: string;
-  /** Whether the prompt contains text to render */
-  requiresText?: boolean;
-  /** Optional hero character DNA for consistency */
-  heroDNA?: CharacterDNA;
-  /** Optional style DNA from reference image */
-  styleDNA?: StyleDNA | null;
-  /** Optional reference image for style transfer */
-  referenceImage?: { base64: string; mimeType: string };
-  /** Abort signal for cancellation */
+  complexityId: ComplexityId;
+  /** Target audience */
+  audienceId: AudienceId;
+  /** Aspect ratio (e.g., '1:1', '3:4', '4:3', '9:16', '16:9') */
+  aspectRatio?: string;
+  /** Output resolution */
+  imageSize?: ImageSize;
+  /** API key */
+  apiKey: string;
+  /** Abort signal */
   signal?: AbortSignal;
-  /** Direct API key (bypasses stored key lookup) */
-  apiKey?: string;
   /** Enable verbose logging */
   enableLogging?: boolean;
 }
 
-export interface ColoringPageResult {
-  /** The generated image as a data URL */
+export interface GenerateImageResult {
+  success: boolean;
   imageUrl: string | null;
-  /** Error message if generation failed */
   error?: string;
-  /** The full prompt that was sent to Gemini */
-  fullPrompt: string;
-  /** The negative prompt used */
-  negativePrompt: string;
-  /** Compatibility validation results */
-  compatibility: BuildPromptResult['compatibility'];
-  /** Hero validation results (if applicable) */
-  heroValidation: BuildPromptResult['heroValidation'];
-  /** Final resolved parameters after compatibility adjustments */
-  resolvedParams: BuildPromptResult['resolvedParams'];
-  /** Generation metadata for logging/analytics */
-  metadata?: GenerationMetadata;
+  promptUsed: string;
+  durationMs: number;
+  metadata: {
+    requestId: string;
+    model: string;
+    imageSize: ImageSize;
+    aspectRatio: string;
+  };
 }
 
-/** Structured log entry for analytics */
-export interface GenerationLogEntry {
-  requestId: string;
-  timestamp: string;
-  level: 'info' | 'warn' | 'error';
-  phase: 'validation' | 'prompt_build' | 'api_call' | 'retry' | 'complete' | 'error';
-  message: string;
-  data?: Record<string, unknown>;
+export interface EnhancePromptRequest {
+  /** User's basic prompt */
+  userPrompt: string;
+  /** Visual style for context */
+  styleId: StyleId;
+  /** Complexity for detail guidance */
+  complexityId: ComplexityId;
+  /** Audience for tone */
+  audienceId: AudienceId;
+  /** API key */
+  apiKey: string;
+  /** Abort signal */
+  signal?: AbortSignal;
+}
+
+export interface EnhancePromptResult {
+  success: boolean;
+  enhancedPrompt: string;
+  error?: string;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// LOGGING INFRASTRUCTURE
+// STYLE SPECIFICATIONS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-type LogCallback = (entry: GenerationLogEntry) => void;
+interface StyleSpec {
+  styleKeyword: string;
+  positiveDescription: string;
+  lineWeight: string;
+  visualRequirements: string[];
+}
 
-let globalLogCallback: LogCallback | null = null;
+const STYLE_SPECS: Record<StyleId, StyleSpec> = {
+  'Cozy Hand-Drawn': {
+    styleKeyword: 'hand-drawn coloring book illustration',
+    positiveDescription: 'warm inviting hand-drawn style with organic slightly wobbly lines suggesting handmade charm',
+    lineWeight: 'medium weight lines (0.5-1mm) consistent throughout',
+    visualRequirements: [
+      'Clean outlined shapes only',
+      'Rounded corners on all objects',
+      'Every shape is a closed colorable region',
+      'Texture shown through shape variety not line patterns',
+    ],
+  },
+  'Bold & Easy': {
+    styleKeyword: 'simple bold outline coloring page',
+    positiveDescription: 'extremely simple bold-line coloring page with sticker-like aesthetic',
+    lineWeight: 'very thick uniform lines (4mm minimum)',
+    visualRequirements: [
+      'Maximum 30 large colorable regions',
+      'Thick bold outlines only',
+      'Large simple shapes',
+      'Absolutely no fine details',
+    ],
+  },
+  'Kawaii': {
+    styleKeyword: 'kawaii cute coloring page',
+    positiveDescription: 'adorable kawaii style with chibi proportions and soft rounded shapes',
+    lineWeight: 'thick smooth lines (3mm)',
+    visualRequirements: [
+      'All corners rounded with no sharp angles',
+      'Large heads small bodies (chibi proportions)',
+      'Friendly smiling expressions',
+      'Soft bubble-like shapes',
+    ],
+  },
+  'Whimsical': {
+    styleKeyword: 'whimsical fairy tale coloring book illustration',
+    positiveDescription: 'dreamy whimsical style with flowing graceful lines and fairy-tale proportions',
+    lineWeight: 'variable flowing lines (0.5-1.5mm)',
+    visualRequirements: [
+      'Flowing curved lines',
+      'Elongated elegant proportions',
+      'Magical fairy-tale atmosphere',
+      'Sparkles as outlined star shapes not dots',
+    ],
+  },
+  'Cartoon': {
+    styleKeyword: 'cartoon coloring book page',
+    positiveDescription: 'clean dynamic cartoon style with bold outlines and expressive poses',
+    lineWeight: 'bold outlines (1.5-2mm) with thinner internal lines (0.5mm)',
+    visualRequirements: [
+      'Clear silhouettes',
+      'Expressive character poses',
+      'Strong line hierarchy',
+      'Clean professional outlines',
+    ],
+  },
+  'Botanical': {
+    styleKeyword: 'botanical illustration coloring page',
+    positiveDescription: 'scientific botanical illustration style with precise fine linework',
+    lineWeight: 'fine precise lines (0.3-0.5mm)',
+    visualRequirements: [
+      'Accurate plant anatomy',
+      'Fine detailed linework',
+      'Each petal and leaf is a closed shape',
+      'Clean scientific illustration style',
+    ],
+  },
+  'Realistic': {
+    styleKeyword: 'realistic line art coloring page Ligne Claire style',
+    positiveDescription: 'realistic proportions in clean uniform line art',
+    lineWeight: 'uniform lines throughout (0.6mm)',
+    visualRequirements: [
+      'Accurate realistic proportions',
+      'Uniform line weight with no variation',
+      'Clean contour lines only',
+      'No sketchy or loose lines',
+    ],
+  },
+  'Geometric': {
+    styleKeyword: 'geometric low-poly coloring page',
+    positiveDescription: 'geometric faceted style using ONLY straight lines with polygonal construction',
+    lineWeight: 'uniform straight lines (0.8mm)',
+    visualRequirements: [
+      'ONLY straight lines with absolutely no curves',
+      'All shapes are polygons',
+      'Faceted crystalline aesthetic',
+      'Low-poly tessellated construction',
+    ],
+  },
+  'Fantasy': {
+    styleKeyword: 'fantasy coloring book illustration',
+    positiveDescription: 'epic fantasy illustration style with dramatic compositions',
+    lineWeight: 'varied dramatic lines (0.5-2mm)',
+    visualRequirements: [
+      'Epic dramatic compositions',
+      'Detailed fantasy elements',
+      'Clear outlined regions',
+      'Rich imaginative details',
+    ],
+  },
+  'Gothic': {
+    styleKeyword: 'gothic dark art coloring page',
+    positiveDescription: 'elegant gothic style with ornate details and dramatic atmosphere',
+    lineWeight: 'fine to medium varied lines',
+    visualRequirements: [
+      'Ornate decorative details',
+      'Gothic architectural elements',
+      'Dramatic atmospheric composition',
+      'Intricate pattern work as outlined shapes',
+    ],
+  },
+  'Mandala': {
+    styleKeyword: 'mandala coloring page',
+    positiveDescription: 'circular symmetrical mandala with repeating geometric patterns',
+    lineWeight: 'fine uniform lines (0.5mm)',
+    visualRequirements: [
+      'Perfect circular symmetry',
+      'Repeating radial patterns',
+      'Geometric precision',
+      'Meditative balanced design',
+    ],
+  },
+  'Zentangle': {
+    styleKeyword: 'zentangle pattern coloring page',
+    positiveDescription: 'zentangle-inspired art with structured repetitive patterns',
+    lineWeight: 'fine uniform lines (0.5mm)',
+    visualRequirements: [
+      'Structured repeating patterns',
+      'Defined pattern boundaries',
+      'Meditative repetitive elements',
+      'Clean precise linework',
+    ],
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// COMPLEXITY SPECIFICATIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface ComplexitySpec {
+  regionRange: string;
+  backgroundRule: string;
+  restAreaRule: string;
+  detailLevel: string;
+}
+
+const COMPLEXITY_SPECS: Record<ComplexityId, ComplexitySpec> = {
+  'Very Simple': {
+    regionRange: '3-8 large colorable regions',
+    backgroundRule: 'Pure white background with no background elements',
+    restAreaRule: 'Entire background is white space',
+    detailLevel: 'Single iconic subject with minimal internal detail',
+  },
+  'Simple': {
+    regionRange: '10-25 colorable regions',
+    backgroundRule: 'Minimal background with simple ground line or basic element',
+    restAreaRule: 'At least 50% white space',
+    detailLevel: 'Main subject with 1-2 supporting elements',
+  },
+  'Moderate': {
+    regionRange: '40-80 colorable regions',
+    backgroundRule: 'Full scene with foreground midground and background',
+    restAreaRule: 'Include 4-6 clear white space rest areas covering minimum 15% of image',
+    detailLevel: 'Complete scene with balanced detail distribution',
+  },
+  'Intricate': {
+    regionRange: '80-120 colorable regions',
+    backgroundRule: 'Detailed environment throughout',
+    restAreaRule: 'Include 2-4 rest areas covering minimum 10% of image',
+    detailLevel: 'Rich detailed scene with patterns as shapes',
+  },
+  'Extreme Detail': {
+    regionRange: '120-150+ colorable regions',
+    backgroundRule: 'Maximum detail throughout',
+    restAreaRule: 'Include 2-3 small rest areas for visual relief',
+    detailLevel: 'Expert-level complexity with shapes within shapes',
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AUDIENCE SPECIFICATIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface AudienceSpec {
+  maxComplexity: ComplexityId;
+  contentGuidance: string;
+}
+
+const AUDIENCE_SPECS: Record<AudienceId, AudienceSpec> = {
+  'toddlers': {
+    maxComplexity: 'Very Simple',
+    contentGuidance: 'Single friendly recognizable object, extremely simple, no scary elements',
+  },
+  'preschool': {
+    maxComplexity: 'Simple',
+    contentGuidance: 'Friendly characters and simple scenes, educational themes welcome',
+  },
+  'kids': {
+    maxComplexity: 'Moderate',
+    contentGuidance: 'Fun engaging scenes, adventure themes, appropriate for ages 6-12',
+  },
+  'teens': {
+    maxComplexity: 'Intricate',
+    contentGuidance: 'Stylish dynamic scenes for ages 13-17',
+  },
+  'adults': {
+    maxComplexity: 'Extreme Detail',
+    contentGuidance: 'Sophisticated artistic designs for relaxation',
+  },
+  'seniors': {
+    maxComplexity: 'Moderate',
+    contentGuidance: 'Clear visible designs, nostalgic themes, avoid tiny details',
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PROMPT BUILDER
+// ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Register a global log callback for analytics/monitoring
- * @example
- * setLogCallback((entry) => {
- *   analytics.track('gemini_generation', entry);
- *   if (entry.level === 'error') Sentry.captureMessage(entry.message);
- * });
+ * Build a prompt optimized for Gemini 3 Pro Image
+ * 
+ * STRUCTURE (per Google's Gemini 3 recommendations):
+ * 1. Style keyword + positive description (what we want)
+ * 2. Scene description (user content)
+ * 3. Technical specifications
+ * 4. CRITICAL CONSTRAINTS AT THE END (most important!)
  */
-export const setLogCallback = (callback: LogCallback | null): void => {
-  globalLogCallback = callback;
-};
+const buildPrompt = (
+  userPrompt: string,
+  styleId: StyleId,
+  complexityId: ComplexityId,
+  audienceId: AudienceId
+): { prompt: string; effectiveComplexity: ComplexityId } => {
 
-const log = (
-  requestId: string,
-  level: GenerationLogEntry['level'],
-  phase: GenerationLogEntry['phase'],
-  message: string,
-  data?: Record<string, unknown>,
-  enableLogging = false
-): void => {
-  const entry: GenerationLogEntry = {
-    requestId,
-    timestamp: new Date().toISOString(),
-    level,
-    phase,
-    message,
-    data,
-  };
+  const styleSpec = STYLE_SPECS[styleId];
+  const audienceSpec = AUDIENCE_SPECS[audienceId];
 
-  // Always call global callback if registered
-  if (globalLogCallback) {
-    globalLogCallback(entry);
-  }
+  // Check complexity against audience max
+  const complexityOrder: ComplexityId[] = ['Very Simple', 'Simple', 'Moderate', 'Intricate', 'Extreme Detail'];
+  const requestedIdx = complexityOrder.indexOf(complexityId);
+  const maxIdx = complexityOrder.indexOf(audienceSpec.maxComplexity);
 
-  // Console logging only if explicitly enabled
-  if (enableLogging) {
-    const prefix = `[Gemini ${requestId}]`;
-    switch (level) {
-      case 'error':
-        console.error(prefix, message, data || '');
-        break;
-      case 'warn':
-        console.warn(prefix, message, data || '');
-        break;
-      default:
-        console.log(prefix, message, data || '');
-    }
-  }
-};
+  const effectiveComplexity = requestedIdx > maxIdx ? audienceSpec.maxComplexity : complexityId;
+  const complexitySpec = COMPLEXITY_SPECS[effectiveComplexity];
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// UTILITY FUNCTIONS
-// ═══════════════════════════════════════════════════════════════════════════════
+  // Build the prompt with constraints at END (Gemini 3 requirement)
+  const prompt = `
+A high-quality ${styleSpec.styleKeyword}, ${styleSpec.positiveDescription}.
 
-/** Generate a unique request ID */
-const generateRequestId = (): string => {
-  return `gen_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-};
+SCENE: ${userPrompt}
 
-/** Estimate token count from prompt text (rough approximation) */
-const estimateTokens = (text: string): number => {
-  // Rough estimate: ~4 characters per token for English
-  return Math.ceil(text.length / 4);
-};
+STYLE: ${styleSpec.lineWeight}. ${styleSpec.visualRequirements.join('. ')}.
 
-/** Sleep for specified milliseconds */
-const sleep = (ms: number): Promise<void> => {
-  return new Promise(resolve => setTimeout(resolve, ms));
-};
+COMPOSITION: ${complexitySpec.regionRange}. ${complexitySpec.backgroundRule}. ${complexitySpec.restAreaRule}. ${complexitySpec.detailLevel}.
 
-/** Calculate exponential backoff delay */
-const getBackoffDelay = (attempt: number): number => {
-  const delay = RETRY_CONFIG.baseDelayMs * Math.pow(2, attempt);
-  // Add jitter (±20%)
-  const jitter = delay * 0.2 * (Math.random() - 0.5);
-  return Math.min(delay + jitter, RETRY_CONFIG.maxDelayMs);
-};
+OUTPUT: A single black and white coloring book page. Pure black lines on pure white background. Every area is a closed shape that can be colored in.
 
-/** Check if an error is retryable */
-const isRetryableError = (error: Error): boolean => {
-  const message = error.message || '';
-  return RETRY_CONFIG.retryableStatusCodes.some(code =>
-    message.includes(code.toString())
-  );
-};
+CRITICAL REQUIREMENTS - COLORING BOOK PAGE:
 
-/** Get temperature for a style, with fallback */
-const getStyleTemperature = (styleId: string): number => {
-  return STYLE_RULES[styleId]?.recommendedTemperature ?? STYLE_RULES['default']?.recommendedTemperature ?? 0.8;
-};
+1. COLORS: Pure black lines on pure white ONLY. Zero grey. Zero gradients. Zero shading. Zero tints.
 
-/** Get resolution for a complexity level */
-const getComplexityResolution = (complexityId: string): '1K' | '2K' | '4K' => {
-  return COMPLEXITY_RESOLUTION_MAP[complexityId] || '2K';
+2. LINES: Clean outlines only. Zero stippling (no dots). Zero hatching (no parallel shading lines). Zero cross-hatching. Zero sketchy lines. Zero decorative texture strokes.
+
+3. TEXTURE AS SHAPES: Fur and hair as enclosed sections not strands. Fabric as outlined shapes not texture lines. Water as enclosed wave shapes not wavy lines. Wood as outlined planks not grain lines.
+
+4. CLOSED REGIONS: Every area is a closed shape. All lines connect. No gaps. No open paths.
+
+5. NO FILLS: Zero solid black areas. Pupils are outlined circles. Dark areas are empty regions.
+
+6. SINGLE IMAGE: One illustration filling canvas. Not a mockup. Not multiple images. Not a photo of paper.
+`.trim();
+
+  return { prompt, effectiveComplexity };
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// DIMENSION CONFIGURATION
+// IMAGE GENERATION
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Map aspect ratios and resolution to API configuration
+ * Generate a coloring book page using Gemini 3 Pro Image
  */
-const getDimensionConfig = (
-  aspectRatio: string,
-  resolution: '1K' | '2K' | '4K' | undefined,
-  width?: number,
-  height?: number
-): { imageSize: string; aspectRatio: string } => {
-  // Derive imageSize from explicit resolution first; otherwise infer from dimensions
-  if (!resolution) {
-    const maxDim = Math.max(width ?? 0, height ?? 0);
-    if (maxDim >= 3000) resolution = '4K';
-    else if (maxDim >= 1536) resolution = '2K';
-    else resolution = '1K';
-  }
-
-  return {
-    imageSize: resolution,
-    aspectRatio: aspectRatio,
-  };
-};
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// API KEY RESOLUTION
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Resolve API key from multiple sources with priority:
- * 1. Directly passed key
- * 2. User's stored key
- * 3. Environment variable (server-side)
- */
-const resolveApiKey = async (providedKey?: string): Promise<string | null> => {
-  if (providedKey) return providedKey;
-
-  const storedKey = await getStoredApiKey();
-  if (storedKey) return storedKey;
-
-  // Environment variable fallback (useful for server-side rendering)
-  if (typeof process !== 'undefined' && process.env?.GEMINI_API_KEY) {
-    return process.env.GEMINI_API_KEY;
-  }
-
-  return null;
-};
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// CORE IMAGE GENERATION (Low-Level)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Low-level image generation with retry logic
- * Use `generateColoringPage()` for full orchestration
- */
-export const generateWithGemini = async (
-  options: GenerateImageOptions
+export const generateColoringPage = async (
+  request: GenerateImageRequest
 ): Promise<GenerateImageResult> => {
-  const requestId = options.requestId || generateRequestId();
   const startTime = Date.now();
-  let retryCount = 0;
+  const requestId = `gen_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
-  // Resolve resolution
-  const resolution = options.resolution || '2K';
+  const {
+    userPrompt,
+    styleId,
+    complexityId,
+    audienceId,
+    aspectRatio = '1:1',
+    imageSize = '2K',
+    apiKey,
+    signal,
+    enableLogging = false,
+  } = request;
 
-  log(requestId, 'info', 'api_call', 'Starting Gemini image generation', {
-    resolution,
-    aspectRatio: options.aspectRatio,
-    temperature: options.temperature,
-    hasReference: !!options.referenceImage,
-  }, options.enableLogging);
-
-  // Check abort before starting
-  if (options.signal?.aborted) {
+  // Check abort
+  if (signal?.aborted) {
     throw new Error('Aborted');
   }
 
-  // Resolve API key
-  const apiKey = await resolveApiKey(options.apiKey);
-  if (!apiKey) {
-    return {
-      imageUrl: null,
-      error: 'Configuration Error: Gemini API Key is missing. Please add your API key in Settings.',
-    };
+  // Build prompt
+  const { prompt, effectiveComplexity } = buildPrompt(userPrompt, styleId, complexityId, audienceId);
+
+  if (enableLogging) {
+    console.log(`[${requestId}] Generating with prompt (${prompt.length} chars)`);
+    console.log(`[${requestId}] Style: ${styleId}, Complexity: ${effectiveComplexity}, Size: ${imageSize}`);
   }
-
-  const ai = new GoogleGenAI({ apiKey });
-
-  // Build prompt with negative prompt appended
-  const promptText = options.negativePrompt
-    ? `${options.prompt}\n\n---\nNEGATIVE PROMPT (avoid these): ${options.negativePrompt}`
-    : options.prompt;
-
-  // Build parts array
-  const parts: Part[] = [{ text: promptText }];
-
-  if (options.referenceImage) {
-    parts.push({
-      inlineData: {
-        data: options.referenceImage.base64,
-        mimeType: options.referenceImage.mimeType,
-      },
-    });
-  }
-
-  const imageConfig = getDimensionConfig(
-    options.aspectRatio,
-    resolution,
-    options.width,
-    options.height
-  );
-
-  // Retry loop
-  while (retryCount <= RETRY_CONFIG.maxRetries) {
-    try {
-      // Check abort before each attempt
-      if (options.signal?.aborted) {
-        throw new Error('Aborted');
-      }
-
-      const generatePromise = ai.models.generateContent({
-        model: GEMINI_IMAGE_MODEL,
-        contents: { parts },
-        config: {
-          systemInstruction: SYSTEM_INSTRUCTION,
-          // @ts-ignore - imageConfig typing may vary by SDK version
-          imageConfig: imageConfig,
-          temperature: options.temperature ?? 0.8,
-          responseModalities: ['IMAGE'],
-        },
-      });
-
-      // Race with abort signal
-      const abortPromise = new Promise<never>((_, reject) => {
-        if (options.signal?.aborted) reject(new Error('Aborted'));
-        options.signal?.addEventListener('abort', () => reject(new Error('Aborted')));
-      });
-
-      // @ts-ignore - Promise.race types
-      const response = await Promise.race([generatePromise, abortPromise]);
-
-      // Extract image data
-      const part = response.candidates?.[0]?.content?.parts?.find(
-        (p: Part) => p.inlineData
-      );
-
-      if (part?.inlineData?.data) {
-        const mimeType = part.inlineData.mimeType || 'image/png';
-        const base64Data = part.inlineData.data;
-        const durationMs = Date.now() - startTime;
-
-        const metadata: GenerationMetadata = {
-          requestId,
-          model: GEMINI_IMAGE_MODEL,
-          resolution,
-          temperature: options.temperature ?? 0.8,
-          estimatedCost: ESTIMATED_COST_PER_GENERATION[resolution] || 0.04,
-          durationMs,
-          retryCount,
-          promptTokenEstimate: estimateTokens(promptText),
-          timestamp: new Date().toISOString(),
-        };
-
-        log(requestId, 'info', 'complete', 'Generation successful', {
-          durationMs,
-          retryCount,
-        }, options.enableLogging);
-
-        return {
-          imageUrl: `data:${mimeType};base64,${base64Data}`,
-          metadata,
-        };
-      }
-
-      // No image data in response
-      return {
-        imageUrl: null,
-        error: 'No image data returned from API. The model may have refused the prompt.',
-      };
-
-    } catch (error: unknown) {
-      const err = error instanceof Error ? error : new Error(String(error));
-
-      // Abort is not retryable
-      if (err.message === 'Aborted' || options.signal?.aborted) {
-        throw new Error('Aborted');
-      }
-
-      // Check if retryable
-      if (isRetryableError(err) && retryCount < RETRY_CONFIG.maxRetries) {
-        const delay = getBackoffDelay(retryCount);
-        log(requestId, 'warn', 'retry', `Retryable error, attempt ${retryCount + 1}/${RETRY_CONFIG.maxRetries}`, {
-          error: err.message,
-          delayMs: delay,
-        }, options.enableLogging);
-
-        await sleep(delay);
-        retryCount++;
-        continue;
-      }
-
-      // Non-retryable or max retries exceeded
-      log(requestId, 'error', 'error', 'Generation failed', {
-        error: err.message,
-        retryCount,
-      }, options.enableLogging);
-
-      return {
-        imageUrl: null,
-        error: formatUserFriendlyError(err.message),
-      };
-    }
-  }
-
-  // Should not reach here, but safety fallback
-  return {
-    imageUrl: null,
-    error: 'Generation failed after maximum retries.',
-  };
-};
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// ERROR FORMATTING
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Convert technical errors to user-friendly messages
- */
-const formatUserFriendlyError = (message: string): string => {
-  const errorMap: Record<string, string> = {
-    '400': 'The image could not be generated. The prompt may contain content that violates usage policies, or the parameters are invalid. Try simplifying your prompt.',
-    '401': 'Authentication failed. Please check your API key in Settings.',
-    '403': 'Access denied. Please verify your API key has the correct permissions and billing is enabled.',
-    '404': 'The Gemini model is not available. Please try again later or contact support.',
-    '429': 'You\'ve hit the rate limit. Please wait a moment before generating again.',
-    '500': 'Gemini encountered an internal error. Please try again.',
-    '503': 'Gemini is temporarily unavailable. Please try again in a few minutes.',
-  };
-
-  for (const [code, friendlyMessage] of Object.entries(errorMap)) {
-    if (message.includes(code)) {
-      return friendlyMessage;
-    }
-  }
-
-  // Check for specific error patterns
-  if (message.toLowerCase().includes('safety')) {
-    return 'The prompt was blocked by safety filters. Please modify your prompt and try again.';
-  }
-
-  if (message.toLowerCase().includes('quota')) {
-    return 'API quota exceeded. Please check your Gemini API billing status.';
-  }
-
-  if (message.toLowerCase().includes('timeout')) {
-    return 'The request timed out. Please try again with a simpler prompt or lower resolution.';
-  }
-
-  // Generic fallback
-  return `Generation failed: ${message}`;
-};
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// UNIFIED ORCHESTRATION FUNCTION
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Generate a coloring page with full orchestration:
- * 1. Validate style/complexity/audience compatibility
- * 2. Build optimized prompt with all specifications
- * 3. Select appropriate temperature and resolution
- * 4. Generate image with retry logic
- *
- * This is the primary function your UI should call.
- *
- * @example
- * const result = await generateColoringPage({
- *   userPrompt: 'A cute dragon eating a taco',
- *   styleId: 'Bold & Easy',
- *   complexityId: 'Simple',
- *   audienceId: 'preschool',
- *   aspectRatio: '3:4',
- * });
- *
- * if (result.error) {
- *   showError(result.error);
- *   if (result.compatibility.warnings.length > 0) {
- *     showWarnings(result.compatibility.warnings);
- *   }
- * } else {
- *   displayImage(result.imageUrl);
- * }
- */
-export const generateColoringPage = async (
-  request: ColoringPageRequest
-): Promise<ColoringPageResult> => {
-  const requestId = generateRequestId();
-  const enableLogging = request.enableLogging ?? false;
-
-  log(requestId, 'info', 'validation', 'Starting coloring page generation', {
-    userPrompt: request.userPrompt.substring(0, 100),
-    styleId: request.styleId,
-    complexityId: request.complexityId,
-    audienceId: request.audienceId,
-  }, enableLogging);
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Phase 1: Pre-flight Compatibility Validation
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  log(requestId, 'info', 'validation', 'Checking compatibility', undefined, enableLogging);
-
-  // Use the requested audience ID for compatibility checking
-  const preValidation = validateCombination(
-    request.styleId,
-    request.complexityId,
-    request.audienceId
-  );
-
-  if (preValidation.warnings.length > 0) {
-    log(requestId, 'warn', 'validation', 'Compatibility warnings', {
-      warnings: preValidation.warnings,
-      adjustments: preValidation.adjustments,
-    }, enableLogging);
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Phase 2: Build Optimized Prompt
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  log(requestId, 'info', 'prompt_build', 'Building prompt', undefined, enableLogging);
-
-  const promptResult = buildPrompt(
-    request.userPrompt,
-    request.styleId,
-    request.complexityId,
-    request.requiresText ?? false,
-    '', // audiencePrompt - deprecated, using audienceId
-    request.audienceId,
-    request.styleDNA,
-    request.heroDNA
-  );
-
-  // Log hero validation if applicable
-  if (promptResult.heroValidation && !promptResult.heroValidation.isValid) {
-    log(requestId, 'warn', 'validation', 'Hero validation warnings', {
-      warnings: promptResult.heroValidation.warnings,
-    }, enableLogging);
-  }
-
-  log(requestId, 'info', 'prompt_build', 'Prompt built successfully', {
-    resolvedStyle: promptResult.resolvedParams.style,
-    resolvedComplexity: promptResult.resolvedParams.complexity,
-    promptLength: promptResult.fullPrompt.length,
-    negativeLength: promptResult.fullNegativePrompt.length,
-  }, enableLogging);
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Phase 3: Determine Generation Parameters
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  const resolvedStyleId = promptResult.resolvedParams.style;
-  const resolvedComplexityId = promptResult.resolvedParams.complexity;
-
-  // Style-aware temperature
-  const temperature = getStyleTemperature(resolvedStyleId);
-
-  // Complexity-aware resolution
-  const resolution = getComplexityResolution(resolvedComplexityId);
-
-  log(requestId, 'info', 'api_call', 'Generation parameters resolved', {
-    temperature,
-    resolution,
-    aspectRatio: request.aspectRatio,
-  }, enableLogging);
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Phase 4: Generate Image
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  const generationResult = await generateWithGemini({
-    prompt: promptResult.fullPrompt,
-    negativePrompt: promptResult.fullNegativePrompt,
-    referenceImage: request.referenceImage,
-    aspectRatio: request.aspectRatio,
-    resolution,
-    temperature,
-    signal: request.signal,
-    apiKey: request.apiKey,
-    enableLogging,
-    requestId,
-  });
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Phase 5: Return Complete Result
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  return {
-    imageUrl: generationResult.imageUrl,
-    error: generationResult.error,
-    fullPrompt: promptResult.fullPrompt,
-    negativePrompt: promptResult.fullNegativePrompt,
-    compatibility: promptResult.compatibility,
-    heroValidation: promptResult.heroValidation,
-    resolvedParams: promptResult.resolvedParams,
-    metadata: generationResult.metadata,
-  };
-};
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// STRUCTURED OUTPUT GENERATION (Text/JSON)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-interface GenerateObjectOptions {
-  model?: string;
-  prompt: string;
-  system?: string;
-  image?: string;
-  schema: unknown;
-  apiKey?: string;
-  signal?: AbortSignal;
-  temperature?: number;
-  enableLogging?: boolean;
-}
-
-/**
- * Generate structured JSON output from Gemini
- * Used for analysis, extraction, and other non-image tasks
- */
-export const generateObject = async <T>(
-  options: GenerateObjectOptions
-): Promise<T> => {
-  const requestId = generateRequestId();
-  const enableLogging = options.enableLogging ?? false;
 
   try {
-    if (options.signal?.aborted) throw new Error('Aborted');
-
-    log(requestId, 'info', 'api_call', 'Starting structured generation', {
-      model: options.model,
-      hasImage: !!options.image,
-    }, enableLogging);
-
-    const apiKey = await resolveApiKey(options.apiKey);
-    if (!apiKey) {
-      throw new Error('Configuration Error: Gemini API Key is missing.');
-    }
-
     const ai = new GoogleGenAI({ apiKey });
 
-    // Prepare content
-    const parts: Part[] = [{ text: options.prompt }];
-
-    if (options.image) {
-      const match = options.image.match(/^data:(.+);base64,(.+)$/);
-      if (match) {
-        parts.push({
-          inlineData: { mimeType: match[1], data: match[2] },
-        });
-      }
-    }
-
-    // Call API
-    const result = await ai.models.generateContent({
-      model: options.model || GEMINI_TEXT_MODEL,
-      contents: [{ role: 'user', parts }],
+    // Call Gemini 3 Pro Image
+    // NOTE: No negative_prompt - it's deprecated in Imagen 3+
+    const response = await ai.models.generateContent({
+      model: GEMINI_IMAGE_MODEL,
+      contents: prompt,
       config: {
-        systemInstruction: options.system,
-        responseMimeType: 'application/json',
-        responseSchema: options.schema,
-        temperature: options.temperature ?? 0.2,
+        // Google recommends temperature 1.0 for Gemini 3
+        temperature: 1.0,
+        // Image generation config
+        responseModalities: ['image', 'text'],
+        // Image size (must be uppercase K)
+        ...(imageSize && { imageSize }),
       },
     });
 
-    if (options.signal?.aborted) throw new Error('Aborted');
-
-    // Parse result
-    const candidate = result.candidates?.[0];
-    const part = candidate?.content?.parts?.[0];
-    const text = part?.text;
-
-    if (!text) {
-      throw new Error('No JSON returned from Gemini');
-    }
-
-    // Clean markdown code blocks if present
-    const cleanJson = text.replace(/```json\n?|```/g, '').trim();
-
-    log(requestId, 'info', 'complete', 'Structured generation successful', undefined, enableLogging);
-
-    return JSON.parse(cleanJson) as T;
-
-  } catch (error: unknown) {
-    const err = error instanceof Error ? error : new Error(String(error));
-
-    if (err.message === 'Aborted' || options.signal?.aborted) {
+    if (signal?.aborted) {
       throw new Error('Aborted');
     }
 
-    log(requestId, 'error', 'error', 'Structured generation failed', {
-      error: err.message,
-    }, enableLogging);
+    // Extract image from response
+    let imageUrl: string | null = null;
 
-    throw err;
-  }
-};
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// COST TRACKING UTILITIES
-// ═══════════════════════════════════════════════════════════════════════════════
-
-export interface UsageStats {
-  totalGenerations: number;
-  totalCost: number;
-  byResolution: Record<string, { count: number; cost: number }>;
-  byStyle: Record<string, number>;
-  averageDurationMs: number;
-}
-
-/**
- * Aggregate usage statistics from generation metadata
- * Useful for dashboard displays and budget tracking
- */
-export const aggregateUsageStats = (
-  metadataEntries: GenerationMetadata[]
-): UsageStats => {
-  const stats: UsageStats = {
-    totalGenerations: metadataEntries.length,
-    totalCost: 0,
-    byResolution: {},
-    byStyle: {},
-    averageDurationMs: 0,
-  };
-
-  let totalDuration = 0;
-
-  for (const entry of metadataEntries) {
-    // Total cost
-    stats.totalCost += entry.estimatedCost;
-
-    // By resolution
-    if (!stats.byResolution[entry.resolution]) {
-      stats.byResolution[entry.resolution] = { count: 0, cost: 0 };
+    if (response.candidates?.[0]?.content?.parts) {
+      for (const part of response.candidates[0].content.parts) {
+        if (part.inlineData?.data) {
+          const mimeType = part.inlineData.mimeType || 'image/png';
+          imageUrl = `data:${mimeType};base64,${part.inlineData.data}`;
+          break;
+        }
+      }
     }
-    stats.byResolution[entry.resolution].count++;
-    stats.byResolution[entry.resolution].cost += entry.estimatedCost;
 
-    // Duration
-    totalDuration += entry.durationMs;
+    if (!imageUrl) {
+      return {
+        success: false,
+        imageUrl: null,
+        error: 'No image generated in response',
+        promptUsed: prompt,
+        durationMs: Date.now() - startTime,
+        metadata: { requestId, model: GEMINI_IMAGE_MODEL, imageSize, aspectRatio },
+      };
+    }
+
+    if (enableLogging) {
+      console.log(`[${requestId}] Generated successfully in ${Date.now() - startTime}ms`);
+    }
+
+    return {
+      success: true,
+      imageUrl,
+      promptUsed: prompt,
+      durationMs: Date.now() - startTime,
+      metadata: { requestId, model: GEMINI_IMAGE_MODEL, imageSize, aspectRatio },
+    };
+
+  } catch (error: any) {
+    if (error.message === 'Aborted') {
+      throw error;
+    }
+
+    const errorMessage = error.message || 'Unknown error';
+
+    if (enableLogging) {
+      console.error(`[${requestId}] Generation failed:`, errorMessage);
+    }
+
+    return {
+      success: false,
+      imageUrl: null,
+      error: errorMessage,
+      promptUsed: prompt,
+      durationMs: Date.now() - startTime,
+      metadata: { requestId, model: GEMINI_IMAGE_MODEL, imageSize, aspectRatio },
+    };
   }
-
-  stats.averageDurationMs = metadataEntries.length > 0
-    ? totalDuration / metadataEntries.length
-    : 0;
-
-  return stats;
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// HEALTH CHECK
+// PROMPT ENHANCEMENT (Using Gemini 1.5 Pro)
 // ═══════════════════════════════════════════════════════════════════════════════
 
+const ENHANCER_SYSTEM_PROMPT = `
+You are a coloring book prompt engineer. Expand the user's basic idea into a detailed scene description for AI image generation.
+
+RULES:
+1. Keep output under 80 words
+2. Focus on VISUAL elements (shapes, objects, composition)
+3. Describe what IS there, not what isn't
+4. Include composition guidance (foreground, background, focal point)
+5. Add details that create interesting colorable regions
+6. Do NOT mention colors, shading, textures, or technical instructions
+7. Write as a single flowing description
+
+OUTPUT: Just the enhanced scene description, nothing else.
+`;
+
 /**
- * Verify API connectivity and key validity
- * Useful for settings page validation
+ * Enhance a user's basic prompt using Gemini 1.5 Pro
  */
-export const checkApiHealth = async (
-  apiKey?: string
-): Promise<{ healthy: boolean; error?: string; latencyMs?: number }> => {
-  const startTime = Date.now();
+export const enhancePrompt = async (
+  request: EnhancePromptRequest
+): Promise<EnhancePromptResult> => {
+  const { userPrompt, styleId, complexityId, audienceId, apiKey, signal } = request;
+
+  if (signal?.aborted) {
+    throw new Error('Aborted');
+  }
+
+  const styleSpec = STYLE_SPECS[styleId];
+  const complexitySpec = COMPLEXITY_SPECS[complexityId];
+  const audienceSpec = AUDIENCE_SPECS[audienceId];
+
+  const userMessage = `
+Style: ${styleSpec.styleKeyword}
+Complexity: ${complexitySpec.detailLevel}
+Audience: ${audienceSpec.contentGuidance}
+
+User's idea: ${userPrompt}
+
+Enhance this into a detailed scene description:
+`;
 
   try {
-    const key = await resolveApiKey(apiKey);
-    if (!key) {
-      return { healthy: false, error: 'No API key configured' };
-    }
+    const ai = new GoogleGenAI({ apiKey });
 
-    const ai = new GoogleGenAI({ apiKey: key });
-
-    // Simple test call
-    const result = await ai.models.generateContent({
+    const response = await ai.models.generateContent({
       model: GEMINI_TEXT_MODEL,
-      contents: [{ role: 'user', parts: [{ text: 'Reply with "OK"' }] }],
-      config: { temperature: 0, maxOutputTokens: 10 },
+      systemInstruction: ENHANCER_SYSTEM_PROMPT,
+      contents: userMessage,
+      config: {
+        temperature: 0.8,
+        maxOutputTokens: 200,
+      },
     });
 
-    const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-    const latencyMs = Date.now() - startTime;
-
-    if (text) {
-      return { healthy: true, latencyMs };
+    if (signal?.aborted) {
+      throw new Error('Aborted');
     }
 
-    return { healthy: false, error: 'No response from API' };
+    const enhancedPrompt = response.text?.trim() || userPrompt;
 
-  } catch (error: unknown) {
-    const err = error instanceof Error ? error : new Error(String(error));
-    return { healthy: false, error: formatUserFriendlyError(err.message) };
+    return {
+      success: true,
+      enhancedPrompt,
+    };
+
+  } catch (error: any) {
+    if (error.message === 'Aborted') {
+      throw error;
+    }
+
+    return {
+      success: false,
+      enhancedPrompt: userPrompt, // Fallback to original
+      error: error.message,
+    };
   }
 };
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CONVENIENCE FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Generate with automatic prompt enhancement
+ */
+export const generateWithEnhancement = async (
+  request: GenerateImageRequest
+): Promise<GenerateImageResult> => {
+  // First, enhance the prompt
+  const enhanceResult = await enhancePrompt({
+    userPrompt: request.userPrompt,
+    styleId: request.styleId,
+    complexityId: request.complexityId,
+    audienceId: request.audienceId,
+    apiKey: request.apiKey,
+    signal: request.signal,
+  });
+
+  // Then generate with enhanced prompt
+  return generateColoringPage({
+    ...request,
+    userPrompt: enhanceResult.enhancedPrompt,
+  });
+};
+
+/**
+ * Get the raw prompt that would be sent (for debugging)
+ */
+export const getPromptPreview = (
+  userPrompt: string,
+  styleId: StyleId,
+  complexityId: ComplexityId,
+  audienceId: AudienceId
+): string => {
+  const { prompt } = buildPrompt(userPrompt, styleId, complexityId, audienceId);
+  return prompt;
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// EXPORTS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export { STYLE_SPECS, COMPLEXITY_SPECS, AUDIENCE_SPECS };

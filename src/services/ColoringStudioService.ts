@@ -1,7 +1,7 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
  * COLORING STUDIO SERVICE v2.0
- * Paint-by-Numbers SaaS
+ * myJoe Creative Suite - Coloring Book Studio
  * ═══════════════════════════════════════════════════════════════════════════════
  *
  * Handles all AI text operations for the Coloring Book Studio:
@@ -10,7 +10,7 @@
  * - analyzeReferenceStyle(): Extracts StyleDNA from reference images
  *
  * v2.0 Changes:
- * - Integrated with prompts-v4.ts style/complexity/audience specifications
+ * - Integrated with prompts-v5.0 style/complexity/audience specifications
  * - Uses correct model constants from gemini-client.ts
  * - Book plan generation respects actual style constraints
  * - Improved prompt engineering with specification awareness
@@ -26,11 +26,11 @@ import { getStoredApiKey } from '../lib/crypto';
 import type { StyleDNA } from '../types';
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// STYLE SPECIFICATIONS (Aligned with prompts-v4.ts)
+// STYLE SPECIFICATIONS (Aligned with prompts-v5.0)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Valid style IDs - must match prompts-v4.ts exactly
+ * Valid style IDs - must match prompts-v5.0 exactly
  */
 export const VALID_STYLE_IDS = [
     'Cozy Hand-Drawn',
@@ -39,22 +39,18 @@ export const VALID_STYLE_IDS = [
     'Whimsical',
     'Cartoon',
     'Botanical',
-    'Mandala',
-    'Zentangle',
+    'Realistic',
+    'Geometric',
     'Fantasy',
     'Gothic',
-    'Cozy',
-    'Geometric',
-    'Wildlife',
-    'Floral',
-    'Abstract',
-    'Realistic',
+    'Mandala',
+    'Zentangle',
 ] as const;
 
 export type StyleId = typeof VALID_STYLE_IDS[number];
 
 /**
- * Valid complexity IDs - must match prompts-v4.ts exactly
+ * Valid complexity IDs - must match prompts-v5.0 exactly
  */
 export const VALID_COMPLEXITY_IDS = [
     'Very Simple',
@@ -67,7 +63,7 @@ export const VALID_COMPLEXITY_IDS = [
 export type ComplexityId = typeof VALID_COMPLEXITY_IDS[number];
 
 /**
- * Valid audience IDs - must match prompts-v4.ts exactly
+ * Valid audience IDs - must match prompts-v5.0 exactly
  */
 export const VALID_AUDIENCE_IDS = [
     'toddlers',
@@ -76,14 +72,13 @@ export const VALID_AUDIENCE_IDS = [
     'teens',
     'adults',
     'seniors',
-    'sen',
 ] as const;
 
 export type AudienceId = typeof VALID_AUDIENCE_IDS[number];
 
 /**
  * Style characteristics for book planning
- * Extracted from prompts-v4.ts for consistency
+ * Extracted from prompts-v5.0 for consistency
  */
 const STYLE_CHARACTERISTICS: Record<string, {
     lineDescription: string;
@@ -92,13 +87,13 @@ const STYLE_CHARACTERISTICS: Record<string, {
     vectorMode: 'organic' | 'geometric' | 'standard';
 }> = {
     'Cozy Hand-Drawn': {
-        lineDescription: 'organic, wobbly 0.5mm lines with hand-drawn charm',
+        lineDescription: 'organic, wobbly 0.5-1mm lines with hand-drawn charm',
         bestFor: 'domestic scenes, comfort objects, gentle subjects',
         avoid: 'geometric precision, sharp angles',
         vectorMode: 'organic',
     },
     'Bold & Easy': {
-        lineDescription: 'thick 4mm uniform lines, maximum simplicity',
+        lineDescription: 'thick 4mm+ uniform lines, maximum simplicity',
         bestFor: 'simple iconic subjects, sticker-style designs',
         avoid: 'fine details, intricate patterns, small spaces',
         vectorMode: 'standard',
@@ -122,21 +117,21 @@ const STYLE_CHARACTERISTICS: Record<string, {
         vectorMode: 'standard',
     },
     'Botanical': {
-        lineDescription: 'fine 0.3mm precise lines with stippling texture',
+        lineDescription: 'fine 0.3-0.5mm precise lines',
         bestFor: 'plants, flowers, scientific illustration subjects',
         avoid: 'solid fills, dense rendering',
         vectorMode: 'organic',
     },
-    'Mandala': {
-        lineDescription: 'precise geometric lines with radial symmetry',
-        bestFor: 'meditative patterns, symmetrical designs',
-        avoid: 'asymmetry, organic variation',
-        vectorMode: 'geometric',
+    'Realistic': {
+        lineDescription: 'uniform 0.6mm Ligne Claire contours',
+        bestFor: 'accurate anatomy, technical illustration',
+        avoid: 'line weight variation, hatching, stylization',
+        vectorMode: 'standard',
     },
-    'Zentangle': {
-        lineDescription: 'consistent 0.8mm lines with pattern fills',
-        bestFor: 'abstract patterns, structured doodling',
-        avoid: 'representational imagery, tiny enclosed spaces',
+    'Geometric': {
+        lineDescription: 'perfectly straight 0.8mm ruler lines only',
+        bestFor: 'low-poly designs, crystalline structures, abstract forms',
+        avoid: 'ANY curves, organic shapes',
         vectorMode: 'geometric',
     },
     'Fantasy': {
@@ -146,46 +141,22 @@ const STYLE_CHARACTERISTICS: Record<string, {
         vectorMode: 'standard',
     },
     'Gothic': {
-        lineDescription: 'very thick 5mm+ angular lines like stained glass',
-        bestFor: 'medieval themes, dramatic compartmentalized scenes',
-        avoid: 'thin lines, soft curves, delicate elements',
-        vectorMode: 'geometric',
-    },
-    'Cozy': {
-        lineDescription: 'soft 1.5mm rounded lines with warm feeling',
-        bestFor: 'hygge scenes, comfort, domestic tranquility',
-        avoid: 'sharp angles, cold subjects, action scenes',
-        vectorMode: 'organic',
-    },
-    'Geometric': {
-        lineDescription: 'perfectly straight 0.8mm ruler lines only',
-        bestFor: 'low-poly designs, crystalline structures, abstract forms',
-        avoid: 'ANY curves, organic shapes',
-        vectorMode: 'geometric',
-    },
-    'Wildlife': {
-        lineDescription: 'naturalistic contours with directional texture strokes',
-        bestFor: 'animals, nature, scientific accuracy',
-        avoid: 'stylization, solid black areas',
-        vectorMode: 'organic',
-    },
-    'Floral': {
-        lineDescription: 'flowing Art Nouveau curves, interlocking forms',
-        bestFor: 'flowers, vines, decorative patterns',
-        avoid: 'geometric rigidity, sparse composition',
-        vectorMode: 'organic',
-    },
-    'Abstract': {
-        lineDescription: 'fluid expressive strokes with compositional focus',
-        bestFor: 'non-representational designs, visual rhythm',
-        avoid: 'recognizable subjects, open strokes',
+        lineDescription: 'fine to medium varied lines with ornate details',
+        bestFor: 'medieval themes, dramatic atmospheric compositions',
+        avoid: 'cheerful subjects, simple forms',
         vectorMode: 'standard',
     },
-    'Realistic': {
-        lineDescription: 'uniform 0.6mm Ligne Claire contours',
-        bestFor: 'accurate anatomy, technical illustration',
-        avoid: 'line weight variation, hatching, stylization',
-        vectorMode: 'standard',
+    'Mandala': {
+        lineDescription: 'precise 0.5mm geometric lines with radial symmetry',
+        bestFor: 'meditative patterns, symmetrical designs',
+        avoid: 'asymmetry, organic variation',
+        vectorMode: 'geometric',
+    },
+    'Zentangle': {
+        lineDescription: 'consistent 0.5mm lines with pattern fills',
+        bestFor: 'abstract patterns, structured doodling',
+        avoid: 'representational imagery, tiny enclosed spaces',
+        vectorMode: 'geometric',
     },
 };
 
@@ -199,33 +170,33 @@ const COMPLEXITY_CHARACTERISTICS: Record<string, {
     promptTrick: string;
 }> = {
     'Very Simple': {
-        regionCount: '3-5 major shapes',
+        regionCount: '3-8 large colorable regions',
         backgroundAllowed: false,
-        detailLevel: 'ZERO internal detail',
+        detailLevel: 'Single iconic subject with minimal internal detail',
         promptTrick: 'A sticker design of [Subject], A die-cut vector of [Subject]',
     },
     'Simple': {
-        regionCount: '10-25 distinct regions',
+        regionCount: '10-25 colorable regions',
         backgroundAllowed: true,
-        detailLevel: 'minimal - only essential features',
+        detailLevel: 'Main subject with 1-2 supporting elements',
         promptTrick: 'A clean line art illustration of [Subject] framed by [Element]',
     },
     'Moderate': {
-        regionCount: '40-80 distinct regions',
+        regionCount: '40-80 colorable regions',
         backgroundAllowed: true,
-        detailLevel: 'standard coloring book level',
+        detailLevel: 'Complete scene with balanced detail distribution',
         promptTrick: 'A balanced scene with [Subject] including 4-6 rest areas',
     },
     'Intricate': {
-        regionCount: '80-120 distinct regions',
+        regionCount: '80-120 colorable regions',
         backgroundAllowed: true,
-        detailLevel: 'high - textures and patterns allowed',
+        detailLevel: 'Rich detailed scene with patterns and textures as shapes',
         promptTrick: 'A detailed illustration with [Subject] requiring fine motor control',
     },
     'Extreme Detail': {
-        regionCount: '120-150+ distinct regions',
+        regionCount: '120-150+ colorable regions',
         backgroundAllowed: true,
-        detailLevel: 'fractal - shapes within shapes',
+        detailLevel: 'Expert-level complexity with shapes within shapes',
         promptTrick: 'An immersive [Subject] with 2-4 calm empty regions for comfort',
     },
 };
@@ -275,12 +246,6 @@ const AUDIENCE_CHARACTERISTICS: Record<string, {
         prohibited: ['tiny details', 'cluttered compositions'],
         required: ['high visibility', 'clear sections'],
     },
-    'sen': {
-        maxComplexity: 'Simple',
-        toneAdjustment: 'Calming, predictable, structured. Avoid sensory overwhelm.',
-        prohibited: ['chaotic', 'busy', 'unpredictable', 'scary'],
-        required: ['predictability', 'structure', 'calm aesthetic'],
-    },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -327,7 +292,7 @@ export interface BrainstormContext {
  * ColoringStudioService v2.0
  * 
  * Handles all AI text operations for the Coloring Book Studio.
- * Integrated with prompts-v4.ts specifications for consistency.
+ * Integrated with prompts-v5.0 specifications for consistency.
  */
 export class ColoringStudioService {
     private ai: GoogleGenAI | null = null;
@@ -451,7 +416,7 @@ ROLE: Creative Director for a professional coloring book series.
 TASK: Create a cohesive ${pageCount}-page book plan for the idea: "${userIdea}"
 
 ═══════════════════════════════════════════════════════════════════════════════
-SPECIFICATION CONSTRAINTS (From Style System v4.0)
+SPECIFICATION CONSTRAINTS (From Style System v5.0)
 ═══════════════════════════════════════════════════════════════════════════════
 
 STYLE: ${style}
@@ -667,7 +632,7 @@ ${contextBlock}
 1. CLOSED SHAPES: Describe objects as having "distinct outlines". Avoid fog, mist, blur.
 2. COMPOSITION: Center the main subject. Clear separation between foreground/background.
 3. LIGHTING TRANSLATION: Don't describe "light" or "glow". Describe the LINES (radiating lines, sparkle shapes).
-4. TEXTURE TRANSLATION: Don't say "furry". Say "texture lines representing fur".
+4. TEXTURE TRANSLATION: Don't say "furry". Say "texture represented by outlined sections".
 
 [THINKING PROCESS]:
 1. VISUALIZE the scene in black and white line art

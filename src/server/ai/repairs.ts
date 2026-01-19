@@ -1,1144 +1,753 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
- * REPAIR SERVICE v2.0 — Intelligent Regeneration Strategy
+ * REPAIRS SERVICE v2.1 — Enhanced Repair Strategies
  * Paint-by-Numbers SaaS
  * ═══════════════════════════════════════════════════════════════════════════════
  *
- * Architecture:
- * 1. Maps QA issue codes to specific repair strategies
- * 2. Prioritises repairs by severity (critical → major → minor)
- * 3. Generates context-aware repairs using style/complexity specs
- * 4. Suggests parameter adjustments when prompt changes aren't enough
- * 5. Produces structured repair objects for the regeneration loop
- *
- * Design Principles:
- * - Repairs are deterministic: same issues → same repair strategy
- * - Context-aware: repairs reference actual spec values
- * - Actionable: every repair is a concrete instruction
- * - Escalation-aware: knows when to suggest parameter changes vs prompt fixes
+ * PATCH NOTES (v2.1):
+ * - Added repair strategies for all new v2.1 QA issue codes
+ * - Enhanced texture violation repairs with explicit prohibitions
+ * - Added format violation repairs (mockup, multiple images)
+ * - Added composition repairs (horror vacui, rest areas)
+ * - Improved prompt override generation with concrete instructions
  *
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import {
-    QaResult,
-    QaIssue,
-    IssueSeverity,
-    STYLE_VALIDATION_RULES,
-    COMPLEXITY_VALIDATION_RULES,
-    AUDIENCE_VALIDATION_RULES,
-} from './qaService';
+import { QA_ISSUE_CODES, QaIssue, QaIssueCode } from './qaService';
+import { STYLE_SPECS, COMPLEXITY_SPECS, AUDIENCE_SPECS, StyleId, ComplexityId, AudienceId } from './gemini-client';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TYPE DEFINITIONS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/**
- * Types of repair actions available
- */
-export type RepairActionType =
-    | 'prompt_override'      // Add/modify prompt instructions
-    | 'negative_boost'       // Strengthen negative prompt
-    | 'parameter_change'     // Suggest changing style/complexity/audience
-    | 'temperature_adjust'   // Adjust generation temperature
-    | 'resolution_change'    // Change output resolution
-    | 'manual_review'        // Requires human intervention
-    | 'abort';               // Cannot be automatically repaired
-
-/**
- * A single repair action
- */
-export interface RepairAction {
-    /** Type of repair action */
-    type: RepairActionType;
-    /** Priority (lower = more important, 1 = highest) */
+export interface RepairStrategy {
+    issueCode: QaIssueCode;
     priority: number;
-    /** Human-readable description */
-    description: string;
-    /** The actual repair content (prompt text, parameter value, etc.) */
-    content: string;
-    /** Confidence this repair will fix the issue (0-100) */
     confidence: number;
-    /** The issue code this repair addresses */
-    addressesIssue: string;
+    action: 'regenerate' | 'modify_prompt' | 'modify_params' | 'escalate' | 'accept';
+    promptOverride: string | ((context: RepairContext) => string);
+    negativeBoost: string[];
+    parameterSuggestions?: Partial<RepairParameters>;
+    maxAttempts: number;
+    notes: string;
 }
 
-/**
- * Suggested parameter changes
- */
-export interface ParameterSuggestions {
-    /** Suggested style change (null = keep current) */
-    styleId?: string;
-    /** Suggested complexity change */
-    complexityId?: string;
-    /** Suggested audience change */
-    audienceId?: string;
-    /** Suggested temperature adjustment */
-    temperature?: number;
-    /** Suggested resolution change */
-    resolution?: '1K' | '2K' | '4K';
-    /** Reasons for suggestions */
-    reasons: string[];
-}
-
-/**
- * Complete repair plan for regeneration
- */
-export interface RepairPlan {
-    /** Unique ID for tracking */
-    repairId: string;
-    /** Original request ID from QA */
-    originalRequestId: string;
-    /** Whether automatic repair is possible */
-    canAutoRepair: boolean;
-    /** Whether regeneration is recommended */
-    shouldRegenerate: boolean;
-    /** Overall repair confidence (0-100) */
-    overallConfidence: number;
-    /** All repair actions, sorted by priority */
-    actions: RepairAction[];
-    /** Prompt additions/overrides to apply */
-    promptOverrides: string[];
-    /** Negative prompt additions */
-    negativeBoosts: string[];
-    /** Suggested parameter changes */
-    parameterSuggestions: ParameterSuggestions;
-    /** Issues that cannot be auto-repaired */
-    unreparableIssues: QaIssue[];
-    /** Summary for logging/display */
-    summary: string;
-    /** Attempt number (for retry tracking) */
+export interface RepairContext {
+    styleId: string;
+    complexityId: string;
+    audienceId: string;
     attemptNumber: number;
-    /** Maximum attempts before giving up */
+    previousIssues: QaIssueCode[];
+    originalPrompt: string;
+}
+
+export interface RepairParameters {
+    styleId: string;
+    complexityId: string;
+    audienceId: string;
+    temperature: number;
+}
+
+export interface RepairAction {
+    issueCode: QaIssueCode;
+    priority: number;
+    confidence: number;
+    action: string;
+    promptOverride: string;
+    negativeBoosts: string[];
+    parameterSuggestions?: Partial<RepairParameters>;
+    notes: string;
+}
+
+export interface RepairPlan {
+    repairId: string;
+    canAutoRepair: boolean;
+    shouldRegenerate: boolean;
+    overallConfidence: number;
+    actions: RepairAction[];
+    promptOverrides: string[];
+    negativeBoosts: string[];
+    parameterSuggestions: {
+        styleId?: string;
+        complexityId?: string;
+        audienceId?: string;
+        temperature?: number;
+        reasons: string[];
+    };
+    unreparableIssues: QaIssue[];
+    summary: string;
+    attemptNumber: number;
     maxAttempts: number;
 }
 
-/**
- * Context for generating repairs
- */
-export interface RepairContext {
-    /** QA result to repair */
-    qaResult: QaResult;
-    /** Current style ID */
-    styleId: string;
-    /** Current complexity ID */
-    complexityId: string;
-    /** Current audience ID */
-    audienceId: string;
-    /** Original user prompt */
-    userPrompt: string;
-    /** Current attempt number (1-based) */
-    attemptNumber?: number;
-    /** Maximum retry attempts */
-    maxAttempts?: number;
-    /** Previous repair plans (for escalation logic) */
-    previousRepairs?: RepairPlan[];
+export interface AppliedRepairs {
+    modifiedPrompt: string;
+    modifiedNegativePrompt: string;
+    modifiedParameters: Partial<RepairParameters>;
+    changesSummary: string[];
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// REPAIR STRATEGY DEFINITIONS
+// REPAIR STRATEGIES
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/**
- * Repair strategy for each issue code
- */
-interface RepairStrategy {
-    /** Primary repair action type */
-    primaryAction: RepairActionType;
-    /** Base priority (1 = highest) */
-    basePriority: number;
-    /** Base confidence for this repair */
-    baseConfidence: number;
-    /** Generate prompt override (context-aware) */
-    getPromptOverride: (context: RepairContext) => string | null;
-    /** Generate negative boost */
-    getNegativeBoost: (context: RepairContext) => string | null;
-    /** Generate parameter suggestions */
-    getParameterSuggestion: (context: RepairContext) => Partial<ParameterSuggestions> | null;
-    /** Whether this issue can be auto-repaired */
-    canAutoRepair: boolean;
-    /** Escalation: what to try if this repair fails repeatedly */
-    escalationStrategy?: (context: RepairContext) => Partial<ParameterSuggestions>;
-}
-
-const REPAIR_STRATEGIES: Record<string, RepairStrategy> = {
-
-    // ═══════════════════════════════════════════════════════════════════════════
-    // CRITICAL: Output Format Violations
-    // ═══════════════════════════════════════════════════════════════════════════
-
-    'COLOR_DETECTED': {
-        primaryAction: 'prompt_override',
-        basePriority: 1,
-        baseConfidence: 85,
-        canAutoRepair: true,
-        getPromptOverride: () => `
-[CRITICAL REPAIR - COLOR VIOLATION]
-The previous output contained COLOR. This is FORBIDDEN.
-OUTPUT MUST BE: Pure black lines (#000000) on pure white background (#FFFFFF) ONLY.
-NO red, blue, green, yellow, or ANY other color.
-NO colored elements whatsoever.
-Check every pixel - if it's not black or white, it's WRONG.
-    `.trim(),
-        getNegativeBoost: () => 'color, colored, red, blue, green, yellow, pink, orange, purple, brown, any color, colored pencil, crayon marks, pigment',
-        getParameterSuggestion: () => null,
-        escalationStrategy: () => ({
-            reasons: ['Persistent color issues may indicate style incompatibility'],
-        }),
+const REPAIR_STRATEGIES: Record<QaIssueCode, RepairStrategy> = {
+    // ─── COLOR & TONE VIOLATIONS ──────────────────────────────────────────────────
+    [QA_ISSUE_CODES.COLOR_DETECTED]: {
+        issueCode: 'COLOR_DETECTED',
+        priority: 1,
+        confidence: 90,
+        action: 'regenerate',
+        promptOverride: `[CRITICAL] OUTPUT MUST BE PURE BLACK (#000000) LINES ON PURE WHITE (#FFFFFF) ONLY. NO colors whatsoever.`,
+        negativeBoost: ['color', 'colored', 'colorful', 'tinted', 'sepia', 'hue'],
+        maxAttempts: 3,
+        notes: 'Color is absolutely forbidden',
     },
 
-    'GREY_SHADING': {
-        primaryAction: 'prompt_override',
-        basePriority: 1,
-        baseConfidence: 85,
-        canAutoRepair: true,
-        getPromptOverride: () => `
-[CRITICAL REPAIR - GREY/SHADING VIOLATION]
-The previous output contained GREY TONES or SHADING. This is FORBIDDEN.
-OUTPUT MUST BE: Pure black lines on pure white ONLY.
-NO grey (#808080 or any grey value).
-NO gradients, NO shading, NO tonal variation.
-NO soft edges or anti-aliasing that creates grey.
-Lines are BLACK. Background is WHITE. Nothing else.
-    `.trim(),
-        getNegativeBoost: () => 'grey, gray, shading, gradient, shadow, tonal, soft edges, anti-aliasing, halftone, stipple shading',
-        getParameterSuggestion: (ctx) => {
-            // Suggest lower temperature for more deterministic output
-            return { temperature: 0.6, reasons: ['Lower temperature may reduce shading tendency'] };
+    [QA_ISSUE_CODES.GREY_TONES_DETECTED]: {
+        issueCode: 'GREY_TONES_DETECTED',
+        priority: 1,
+        confidence: 85,
+        action: 'regenerate',
+        promptOverride: `[CRITICAL] NO GREY TONES. Only pure black lines on pure white. If you would use grey for shading, leave it WHITE instead.`,
+        negativeBoost: ['grey', 'gray', 'grey tones', 'grey shading', 'tonal variation', 'shading'],
+        maxAttempts: 3,
+        notes: 'Grey tones create unprintable results',
+    },
+
+    [QA_ISSUE_CODES.GRADIENT_DETECTED]: {
+        issueCode: 'GRADIENT_DETECTED',
+        priority: 1,
+        confidence: 85,
+        action: 'regenerate',
+        promptOverride: `[CRITICAL] NO GRADIENTS. Every pixel is either pure black or pure white. Hard, crisp line edges only.`,
+        negativeBoost: ['gradient', 'gradual', 'fade', 'soft edge', 'blend'],
+        maxAttempts: 3,
+        notes: 'Gradients cannot be colored',
+    },
+
+    [QA_ISSUE_CODES.SHADING_DETECTED]: {
+        issueCode: 'SHADING_DETECTED',
+        priority: 1,
+        confidence: 85,
+        action: 'regenerate',
+        promptOverride: `[CRITICAL] NO SHADING. No light/shadow effects. Flat, uniform line work only. The USER adds shading with their colors.`,
+        negativeBoost: ['shading', 'shadow', 'shadows', 'highlights', 'lighting'],
+        maxAttempts: 3,
+        notes: 'Shading prevents user creativity',
+    },
+
+    // ─── TEXTURE VIOLATIONS ───────────────────────────────────────────────────────
+    [QA_ISSUE_CODES.STIPPLING_DETECTED]: {
+        issueCode: 'STIPPLING_DETECTED',
+        priority: 1,
+        confidence: 90,
+        action: 'regenerate',
+        promptOverride: `[CRITICAL] ABSOLUTELY NO STIPPLING. No dots for texture or shading. Use OUTLINED SHAPES instead of dots.`,
+        negativeBoost: ['stippling', 'stippled', 'dots', 'dotted', 'pointillism', 'dot shading'],
+        parameterSuggestions: { temperature: 0.6 },
+        maxAttempts: 3,
+        notes: 'Stippling creates grey tonal areas',
+    },
+
+    [QA_ISSUE_CODES.HATCHING_DETECTED]: {
+        issueCode: 'HATCHING_DETECTED',
+        priority: 1,
+        confidence: 90,
+        action: 'regenerate',
+        promptOverride: `[CRITICAL] ABSOLUTELY NO HATCHING. No parallel lines for shading. Leave would-be-shaded areas WHITE.`,
+        negativeBoost: ['hatching', 'hatched', 'parallel lines', 'line shading', 'pen and ink'],
+        parameterSuggestions: { temperature: 0.6 },
+        maxAttempts: 3,
+        notes: 'Hatching creates grey tonal areas',
+    },
+
+    [QA_ISSUE_CODES.CROSSHATCHING_DETECTED]: {
+        issueCode: 'CROSSHATCHING_DETECTED',
+        priority: 1,
+        confidence: 90,
+        action: 'regenerate',
+        promptOverride: `[CRITICAL] NO CROSS-HATCHING. No intersecting parallel lines for shading.`,
+        negativeBoost: ['crosshatching', 'cross-hatching', 'grid shading'],
+        parameterSuggestions: { temperature: 0.6 },
+        maxAttempts: 3,
+        notes: 'Cross-hatching creates dense grey areas',
+    },
+
+    [QA_ISSUE_CODES.TEXTURE_MARKS_DETECTED]: {
+        issueCode: 'TEXTURE_MARKS_DETECTED',
+        priority: 1,
+        confidence: 85,
+        action: 'regenerate',
+        promptOverride: `[CRITICAL] NO DECORATIVE TEXTURE MARKS. Every line must be part of a CLOSED shape boundary.`,
+        negativeBoost: ['texture marks', 'decorative strokes', 'loose strokes'],
+        maxAttempts: 3,
+        notes: 'Texture marks don\'t create colorable regions',
+    },
+
+    [QA_ISSUE_CODES.DECORATIVE_TEXTURE_LINES]: {
+        issueCode: 'DECORATIVE_TEXTURE_LINES',
+        priority: 1,
+        confidence: 85,
+        action: 'regenerate',
+        promptOverride: `[CRITICAL] NO DECORATIVE TEXTURE LINES. Represent texture through OUTLINED SHAPES only:
+- KNIT/FABRIC = outlined geometric shapes, NOT texture strokes
+- FUR = outlined SECTIONS, NOT individual hair strokes
+- WOOD = outlined PLANKS, NOT grain lines
+- WATER = enclosed WAVE SHAPES, NOT wavy lines`,
+        negativeBoost: ['fur strokes', 'hair strokes', 'fabric texture', 'knit texture', 'wood grain lines', 'decorative lines'],
+        maxAttempts: 3,
+        notes: 'Common issue - must convert texture to shapes',
+    },
+
+    // ─── REGION VIOLATIONS ────────────────────────────────────────────────────────
+    [QA_ISSUE_CODES.UNCLOSED_REGIONS]: {
+        issueCode: 'UNCLOSED_REGIONS',
+        priority: 1,
+        confidence: 80,
+        action: 'regenerate',
+        promptOverride: (ctx) => {
+            const styleSpec = STYLE_SPECS[ctx.styleId as StyleId] || STYLE_SPECS['Cozy Hand-Drawn'];
+            return `[CRITICAL] ALL REGIONS MUST BE 100% CLOSED. Every shape must be watertight. All line endpoints must CONNECT. Style: ${styleSpec.lineWeight}.`;
         },
-        escalationStrategy: () => ({
-            styleId: 'Bold & Easy',
-            reasons: ['Bold & Easy style has strongest black/white enforcement'],
-        }),
+        negativeBoost: ['open paths', 'gaps', 'broken lines', 'disconnected'],
+        maxAttempts: 3,
+        notes: 'Unclosed regions cannot be colored',
     },
 
-    'SOLID_BLACK_FILL': {
-        primaryAction: 'prompt_override',
-        basePriority: 1,
-        baseConfidence: 80,
-        canAutoRepair: true,
-        getPromptOverride: () => `
-[CRITICAL REPAIR - SOLID BLACK FILL VIOLATION]
-The previous output contained SOLID BLACK FILLED AREAS. This is FORBIDDEN.
-ALL areas must be OUTLINED ONLY - never filled.
-Pupils = outlined circles, NOT filled black.
-Hair = individual strands/sections with outlines, NOT solid black mass.
-Shadows = suggested by line weight variation, NOT filled areas.
-Every "would-be-dark" area must be an OUTLINED REGION that can be colored.
-    `.trim(),
-        getNegativeBoost: () => 'solid black, filled black, black fill, silhouette, solid areas, filled areas, black mass, filled pupils',
-        getParameterSuggestion: () => null,
-        escalationStrategy: () => ({
-            reasons: ['Consider simplifying subject to reduce fill temptation'],
-        }),
+    [QA_ISSUE_CODES.UNCLOSED_WATER_REGIONS]: {
+        issueCode: 'UNCLOSED_WATER_REGIONS',
+        priority: 1,
+        confidence: 85,
+        action: 'regenerate',
+        promptOverride: `[CRITICAL] WATER MUST BE ENCLOSED SHAPES, NOT WAVY LINES. Draw water as a series of ENCLOSED wave shapes. Each wave crest = a CLOSED colorable region. NO decorative wavy lines.`,
+        negativeBoost: ['wavy lines', 'water lines', 'wave lines', 'ripple lines'],
+        maxAttempts: 3,
+        notes: 'Water is commonly rendered wrong',
     },
 
-    'MOCKUP_DETECTED': {
-        primaryAction: 'prompt_override',
-        basePriority: 1,
-        baseConfidence: 90,
-        canAutoRepair: true,
-        getPromptOverride: () => `
-[CRITICAL REPAIR - MOCKUP/PHOTO DETECTED]
-The previous output was a MOCKUP or PHOTO, not line art. This is WRONG.
-OUTPUT MUST BE: Pure line art drawing, NOT a photograph.
-NO paper texture, NO wood table, NO art supplies visible.
-NO staged photography, NO flatlay composition.
-NO shadows cast by objects, NO 3D perspective of paper.
-Just the LINE ART itself on pure white digital background.
-    `.trim(),
-        getNegativeBoost: () => 'mockup, photo, photograph, staged, flatlay, paper texture, wood table, pencils, crayons, art supplies, shadow, 3d render, product shot',
-        getParameterSuggestion: () => null,
-        escalationStrategy: () => ({
-            reasons: ['Mockup generation may require explicit "digital illustration" framing'],
-        }),
+    [QA_ISSUE_CODES.UNCLOSED_HAIR_STRANDS]: {
+        issueCode: 'UNCLOSED_HAIR_STRANDS',
+        priority: 1,
+        confidence: 85,
+        action: 'regenerate',
+        promptOverride: `[CRITICAL] HAIR MUST BE ENCLOSED SECTIONS, NOT INDIVIDUAL STRANDS. Group hair into 5-15 enclosed sections. NO individual hair strand lines.`,
+        negativeBoost: ['hair strands', 'individual hairs', 'hair lines', 'detailed hair'],
+        maxAttempts: 3,
+        notes: 'Hair commonly has too many strands',
     },
 
-    'UNCLOSED_REGIONS': {
-        primaryAction: 'prompt_override',
-        basePriority: 1,
-        baseConfidence: 75,
-        canAutoRepair: true,
-        getPromptOverride: (ctx) => {
-            const styleRules = STYLE_VALIDATION_RULES[ctx.styleId] || STYLE_VALIDATION_RULES['default'];
-            return `
-[CRITICAL REPAIR - UNCLOSED REGIONS]
-The previous output had OPEN/UNCLOSED shapes. This breaks paint-by-numbers functionality.
-EVERY shape MUST be fully CLOSED (watertight).
-Line endpoints MUST connect with no gaps.
-Minimum region size: ${styleRules.minRegionMm}mm²
-If a shape cannot be flood-filled, it is WRONG.
-Check: eyes, fingers, hair strands, decorative elements - ALL must close.
-      `.trim();
+    [QA_ISSUE_CODES.REGIONS_TOO_SMALL]: {
+        issueCode: 'REGIONS_TOO_SMALL',
+        priority: 2,
+        confidence: 75,
+        action: 'regenerate',
+        promptOverride: (ctx) => {
+            const styleSpec = STYLE_SPECS[ctx.styleId as StyleId] || STYLE_SPECS['Cozy Hand-Drawn'];
+            return `[REPAIR] Increase region sizes. ${styleSpec.lineWeight}. Merge tiny regions into larger ones.`;
         },
-        getNegativeBoost: () => 'open paths, unclosed shapes, gaps, broken lines, incomplete outlines',
-        getParameterSuggestion: (ctx) => {
-            // Simpler styles have fewer closure issues
-            if (ctx.styleId === 'Botanical' || ctx.styleId === 'Wildlife') {
-                return {
-                    styleId: 'Cartoon',
-                    reasons: ['Fine-detail styles more prone to closure issues; Cartoon style has cleaner closures'],
-                };
+        negativeBoost: ['tiny details', 'micro details', 'intricate'],
+        parameterSuggestions: { complexityId: 'Simple' },
+        maxAttempts: 2,
+        notes: 'May need complexity downgrade',
+    },
+
+    [QA_ISSUE_CODES.SOLID_BLACK_FILLS]: {
+        issueCode: 'SOLID_BLACK_FILLS',
+        priority: 1,
+        confidence: 90,
+        action: 'regenerate',
+        promptOverride: `[CRITICAL] NO SOLID BLACK FILLED AREAS. Everything must be OUTLINED, not filled. Pupils = outlined circles. Shadows = don't exist (leave white).`,
+        negativeBoost: ['solid black', 'filled black', 'black fill', 'silhouette'],
+        maxAttempts: 3,
+        notes: 'Solid fills rob users of coloring opportunity',
+    },
+
+    // ─── COMPOSITION VIOLATIONS ───────────────────────────────────────────────────
+    [QA_ISSUE_CODES.HORROR_VACUI]: {
+        issueCode: 'HORROR_VACUI',
+        priority: 2,
+        confidence: 80,
+        action: 'regenerate',
+        promptOverride: (ctx) => {
+            const complexitySpec = COMPLEXITY_SPECS[ctx.complexityId as ComplexityId] || COMPLEXITY_SPECS['Moderate'];
+            return `[REPAIR] Image is TOO DENSE. Add breathing room. ${complexitySpec.restAreaRule}. Aim for at least 15-20% white space.`;
+        },
+        negativeBoost: ['dense', 'busy', 'cluttered', 'packed', 'crowded'],
+        maxAttempts: 2,
+        notes: 'Overly dense images are exhausting to color',
+    },
+
+    [QA_ISSUE_CODES.NO_REST_AREAS]: {
+        issueCode: 'NO_REST_AREAS',
+        priority: 2,
+        confidence: 80,
+        action: 'regenerate',
+        promptOverride: (ctx) => {
+            const complexitySpec = COMPLEXITY_SPECS[ctx.complexityId as ComplexityId] || COMPLEXITY_SPECS['Moderate'];
+            return `[REPAIR] MUST INCLUDE REST AREAS. ${complexitySpec.restAreaRule}. At least 15% of canvas should be clear white space.`;
+        },
+        negativeBoost: ['dense', 'busy', 'no breathing room'],
+        maxAttempts: 2,
+        notes: 'Rest areas prevent colorist fatigue',
+    },
+
+    [QA_ISSUE_CODES.INSUFFICIENT_REST_AREAS]: {
+        issueCode: 'INSUFFICIENT_REST_AREAS',
+        priority: 3,
+        confidence: 75,
+        action: 'regenerate',
+        promptOverride: (ctx) => {
+            const complexitySpec = COMPLEXITY_SPECS[ctx.complexityId as ComplexityId] || COMPLEXITY_SPECS['Moderate'];
+            return `[REPAIR] Need MORE rest areas. ${complexitySpec.restAreaRule}`;
+        },
+        negativeBoost: ['dense', 'busy'],
+        maxAttempts: 2,
+        notes: 'Minor composition issue',
+    },
+
+    [QA_ISSUE_CODES.COMPOSITION_IMBALANCED]: {
+        issueCode: 'COMPOSITION_IMBALANCED',
+        priority: 4,
+        confidence: 60,
+        action: 'modify_prompt',
+        promptOverride: `[MINOR] Distribute visual weight more evenly across the canvas.`,
+        negativeBoost: ['unbalanced', 'lopsided'],
+        maxAttempts: 1,
+        notes: 'Minor - may accept with warning',
+    },
+
+    [QA_ISSUE_CODES.SUBJECT_CROPPED]: {
+        issueCode: 'SUBJECT_CROPPED',
+        priority: 3,
+        confidence: 70,
+        action: 'regenerate',
+        promptOverride: `[REPAIR] Keep main subject fully within canvas bounds. Leave at least 10% margin on all edges.`,
+        negativeBoost: ['cropped', 'cut off'],
+        maxAttempts: 2,
+        notes: 'Cropping can lose important elements',
+    },
+
+    // ─── FORMAT VIOLATIONS ────────────────────────────────────────────────────────
+    [QA_ISSUE_CODES.MOCKUP_FORMAT_DETECTED]: {
+        issueCode: 'MOCKUP_FORMAT_DETECTED',
+        priority: 1,
+        confidence: 95,
+        action: 'regenerate',
+        promptOverride: `[CRITICAL] OUTPUT MUST BE THE ILLUSTRATION ITSELF, NOT A MOCKUP. NO paper on table, NO desk visible, NO art supplies. Output = the line art filling the entire canvas. This is NOT a product photo.`,
+        negativeBoost: ['mockup', 'product shot', 'paper on table', 'art supplies', 'desk', 'staged', 'photo of'],
+        parameterSuggestions: { temperature: 0.7 },
+        maxAttempts: 3,
+        notes: 'Mockup format is completely wrong output',
+    },
+
+    [QA_ISSUE_CODES.MULTIPLE_IMAGES_DETECTED]: {
+        issueCode: 'MULTIPLE_IMAGES_DETECTED',
+        priority: 1,
+        confidence: 95,
+        action: 'regenerate',
+        promptOverride: `[CRITICAL] OUTPUT MUST BE A SINGLE ILLUSTRATION. ONE image only. NO grid, NO collage, NO multiple panels. Fill the entire canvas with ONE cohesive illustration.`,
+        negativeBoost: ['multiple images', 'grid', 'collage', 'panels', 'collection', 'series'],
+        maxAttempts: 3,
+        notes: 'Multiple images indicate prompt misunderstanding',
+    },
+
+    [QA_ISSUE_CODES.CONTAINS_FRAME_BORDER]: {
+        issueCode: 'CONTAINS_FRAME_BORDER',
+        priority: 4,
+        confidence: 70,
+        action: 'modify_prompt',
+        promptOverride: `[MINOR] Do not include decorative frame or border unless specifically requested.`,
+        negativeBoost: ['frame', 'border'],
+        maxAttempts: 1,
+        notes: 'Minor - may accept if frame is simple',
+    },
+
+    [QA_ISSUE_CODES.CONTAINS_TEXT]: {
+        issueCode: 'CONTAINS_TEXT',
+        priority: 2,
+        confidence: 85,
+        action: 'regenerate',
+        promptOverride: `[REPAIR] NO TEXT in the image unless specifically requested. NO words, letters, numbers, signs, or labels.`,
+        negativeBoost: ['text', 'words', 'letters', 'writing', 'labels'],
+        maxAttempts: 2,
+        notes: 'Text often renders poorly',
+    },
+
+    [QA_ISSUE_CODES.PHOTO_REALISTIC]: {
+        issueCode: 'PHOTO_REALISTIC',
+        priority: 1,
+        confidence: 90,
+        action: 'regenerate',
+        promptOverride: `[CRITICAL] OUTPUT MUST BE LINE ART, NOT PHOTOREALISTIC. Black outlines on white background. Coloring book style.`,
+        negativeBoost: ['photorealistic', 'realistic', 'photograph', '3d render'],
+        maxAttempts: 3,
+        notes: 'Completely wrong output type',
+    },
+
+    // ─── STYLE VIOLATIONS ─────────────────────────────────────────────────────────
+    [QA_ISSUE_CODES.STYLE_MISMATCH]: {
+        issueCode: 'STYLE_MISMATCH',
+        priority: 2,
+        confidence: 70,
+        action: 'regenerate',
+        promptOverride: (ctx) => {
+            const styleSpec = STYLE_SPECS[ctx.styleId as StyleId] || STYLE_SPECS['Cozy Hand-Drawn'];
+            return `[REPAIR] Style mismatch. Must match: ${ctx.styleId}. ${styleSpec.positiveDescription}`;
+        },
+        negativeBoost: [],
+        maxAttempts: 2,
+        notes: 'Style enforcement needed',
+    },
+
+    [QA_ISSUE_CODES.LINE_WEIGHT_WRONG]: {
+        issueCode: 'LINE_WEIGHT_WRONG',
+        priority: 2,
+        confidence: 75,
+        action: 'regenerate',
+        promptOverride: (ctx) => {
+            const styleSpec = STYLE_SPECS[ctx.styleId as StyleId] || STYLE_SPECS['Cozy Hand-Drawn'];
+            return `[REPAIR] Line weight must be: ${styleSpec.lineWeight}`;
+        },
+        negativeBoost: [],
+        maxAttempts: 2,
+        notes: 'Line weight affects colorability',
+    },
+
+    [QA_ISSUE_CODES.LINE_WEIGHT_INCONSISTENT]: {
+        issueCode: 'LINE_WEIGHT_INCONSISTENT',
+        priority: 3,
+        confidence: 70,
+        action: 'regenerate',
+        promptOverride: (ctx) => {
+            const styleSpec = STYLE_SPECS[ctx.styleId as StyleId] || STYLE_SPECS['Cozy Hand-Drawn'];
+            // v5.0 style specs don't have explicit consistency field, but lineWeight contains description
+            if (styleSpec.lineWeight.includes('uniform') || styleSpec.lineWeight.includes('consistent')) {
+                return `[REPAIR] This style requires UNIFORM line weight: ${styleSpec.lineWeight}. NO variation.`;
             }
-            return null;
+            return '';
         },
-        escalationStrategy: (ctx) => ({
-            complexityId: 'Simple',
-            reasons: ['Reducing complexity improves closure reliability'],
-        }),
+        negativeBoost: ['variable line weight', 'inconsistent lines'],
+        maxAttempts: 2,
+        notes: 'Some styles require uniform lines',
     },
 
-    'INAPPROPRIATE_CONTENT': {
-        primaryAction: 'abort',
-        basePriority: 1,
-        baseConfidence: 0,
-        canAutoRepair: false,
-        getPromptOverride: () => null,
-        getNegativeBoost: () => null,
-        getParameterSuggestion: () => null,
+    [QA_ISSUE_CODES.CURVES_IN_GEOMETRIC]: {
+        issueCode: 'CURVES_IN_GEOMETRIC',
+        priority: 1,
+        confidence: 95,
+        action: 'regenerate',
+        promptOverride: `[CRITICAL] GEOMETRIC STYLE REQUIRES STRAIGHT LINES ONLY. ZERO curves, ZERO rounded corners, ZERO arcs. Every line must be perfectly straight.`,
+        negativeBoost: ['curves', 'curved', 'round', 'rounded', 'circular', 'arc', 'organic'],
+        parameterSuggestions: { temperature: 0.4 },
+        maxAttempts: 3,
+        notes: 'Geometric is strict - curves are failure',
     },
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // MAJOR: Structural/Style Issues
-    // ═══════════════════════════════════════════════════════════════════════════
+    [QA_ISSUE_CODES.SHARP_ANGLES_IN_KAWAII]: {
+        issueCode: 'SHARP_ANGLES_IN_KAWAII',
+        priority: 2,
+        confidence: 80,
+        action: 'regenerate',
+        promptOverride: `[REPAIR] KAWAII STYLE REQUIRES ALL ROUNDED CORNERS. Every corner must have minimum 2mm radius. NO sharp points.`,
+        negativeBoost: ['sharp', 'angular', 'pointed', 'hard edges'],
+        maxAttempts: 2,
+        notes: 'Kawaii requires softness',
+    },
 
-    'REGIONS_TOO_SMALL': {
-        primaryAction: 'parameter_change',
-        basePriority: 2,
-        baseConfidence: 70,
-        canAutoRepair: true,
-        getPromptOverride: (ctx) => {
-            const styleRules = STYLE_VALIDATION_RULES[ctx.styleId] || STYLE_VALIDATION_RULES['default'];
-            return `
-[REPAIR - REGIONS TOO SMALL]
-The previous output had regions smaller than ${styleRules.minRegionMm}mm².
-ENLARGE all small details. Merge tiny adjacent regions.
-Minimum enclosed area: ${styleRules.minRegionMm}mm²
-If a region is too small to comfortably color, make it bigger or merge it.
-      `.trim();
+    [QA_ISSUE_CODES.THIN_LINES_IN_BOLD]: {
+        issueCode: 'THIN_LINES_IN_BOLD',
+        priority: 1,
+        confidence: 85,
+        action: 'regenerate',
+        promptOverride: `[CRITICAL] BOLD & EASY REQUIRES THICK 4mm LINES MINIMUM. NO thin lines, NO fine details.`,
+        negativeBoost: ['thin lines', 'fine lines', 'delicate', 'detailed', 'intricate'],
+        parameterSuggestions: { complexityId: 'Very Simple' },
+        maxAttempts: 3,
+        notes: 'Bold & Easy is for simple coloring',
+    },
+
+    // ─── COMPLEXITY VIOLATIONS ────────────────────────────────────────────────────
+    [QA_ISSUE_CODES.TOO_COMPLEX]: {
+        issueCode: 'TOO_COMPLEX',
+        priority: 2,
+        confidence: 75,
+        action: 'regenerate',
+        promptOverride: (ctx) => {
+            const complexitySpec = COMPLEXITY_SPECS[ctx.complexityId as ComplexityId] || COMPLEXITY_SPECS['Moderate'];
+            return `[REPAIR] Image is too complex. Target: ${ctx.complexityId} (${complexitySpec.regionRange}). Simplify.`;
         },
-        getNegativeBoost: () => 'tiny details, micro regions, fine lines, intricate patterns',
-        getParameterSuggestion: (ctx) => {
-            const complexityOrder = ['Very Simple', 'Simple', 'Moderate', 'Intricate', 'Extreme Detail'];
-            const currentIndex = complexityOrder.indexOf(ctx.complexityId);
-            if (currentIndex > 0) {
-                return {
-                    complexityId: complexityOrder[currentIndex - 1],
-                    reasons: ['Reducing complexity will increase minimum region sizes'],
-                };
-            }
-            // Already at simplest - suggest style change
-            return {
-                styleId: 'Bold & Easy',
-                reasons: ['Bold & Easy has largest minimum region size (8mm²)'],
-            };
+        negativeBoost: ['complex', 'intricate', 'detailed', 'busy'],
+        parameterSuggestions: { temperature: 0.6 },
+        maxAttempts: 2,
+        notes: 'May need complexity downgrade',
+    },
+
+    [QA_ISSUE_CODES.TOO_SIMPLE]: {
+        issueCode: 'TOO_SIMPLE',
+        priority: 4,
+        confidence: 60,
+        action: 'modify_prompt',
+        promptOverride: (ctx) => {
+            const complexitySpec = COMPLEXITY_SPECS[ctx.complexityId as ComplexityId] || COMPLEXITY_SPECS['Moderate'];
+            return `[MINOR] Image is simpler than requested. Target: ${ctx.complexityId} (${complexitySpec.regionRange}).`;
         },
-        escalationStrategy: (ctx) => ({
-            styleId: 'Bold & Easy',
-            complexityId: 'Very Simple',
-            reasons: ['Maximum simplification for region size compliance'],
-        }),
+        negativeBoost: [],
+        maxAttempts: 1,
+        notes: 'Minor - simpler is often acceptable',
     },
 
-    'REGIONS_TOO_MANY': {
-        primaryAction: 'parameter_change',
-        basePriority: 2,
-        baseConfidence: 75,
-        canAutoRepair: true,
-        getPromptOverride: (ctx) => {
-            const styleRules = STYLE_VALIDATION_RULES[ctx.styleId] || STYLE_VALIDATION_RULES['default'];
-            const maxRegions = styleRules.maxRegions || 120;
-            return `
-[REPAIR - TOO MANY REGIONS]
-The previous output exceeded the region limit.
-Maximum regions for this style: ${maxRegions}
-SIMPLIFY the composition. Remove background clutter.
-Merge small adjacent regions. Focus on the main subject.
-      `.trim();
+    [QA_ISSUE_CODES.REGION_COUNT_EXCEEDED]: {
+        issueCode: 'REGION_COUNT_EXCEEDED',
+        priority: 2,
+        confidence: 70,
+        action: 'regenerate',
+        promptOverride: (ctx) => {
+            const complexitySpec = COMPLEXITY_SPECS[ctx.complexityId as ComplexityId] || COMPLEXITY_SPECS['Moderate'];
+            return `[REPAIR] Too many regions. Target for ${ctx.complexityId}: ${complexitySpec.regionRange}. Merge small regions.`;
         },
-        getNegativeBoost: () => 'complex background, many details, cluttered, busy composition',
-        getParameterSuggestion: (ctx) => {
-            const complexityOrder = ['Very Simple', 'Simple', 'Moderate', 'Intricate', 'Extreme Detail'];
-            const currentIndex = complexityOrder.indexOf(ctx.complexityId);
-            if (currentIndex > 0) {
-                return {
-                    complexityId: complexityOrder[currentIndex - 1],
-                    reasons: ['Lower complexity = fewer regions'],
-                };
-            }
-            return null;
+        negativeBoost: ['detailed', 'intricate', 'many regions'],
+        maxAttempts: 2,
+        notes: 'Too many regions = too complex',
+    },
+
+    [QA_ISSUE_CODES.REGION_COUNT_INSUFFICIENT]: {
+        issueCode: 'REGION_COUNT_INSUFFICIENT',
+        priority: 4,
+        confidence: 60,
+        action: 'modify_prompt',
+        promptOverride: (ctx) => {
+            const complexitySpec = COMPLEXITY_SPECS[ctx.complexityId as ComplexityId] || COMPLEXITY_SPECS['Moderate'];
+            return `[MINOR] Too few regions. Target for ${ctx.complexityId}: ${complexitySpec.regionRange}.`;
         },
-        escalationStrategy: () => ({
-            complexityId: 'Simple',
-            reasons: ['Significant complexity reduction needed'],
-        }),
+        negativeBoost: [],
+        maxAttempts: 1,
+        notes: 'Minor - fewer regions often acceptable',
     },
 
-    'REGIONS_TOO_FEW': {
-        primaryAction: 'parameter_change',
-        basePriority: 3,
-        baseConfidence: 70,
-        canAutoRepair: true,
-        getPromptOverride: () => `
-[REPAIR - TOO FEW REGIONS]
-The previous output was too simple for the requested complexity.
-ADD more detail. Include background elements.
-Add internal divisions to large shapes (clothing folds, fur texture outlines, etc.)
-    `.trim(),
-        getNegativeBoost: () => null,
-        getParameterSuggestion: (ctx) => {
-            const complexityOrder = ['Very Simple', 'Simple', 'Moderate', 'Intricate', 'Extreme Detail'];
-            const currentIndex = complexityOrder.indexOf(ctx.complexityId);
-            if (currentIndex < complexityOrder.length - 1) {
-                return {
-                    complexityId: complexityOrder[currentIndex + 1],
-                    reasons: ['Increasing complexity will add more regions'],
-                };
-            }
-            return null;
+    // ─── AUDIENCE VIOLATIONS ──────────────────────────────────────────────────────
+    [QA_ISSUE_CODES.INAPPROPRIATE_CONTENT]: {
+        issueCode: 'INAPPROPRIATE_CONTENT',
+        priority: 1,
+        confidence: 95,
+        action: 'regenerate',
+        promptOverride: (ctx) => {
+            const audienceSpec = AUDIENCE_SPECS[ctx.audienceId as AudienceId] || AUDIENCE_SPECS['adults'];
+            return `[CRITICAL] Content not suitable for ${ctx.audienceId}. Content guidance: ${audienceSpec.contentGuidance}`;
         },
-        escalationStrategy: () => ({
-            complexityId: 'Intricate',
-            reasons: ['Higher complexity setting needed'],
-        }),
+        negativeBoost: ['inappropriate', 'mature', 'adult content'],
+        maxAttempts: 3,
+        notes: 'Audience safety is critical',
     },
 
-    'LINE_WEIGHT_WRONG': {
-        primaryAction: 'prompt_override',
-        basePriority: 2,
-        baseConfidence: 70,
-        canAutoRepair: true,
-        getPromptOverride: (ctx) => {
-            const styleRules = STYLE_VALIDATION_RULES[ctx.styleId] || STYLE_VALIDATION_RULES['default'];
-            return `
-[REPAIR - LINE WEIGHT INCORRECT]
-The previous output had incorrect line weight for ${ctx.styleId} style.
-REQUIRED LINE WEIGHT: ${styleRules.lineWeightMm}
-Adjust ALL strokes to match this specification exactly.
-${ctx.styleId === 'Bold & Easy' ? 'ALL lines must be thick and uniform - no thin lines anywhere.' : ''}
-${ctx.styleId === 'Botanical' ? 'Use fine, delicate strokes throughout.' : ''}
-${ctx.styleId === 'Realistic' ? 'Maintain perfectly uniform line weight (Ligne Claire style).' : ''}
-      `.trim();
+    [QA_ISSUE_CODES.SCARY_FOR_YOUNG]: {
+        issueCode: 'SCARY_FOR_YOUNG',
+        priority: 1,
+        confidence: 90,
+        action: 'regenerate',
+        promptOverride: `[CRITICAL] Content may frighten young children. Remove teeth, fangs, claws, angry expressions, fire, weapons. Make everything FRIENDLY and CUTE.`,
+        negativeBoost: ['scary', 'frightening', 'teeth', 'fangs', 'claws', 'angry', 'threatening'],
+        parameterSuggestions: { styleId: 'Kawaii' },
+        maxAttempts: 3,
+        notes: 'Young audience safety is paramount',
+    },
+
+    [QA_ISSUE_CODES.TOO_COMPLEX_FOR_AUDIENCE]: {
+        issueCode: 'TOO_COMPLEX_FOR_AUDIENCE',
+        priority: 2,
+        confidence: 80,
+        action: 'modify_params',
+        promptOverride: (ctx) => {
+            const audienceSpec = AUDIENCE_SPECS[ctx.audienceId as AudienceId] || AUDIENCE_SPECS['adults'];
+            return `[REPAIR] Complexity exceeds max for ${ctx.audienceId}: ${audienceSpec.maxComplexity}. Simplify.`;
         },
-        getNegativeBoost: (ctx) => {
-            if (ctx.styleId === 'Bold & Easy') return 'thin lines, fine details, delicate strokes, varying line weight';
-            if (ctx.styleId === 'Botanical') return 'thick lines, bold strokes, heavy lines';
-            return 'inconsistent line weight';
-        },
-        getParameterSuggestion: () => null,
-        escalationStrategy: (ctx) => ({
-            temperature: 0.6,
-            reasons: ['Lower temperature for more consistent line weight'],
-        }),
+        negativeBoost: ['complex', 'intricate', 'detailed'],
+        parameterSuggestions: { complexityId: 'Simple' },
+        maxAttempts: 2,
+        notes: 'Auto-downgrade complexity',
     },
 
-    'STYLE_MISMATCH': {
-        primaryAction: 'prompt_override',
-        basePriority: 2,
-        baseConfidence: 65,
-        canAutoRepair: true,
-        getPromptOverride: (ctx) => {
-            const styleRules = STYLE_VALIDATION_RULES[ctx.styleId] || STYLE_VALIDATION_RULES['default'];
-            return `
-[REPAIR - STYLE MISMATCH]
-The previous output did not match the requested "${ctx.styleId}" style.
-STRICTLY follow these style requirements:
-${styleRules.specificChecks.map(check => `- ${check}`).join('\n')}
-Do NOT deviate from this style. Do NOT mix with other styles.
-      `.trim();
-        },
-        getNegativeBoost: (ctx) => {
-            // Return negatives for OTHER styles
-            const otherStyles = Object.keys(STYLE_VALIDATION_RULES).filter(s => s !== ctx.styleId && s !== 'default');
-            return otherStyles.slice(0, 5).join(' style, ') + ' style';
-        },
-        getParameterSuggestion: () => null,
-        escalationStrategy: (ctx) => ({
-            temperature: 0.5,
-            reasons: ['Lower temperature may improve style adherence'],
-        }),
+    // ─── TECHNICAL ISSUES ─────────────────────────────────────────────────────────
+    [QA_ISSUE_CODES.LOW_RESOLUTION]: {
+        issueCode: 'LOW_RESOLUTION',
+        priority: 3,
+        confidence: 70,
+        action: 'accept',
+        promptOverride: '',
+        negativeBoost: [],
+        maxAttempts: 1,
+        notes: 'Resolution is API limitation',
     },
 
-    'COMPLEXITY_MISMATCH': {
-        primaryAction: 'prompt_override',
-        basePriority: 2,
-        baseConfidence: 70,
-        canAutoRepair: true,
-        getPromptOverride: (ctx) => {
-            const complexityRules = COMPLEXITY_VALIDATION_RULES[ctx.complexityId] || COMPLEXITY_VALIDATION_RULES['Moderate'];
-            return `
-[REPAIR - COMPLEXITY MISMATCH]
-The previous output did not match "${ctx.complexityId}" complexity.
-REQUIRED: ${complexityRules.densityDescription}
-Maximum shapes: ${complexityRules.maxShapes || 'No limit'}
-Background elements: ${complexityRules.allowsBackground ? 'Allowed' : 'NOT allowed'}
-${complexityRules.specificChecks.map(check => `- ${check}`).join('\n')}
-      `.trim();
-        },
-        getNegativeBoost: () => null,
-        getParameterSuggestion: () => null,
-        escalationStrategy: () => ({
-            reasons: ['Complexity adherence may require prompt restructuring'],
-        }),
+    [QA_ISSUE_CODES.ARTIFACTS_PRESENT]: {
+        issueCode: 'ARTIFACTS_PRESENT',
+        priority: 4,
+        confidence: 60,
+        action: 'accept',
+        promptOverride: '',
+        negativeBoost: ['artifacts', 'noise'],
+        maxAttempts: 1,
+        notes: 'Minor artifacts may be acceptable',
     },
 
-    'TEXTURE_WHERE_FORBIDDEN': {
-        primaryAction: 'prompt_override',
-        basePriority: 2,
-        baseConfidence: 80,
-        canAutoRepair: true,
-        getPromptOverride: (ctx) => `
-[REPAIR - FORBIDDEN TEXTURE]
-The previous output contained texture marks, but ${ctx.styleId} style FORBIDS textures.
-REMOVE all hatching, stippling, cross-hatching, and texture marks.
-Use CLEAN OUTLINES ONLY.
-Suggest form through contour, not through texture.
-    `.trim(),
-        getNegativeBoost: () => 'hatching, cross-hatching, stippling, texture marks, shading marks, fill patterns',
-        getParameterSuggestion: () => null,
-        escalationStrategy: () => ({
-            styleId: 'Bold & Easy',
-            reasons: ['Bold & Easy has strictest no-texture enforcement'],
-        }),
+    [QA_ISSUE_CODES.BLURRY_LINES]: {
+        issueCode: 'BLURRY_LINES',
+        priority: 3,
+        confidence: 70,
+        action: 'regenerate',
+        promptOverride: `[REPAIR] Lines must be crisp and sharp. NO soft or blurry lines.`,
+        negativeBoost: ['blurry', 'soft', 'fuzzy', 'out of focus'],
+        maxAttempts: 2,
+        notes: 'Blurry lines affect print quality',
     },
 
-    'CURVES_IN_GEOMETRIC': {
-        primaryAction: 'prompt_override',
-        basePriority: 2,
-        baseConfidence: 85,
-        canAutoRepair: true,
-        getPromptOverride: () => `
-[REPAIR - CURVES IN GEOMETRIC STYLE]
-The previous output contained CURVED LINES. Geometric style FORBIDS curves.
-USE ONLY STRAIGHT LINES.
-Every shape must be a polygon (triangles, quadrilaterals, etc.)
-Approximate curves using faceted/tessellated straight segments.
-ZERO curves permitted - this is absolute.
-    `.trim(),
-        getNegativeBoost: () => 'curves, curved lines, arcs, circles, organic shapes, flowing lines, smooth curves',
-        getParameterSuggestion: () => null,
-        escalationStrategy: () => ({
-            temperature: 0.4,
-            reasons: ['Very low temperature for strict geometric adherence'],
-        }),
+    [QA_ISSUE_CODES.ANTI_ALIASING_GREY]: {
+        issueCode: 'ANTI_ALIASING_GREY',
+        priority: 5,
+        confidence: 50,
+        action: 'accept',
+        promptOverride: '',
+        negativeBoost: [],
+        maxAttempts: 1,
+        notes: 'Minor anti-aliasing is acceptable',
     },
-
-    'SHARP_ANGLES_IN_KAWAII': {
-        primaryAction: 'prompt_override',
-        basePriority: 2,
-        baseConfidence: 80,
-        canAutoRepair: true,
-        getPromptOverride: () => `
-[REPAIR - SHARP ANGLES IN KAWAII STYLE]
-The previous output contained SHARP ANGLES. Kawaii style requires ALL ROUNDED corners.
-ROUND every corner (minimum 2mm radius).
-NO pointed shapes, NO angular forms.
-Everything must be SOFT, CUTE, and ROUNDED.
-    `.trim(),
-        getNegativeBoost: () => 'sharp angles, pointed, angular, spiky, harsh corners, geometric',
-        getParameterSuggestion: () => null,
-        escalationStrategy: () => ({
-            reasons: ['Consider subject change if angular subjects requested'],
-        }),
-    },
-
-    'THIN_LINES_IN_BOLD': {
-        primaryAction: 'prompt_override',
-        basePriority: 2,
-        baseConfidence: 85,
-        canAutoRepair: true,
-        getPromptOverride: () => `
-[REPAIR - THIN LINES IN BOLD & EASY STYLE]
-The previous output contained THIN LINES. Bold & Easy requires 4mm THICK lines ONLY.
-Make ALL lines THICK (4mm).
-NO thin details, NO fine lines, NO delicate strokes.
-If a detail requires thin lines, REMOVE that detail.
-Simplicity over detail - this is a bold, simple style.
-    `.trim(),
-        getNegativeBoost: () => 'thin lines, fine details, delicate, intricate, detailed, wispy, hairline',
-        getParameterSuggestion: (ctx) => {
-            if (ctx.complexityId !== 'Very Simple' && ctx.complexityId !== 'Simple') {
-                return {
-                    complexityId: 'Simple',
-                    reasons: ['Bold & Easy works best with Simple complexity'],
-                };
-            }
-            return null;
-        },
-        escalationStrategy: () => ({
-            complexityId: 'Very Simple',
-            reasons: ['Maximum simplification for Bold & Easy compliance'],
-        }),
-    },
-
-    'AUDIENCE_MISMATCH': {
-        primaryAction: 'prompt_override',
-        basePriority: 2,
-        baseConfidence: 65,
-        canAutoRepair: true,
-        getPromptOverride: (ctx) => {
-            const audienceRules = AUDIENCE_VALIDATION_RULES[ctx.audienceId] || AUDIENCE_VALIDATION_RULES['default'];
-            return `
-[REPAIR - AUDIENCE MISMATCH]
-The previous output was not appropriate for "${ctx.audienceId}" audience.
-Required characteristics: ${audienceRules.requiredCharacteristics.join(', ')}
-Maximum complexity: ${audienceRules.maxComplexity}
-${audienceRules.specificChecks.map(check => `- ${check}`).join('\n')}
-      `.trim();
-        },
-        getNegativeBoost: (ctx) => {
-            const audienceRules = AUDIENCE_VALIDATION_RULES[ctx.audienceId] || AUDIENCE_VALIDATION_RULES['default'];
-            return audienceRules.prohibitedContent.join(', ');
-        },
-        getParameterSuggestion: (ctx) => {
-            const audienceRules = AUDIENCE_VALIDATION_RULES[ctx.audienceId] || AUDIENCE_VALIDATION_RULES['default'];
-            const complexityOrder = ['Very Simple', 'Simple', 'Moderate', 'Intricate', 'Extreme Detail'];
-            const maxIndex = complexityOrder.indexOf(audienceRules.maxComplexity);
-            const currentIndex = complexityOrder.indexOf(ctx.complexityId);
-
-            if (currentIndex > maxIndex) {
-                return {
-                    complexityId: audienceRules.maxComplexity,
-                    reasons: [`${ctx.audienceId} audience maximum complexity is ${audienceRules.maxComplexity}`],
-                };
-            }
-            return null;
-        },
-        escalationStrategy: (ctx) => {
-            const audienceRules = AUDIENCE_VALIDATION_RULES[ctx.audienceId] || AUDIENCE_VALIDATION_RULES['default'];
-            return {
-                complexityId: audienceRules.maxComplexity,
-                styleId: ctx.audienceId === 'toddlers' ? 'Bold & Easy' : undefined,
-                reasons: ['Audience compliance requires parameter adjustment'],
-            };
-        },
-    },
-
-    'SCARY_FOR_YOUNG': {
-        primaryAction: 'prompt_override',
-        basePriority: 1,
-        baseConfidence: 70,
-        canAutoRepair: true,
-        getPromptOverride: () => `
-[REPAIR - SCARY CONTENT FOR YOUNG AUDIENCE]
-The previous output was TOO SCARY for the target young audience.
-Make the subject 100% CUTE and FRIENDLY.
-- Replace angry expressions with happy/neutral
-- Remove teeth, claws, sharp elements
-- Add cute features (big eyes, round shapes, soft forms)
-- Use friendly, welcoming poses
-The result must be something a toddler would find comforting, not scary.
-    `.trim(),
-        getNegativeBoost: () => 'scary, frightening, angry, aggressive, teeth, fangs, claws, monster, horror, threatening, menacing, dark',
-        getParameterSuggestion: () => ({
-            styleId: 'Kawaii',
-            reasons: ['Kawaii style enforces cute aesthetic'],
-        }),
-        escalationStrategy: () => ({
-            styleId: 'Kawaii',
-            complexityId: 'Simple',
-            reasons: ['Full cute-enforcement parameters'],
-        }),
-    },
-
-    // ═══════════════════════════════════════════════════════════════════════════
-    // MINOR: Quality Observations
-    // ═══════════════════════════════════════════════════════════════════════════
-
-    'COMPOSITION_IMBALANCED': {
-        primaryAction: 'prompt_override',
-        basePriority: 4,
-        baseConfidence: 60,
-        canAutoRepair: true,
-        getPromptOverride: () => `
-[MINOR REPAIR - COMPOSITION]
-Improve visual balance. Distribute visual weight evenly.
-Avoid clustering all elements on one side.
-    `.trim(),
-        getNegativeBoost: () => 'unbalanced composition, lopsided, off-center weight',
-        getParameterSuggestion: () => null,
-        escalationStrategy: () => ({}),
-    },
-
-    'SUBJECT_OFF_CENTER': {
-        primaryAction: 'prompt_override',
-        basePriority: 4,
-        baseConfidence: 65,
-        canAutoRepair: true,
-        getPromptOverride: (ctx) => {
-            const audienceRules = AUDIENCE_VALIDATION_RULES[ctx.audienceId] || AUDIENCE_VALIDATION_RULES['default'];
-            if (ctx.audienceId === 'toddlers' || ctx.audienceId === 'preschool') {
-                return `
-[MINOR REPAIR - CENTERING]
-Center the main subject for young audience.
-Subject should be prominently centered with clear margins.
-        `.trim();
-            }
-            return null; // Not important for other audiences
-        },
-        getNegativeBoost: () => null,
-        getParameterSuggestion: () => null,
-        escalationStrategy: () => ({}),
-    },
-
-    'BACKGROUND_SPARSE': {
-        primaryAction: 'prompt_override',
-        basePriority: 5,
-        baseConfidence: 55,
-        canAutoRepair: true,
-        getPromptOverride: (ctx) => {
-            const complexityRules = COMPLEXITY_VALIDATION_RULES[ctx.complexityId] || COMPLEXITY_VALIDATION_RULES['Moderate'];
-            if (complexityRules.allowsBackground) {
-                return `
-[MINOR REPAIR - BACKGROUND]
-Add more background elements appropriate to the scene.
-Fill negative space with contextual details.
-        `.trim();
-            }
-            return null;
-        },
-        getNegativeBoost: () => null,
-        getParameterSuggestion: () => null,
-        escalationStrategy: () => ({}),
-    },
-
-    'BACKGROUND_BUSY': {
-        primaryAction: 'prompt_override',
-        basePriority: 4,
-        baseConfidence: 60,
-        canAutoRepair: true,
-        getPromptOverride: () => `
-[MINOR REPAIR - BACKGROUND]
-Simplify the background. Remove distracting elements.
-Keep focus on the main subject.
-    `.trim(),
-        getNegativeBoost: () => 'busy background, cluttered, distracting elements',
-        getParameterSuggestion: () => null,
-        escalationStrategy: () => ({}),
-    },
-
-    'MINOR_STYLE_DEVIATION': {
-        primaryAction: 'prompt_override',
-        basePriority: 5,
-        baseConfidence: 50,
-        canAutoRepair: true,
-        getPromptOverride: (ctx) => `
-[MINOR REPAIR - STYLE CONSISTENCY]
-Minor style inconsistencies detected. Strengthen adherence to ${ctx.styleId} style.
-    `.trim(),
-        getNegativeBoost: () => null,
-        getParameterSuggestion: () => null,
-        escalationStrategy: () => ({}),
-    },
-
-    'LINE_QUALITY_VARIABLE': {
-        primaryAction: 'prompt_override',
-        basePriority: 5,
-        baseConfidence: 55,
-        canAutoRepair: true,
-        getPromptOverride: (ctx) => {
-            const styleRules = STYLE_VALIDATION_RULES[ctx.styleId] || STYLE_VALIDATION_RULES['default'];
-            // Only repair if style requires consistent weight
-            if (ctx.styleId === 'Realistic' || ctx.styleId === 'Bold & Easy' || ctx.styleId === 'Geometric') {
-                return `
-[MINOR REPAIR - LINE CONSISTENCY]
-Maintain consistent line weight (${styleRules.lineWeightMm}) throughout.
-        `.trim();
-            }
-            return null; // Variable weight acceptable for other styles
-        },
-        getNegativeBoost: () => null,
-        getParameterSuggestion: () => null,
-        escalationStrategy: () => ({}),
-    },
-
-    // ═══════════════════════════════════════════════════════════════════════════
-    // SERVICE ERRORS (from QA failures)
-    // ═══════════════════════════════════════════════════════════════════════════
-
-    'QA_SERVICE_ERROR': {
-        primaryAction: 'manual_review',
-        basePriority: 1,
-        baseConfidence: 0,
-        canAutoRepair: false,
-        getPromptOverride: () => null,
-        getNegativeBoost: () => null,
-        getParameterSuggestion: () => null,
-    },
-};
-
-// Default strategy for unknown issue codes
-const DEFAULT_STRATEGY: RepairStrategy = {
-    primaryAction: 'prompt_override',
-    basePriority: 3,
-    baseConfidence: 50,
-    canAutoRepair: true,
-    getPromptOverride: () => `
-[REPAIR - GENERAL QUALITY]
-Address the identified quality issues.
-Strictly follow all style and complexity specifications.
-  `.trim(),
-    getNegativeBoost: () => null,
-    getParameterSuggestion: () => null,
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // REPAIR PLAN GENERATOR
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/**
- * Generate a comprehensive repair plan from QA results
- */
-export const generateRepairPlan = (context: RepairContext): RepairPlan => {
-    const {
-        qaResult,
-        styleId,
-        complexityId,
-        audienceId,
-        attemptNumber = 1,
-        maxAttempts = 3,
-        previousRepairs = [],
-    } = context;
-
-    const repairId = `repair_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-
-    // If QA passed, no repairs needed
-    if (qaResult.passed && qaResult.issues.length === 0) {
-        return {
-            repairId,
-            originalRequestId: qaResult.requestId,
-            canAutoRepair: true,
-            shouldRegenerate: false,
-            overallConfidence: 100,
-            actions: [],
-            promptOverrides: [],
-            negativeBoosts: [],
-            parameterSuggestions: { reasons: [] },
-            unreparableIssues: [],
-            summary: 'No repairs needed - QA passed.',
-            attemptNumber,
-            maxAttempts,
-        };
-    }
-
+export const generateRepairPlan = (
+    issues: QaIssue[],
+    context: RepairContext
+): RepairPlan => {
+    const repairId = `repair_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const actions: RepairAction[] = [];
     const promptOverrides: string[] = [];
     const negativeBoosts: string[] = [];
-    const parameterSuggestions: ParameterSuggestions = { reasons: [] };
+    const parameterReasons: string[] = [];
+    let parameterSuggestions: Partial<RepairParameters> = {};
     const unreparableIssues: QaIssue[] = [];
 
-    // Sort issues by severity (critical first) then by code
-    const sortedIssues = [...qaResult.issues].sort((a, b) => {
-        const severityOrder: Record<IssueSeverity, number> = { critical: 0, major: 1, minor: 2 };
-        return severityOrder[a.severity] - severityOrder[b.severity];
-    });
-
-    // Process each issue
-    for (const issue of sortedIssues) {
-        const strategy = REPAIR_STRATEGIES[issue.code] || DEFAULT_STRATEGY;
-
-        // Check if auto-repair is possible
-        if (!strategy.canAutoRepair) {
+    for (const issue of issues) {
+        const strategy = REPAIR_STRATEGIES[issue.code];
+        if (!strategy) {
             unreparableIssues.push(issue);
             continue;
         }
 
-        // Check for escalation (repeated failures)
-        const previousFailures = previousRepairs.filter(r =>
-            r.actions.some(a => a.addressesIssue === issue.code)
-        ).length;
+        const previousAttempts = context.previousIssues.filter(i => i === issue.code).length;
+        if (previousAttempts >= strategy.maxAttempts) {
+            unreparableIssues.push(issue);
+            continue;
+        }
 
-        const shouldEscalate = previousFailures >= 1 && strategy.escalationStrategy;
+        const promptOverride = typeof strategy.promptOverride === 'function'
+            ? strategy.promptOverride(context)
+            : strategy.promptOverride;
 
-        // Generate repair action
-        const action: RepairAction = {
-            type: strategy.primaryAction,
-            priority: strategy.basePriority,
-            description: `Repair for ${issue.code}: ${issue.description}`,
-            content: '',
-            confidence: strategy.baseConfidence - (previousFailures * 10), // Reduce confidence on repeated failures
-            addressesIssue: issue.code,
-        };
-
-        // Get prompt override
-        const promptOverride = strategy.getPromptOverride(context);
         if (promptOverride) {
             promptOverrides.push(promptOverride);
-            action.content = promptOverride;
         }
 
-        // Get negative boost
-        const negativeBoost = strategy.getNegativeBoost(context);
-        if (negativeBoost) {
-            negativeBoosts.push(negativeBoost);
+        negativeBoosts.push(...strategy.negativeBoost);
+
+        if (strategy.parameterSuggestions) {
+            Object.assign(parameterSuggestions, strategy.parameterSuggestions);
+            parameterReasons.push(`${issue.code}: ${strategy.notes}`);
         }
 
-        // Get parameter suggestions
-        let paramSuggestion = strategy.getParameterSuggestion(context);
-
-        // Apply escalation if needed
-        if (shouldEscalate && strategy.escalationStrategy) {
-            const escalation = strategy.escalationStrategy(context);
-            paramSuggestion = { ...paramSuggestion, ...escalation };
-            action.type = 'parameter_change';
-            action.description += ' [ESCALATED]';
-        }
-
-        if (paramSuggestion) {
-            if (paramSuggestion.styleId) parameterSuggestions.styleId = paramSuggestion.styleId;
-            if (paramSuggestion.complexityId) parameterSuggestions.complexityId = paramSuggestion.complexityId;
-            if (paramSuggestion.audienceId) parameterSuggestions.audienceId = paramSuggestion.audienceId;
-            if (paramSuggestion.temperature) parameterSuggestions.temperature = paramSuggestion.temperature;
-            if (paramSuggestion.resolution) parameterSuggestions.resolution = paramSuggestion.resolution;
-            if (paramSuggestion.reasons) {
-                parameterSuggestions.reasons.push(...paramSuggestion.reasons);
-            }
-        }
-
-        actions.push(action);
+        actions.push({
+            issueCode: issue.code,
+            priority: strategy.priority,
+            confidence: strategy.confidence * (issue.confidence || 1),
+            action: strategy.action,
+            promptOverride,
+            negativeBoosts: strategy.negativeBoost,
+            parameterSuggestions: strategy.parameterSuggestions,
+            notes: strategy.notes,
+        });
     }
 
-    // Sort actions by priority
     actions.sort((a, b) => a.priority - b.priority);
-
-    // Calculate overall confidence
-    const confidences = actions.map(a => a.confidence).filter(c => c > 0);
-    const overallConfidence = confidences.length > 0
-        ? Math.round(confidences.reduce((sum, c) => sum + c, 0) / confidences.length)
+    const uniqueNegativeBoosts = [...new Set(negativeBoosts)];
+    const overallConfidence = actions.length > 0
+        ? Math.round(actions.reduce((sum, a) => sum + a.confidence, 0) / actions.length)
         : 0;
+    const shouldRegenerate = actions.some(a => a.action === 'regenerate' || a.action === 'modify_prompt');
+    const canAutoRepair = unreparableIssues.length === 0 && actions.length > 0;
 
-    // Determine if we should regenerate
-    const hasCriticalIssues = qaResult.criticalIssues.length > 0;
-    const hasMajorIssues = qaResult.majorIssues.length > 0;
-    const canAutoRepair = unreparableIssues.length === 0;
-    const withinAttemptLimit = attemptNumber < maxAttempts;
-    const shouldRegenerate = canAutoRepair && withinAttemptLimit && (hasCriticalIssues || hasMajorIssues);
-
-    // Generate summary
-    const summaryParts: string[] = [];
-    if (qaResult.criticalIssues.length > 0) {
-        summaryParts.push(`${qaResult.criticalIssues.length} critical issue(s)`);
-    }
-    if (qaResult.majorIssues.length > 0) {
-        summaryParts.push(`${qaResult.majorIssues.length} major issue(s)`);
-    }
-    if (qaResult.minorIssues.length > 0) {
-        summaryParts.push(`${qaResult.minorIssues.length} minor issue(s)`);
-    }
-    if (unreparableIssues.length > 0) {
-        summaryParts.push(`${unreparableIssues.length} unrepairable`);
-    }
-
-    const summary = shouldRegenerate
-        ? `Attempt ${attemptNumber}/${maxAttempts}: ${summaryParts.join(', ')}. Regeneration recommended.`
-        : attemptNumber >= maxAttempts
-            ? `Maximum attempts (${maxAttempts}) reached. ${summaryParts.join(', ')}.`
-            : `${summaryParts.join(', ')}. ${canAutoRepair ? 'Auto-repair possible.' : 'Manual review required.'}`;
+    const criticalCount = issues.filter(i => i.severity === 'critical').length;
+    const majorCount = issues.filter(i => i.severity === 'major').length;
+    const summary = `Attempt ${context.attemptNumber + 1}/3: ${criticalCount} critical, ${majorCount} major issues. ${canAutoRepair ? 'Auto-repair possible.' : 'Manual review needed.'}`;
 
     return {
         repairId,
-        originalRequestId: qaResult.requestId,
         canAutoRepair,
         shouldRegenerate,
         overallConfidence,
         actions,
         promptOverrides,
-        negativeBoosts,
-        parameterSuggestions,
+        negativeBoosts: uniqueNegativeBoosts,
+        parameterSuggestions: { ...parameterSuggestions, reasons: parameterReasons },
         unreparableIssues,
         summary,
-        attemptNumber,
-        maxAttempts,
+        attemptNumber: context.attemptNumber + 1,
+        maxAttempts: 3,
     };
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// REPAIR APPLICATION
+// APPLY REPAIR PLAN
 // ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Apply repair plan to generate modified prompt and parameters
- */
-export interface AppliedRepairs {
-    /** Modified prompt with repair instructions prepended */
-    repairedPrompt: string;
-    /** Enhanced negative prompt */
-    enhancedNegativePrompt: string;
-    /** Modified generation parameters */
-    modifiedParams: {
-        styleId: string;
-        complexityId: string;
-        audienceId: string;
-        temperature?: number;
-        resolution?: '1K' | '2K' | '4K';
-    };
-    /** Whether parameters were changed */
-    parametersModified: boolean;
-    /** Summary of changes made */
-    changesSummary: string[];
-}
 
 export const applyRepairPlan = (
     repairPlan: RepairPlan,
     originalPrompt: string,
     originalNegativePrompt: string,
-    originalParams: {
-        styleId: string;
-        complexityId: string;
-        audienceId: string;
-    }
+    originalParameters: RepairParameters
 ): AppliedRepairs => {
     const changesSummary: string[] = [];
 
-    // Build repair instruction block
-    const repairInstructions = repairPlan.promptOverrides.length > 0
-        ? `
-═══════════════════════════════════════════════════════════════════════════════
-PRIORITY REPAIR INSTRUCTIONS (Attempt ${repairPlan.attemptNumber}/${repairPlan.maxAttempts})
-The previous generation failed Quality Assurance. Apply these fixes:
-═══════════════════════════════════════════════════════════════════════════════
-
-${repairPlan.promptOverrides.join('\n\n')}
-
-═══════════════════════════════════════════════════════════════════════════════
-END REPAIR INSTRUCTIONS - Now generate the corrected image:
-═══════════════════════════════════════════════════════════════════════════════
-
-`.trim()
-        : '';
-
-    // Prepend repairs to original prompt
-    const repairedPrompt = repairInstructions
-        ? `${repairInstructions}\n\n${originalPrompt}`
+    const repairInstructions = repairPlan.promptOverrides.join('\n\n');
+    const modifiedPrompt = repairInstructions
+        ? `${repairInstructions}\n\n═══════════════════════════════════════════════════════════════════════════════\nORIGINAL REQUEST:\n═══════════════════════════════════════════════════════════════════════════════\n\n${originalPrompt}`
         : originalPrompt;
 
-    if (repairPlan.promptOverrides.length > 0) {
+    if (repairInstructions) {
         changesSummary.push(`Added ${repairPlan.promptOverrides.length} repair instruction(s)`);
     }
 
-    // Enhance negative prompt
-    const negativeBoosts = repairPlan.negativeBoosts.filter(b => b && b.trim());
-    const enhancedNegativePrompt = negativeBoosts.length > 0
-        ? `${originalNegativePrompt}, ${negativeBoosts.join(', ')}`
+    const modifiedNegativePrompt = repairPlan.negativeBoosts.length > 0
+        ? `${originalNegativePrompt}, ${repairPlan.negativeBoosts.join(', ')}`
         : originalNegativePrompt;
 
-    if (negativeBoosts.length > 0) {
-        changesSummary.push(`Added ${negativeBoosts.length} negative prompt boost(s)`);
+    if (repairPlan.negativeBoosts.length > 0) {
+        changesSummary.push(`Added ${repairPlan.negativeBoosts.length} negative terms`);
     }
 
-    // Apply parameter modifications
-    const modifiedParams = { ...originalParams };
-    let parametersModified = false;
+    const modifiedParameters: Partial<RepairParameters> = { ...originalParameters };
 
-    const suggestions = repairPlan.parameterSuggestions;
-
-    if (suggestions.styleId && suggestions.styleId !== originalParams.styleId) {
-        modifiedParams.styleId = suggestions.styleId;
-        changesSummary.push(`Style: ${originalParams.styleId} → ${suggestions.styleId}`);
-        parametersModified = true;
+    if (repairPlan.parameterSuggestions.styleId &&
+        repairPlan.parameterSuggestions.styleId !== originalParameters.styleId) {
+        modifiedParameters.styleId = repairPlan.parameterSuggestions.styleId;
+        changesSummary.push(`Style: ${originalParameters.styleId} → ${repairPlan.parameterSuggestions.styleId}`);
     }
 
-    if (suggestions.complexityId && suggestions.complexityId !== originalParams.complexityId) {
-        modifiedParams.complexityId = suggestions.complexityId;
-        changesSummary.push(`Complexity: ${originalParams.complexityId} → ${suggestions.complexityId}`);
-        parametersModified = true;
+    if (repairPlan.parameterSuggestions.complexityId &&
+        repairPlan.parameterSuggestions.complexityId !== originalParameters.complexityId) {
+        modifiedParameters.complexityId = repairPlan.parameterSuggestions.complexityId;
+        changesSummary.push(`Complexity: ${originalParameters.complexityId} → ${repairPlan.parameterSuggestions.complexityId}`);
     }
 
-    if (suggestions.audienceId && suggestions.audienceId !== originalParams.audienceId) {
-        modifiedParams.audienceId = suggestions.audienceId;
-        changesSummary.push(`Audience: ${originalParams.audienceId} → ${suggestions.audienceId}`);
-        parametersModified = true;
+    if (repairPlan.parameterSuggestions.temperature &&
+        repairPlan.parameterSuggestions.temperature !== originalParameters.temperature) {
+        modifiedParameters.temperature = repairPlan.parameterSuggestions.temperature;
+        changesSummary.push(`Temperature: ${originalParameters.temperature} → ${repairPlan.parameterSuggestions.temperature}`);
     }
 
-    if (suggestions.temperature) {
-        (modifiedParams as any).temperature = suggestions.temperature;
-        changesSummary.push(`Temperature: → ${suggestions.temperature}`);
-        parametersModified = true;
-    }
-
-    if (suggestions.resolution) {
-        (modifiedParams as any).resolution = suggestions.resolution;
-        changesSummary.push(`Resolution: → ${suggestions.resolution}`);
-        parametersModified = true;
-    }
-
-    return {
-        repairedPrompt,
-        enhancedNegativePrompt,
-        modifiedParams,
-        parametersModified,
-        changesSummary,
-    };
-};
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// LEGACY COMPATIBILITY
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Legacy function for backwards compatibility
- * @deprecated Use generateRepairPlan + applyRepairPlan instead
- */
-export const getRepairInstructions = (qaResult: {
-    tags?: string[];
-    score?: number;
-    hardFail?: boolean;
-    reasons?: string[];
-}): string => {
-    // Convert legacy format to new format
-    if (!qaResult.tags || qaResult.tags.length === 0) {
-        return '';
-    }
-
-    // Map legacy tags to new issue codes (best effort)
-    const tagToCode: Record<string, string> = {
-        'low_contrast_lines': 'LINE_WEIGHT_WRONG',
-        'too_noisy': 'TEXTURE_WHERE_FORBIDDEN',
-        'open_paths': 'UNCLOSED_REGIONS',
-        'too_detailed': 'COMPLEXITY_MISMATCH',
-        'cropped': 'COMPOSITION_IMBALANCED',
-        'touches_border': 'COMPOSITION_IMBALANCED',
-        'text_present_unwanted': 'STYLE_MISMATCH',
-        'distorted_anatomy': 'STYLE_MISMATCH',
-        'wrong_style': 'STYLE_MISMATCH',
-        'background_wrong': 'MOCKUP_DETECTED',
-        'scary_content': 'SCARY_FOR_YOUNG',
-        'colored_artifacts': 'COLOR_DETECTED',
-        'mockup_style': 'MOCKUP_DETECTED',
-        'shading_present': 'GREY_SHADING',
-        'grayscale_shading': 'GREY_SHADING',
-    };
-
-    const repairs: string[] = [];
-
-    for (const tag of qaResult.tags) {
-        const code = tagToCode[tag] || tag.toUpperCase();
-        const strategy = REPAIR_STRATEGIES[code];
-
-        if (strategy) {
-            const override = strategy.getPromptOverride({
-                qaResult: {} as QaResult,
-                styleId: 'default',
-                complexityId: 'Moderate',
-                audienceId: 'default',
-                userPrompt: '',
-            });
-            if (override) repairs.push(override);
-        }
-    }
-
-    if (repairs.length === 0) {
-        return 'IMPORTANT: Improve image clarity and strictly follow the style guide.';
-    }
-
-    return `
-[PRIORITY REPAIR INSTRUCTIONS]
-The previous generation failed Quality Assurance. You MUST apply these fixes:
-
-${repairs.join('\n\n')}
-
-IGNORE previous conflicting instructions if they caused these errors.
-  `.trim();
+    return { modifiedPrompt, modifiedNegativePrompt, modifiedParameters, changesSummary };
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════

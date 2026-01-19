@@ -1,47 +1,44 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
- * GENERATION ORCHESTRATOR v1.0 — Unified Pipeline Controller
- * Paint-by-Numbers SaaS
+ * ORCHESTRATOR v2.0 — Pipeline Controller for Gemini 3 Pro Image
+ * myJoe Creative Suite - Coloring Book Studio
  * ═══════════════════════════════════════════════════════════════════════════════
  *
- * This module provides the single entry point for the complete generation pipeline:
+ * This orchestrator coordinates the complete generation pipeline:
+ * 1. Prompt enhancement (Gemini 1.5 Pro)
+ * 2. Image generation (Gemini 3 Pro Image / Nano Banana Pro)
+ * 3. QA validation (Gemini 1.5 Pro vision)
+ * 4. Auto-repair and retry (if QA fails)
  *
- *   generateAndValidate()
- *       │
- *       ├─► buildPrompt()         [prompts.ts]
- *       │
- *       ├─► generateColoringPage() [gemini-client.ts]
- *       │
- *       ├─► analyzeColoringPage()  [qaService.ts]
- *       │
- *       └─► generateRepairPlan()   [repairs.ts]
- *             │
- *             └─► applyRepairPlan() ──► Loop back to generate
- *
- * Features:
- * - Automatic retry with intelligent repairs
- * - Progressive parameter escalation
- * - Comprehensive result tracking
- * - Configurable retry behaviour
- * - Full audit trail for debugging
+ * KEY CHANGES IN v2:
+ * - Integrated with gemini-client-v3 (Gemini 3 optimized prompts)
+ * - Uses qaService-v2.1 (enhanced texture/format detection)
+ * - Uses repairs-v2.1 (comprehensive repair strategies)
+ * - Removed negative_prompt handling (deprecated)
+ * - Constraints embedded in prompt per Google recommendations
  *
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
 import {
     generateColoringPage,
-    ColoringPageRequest,
-    ColoringPageResult,
-    GenerationMetadata,
-    setLogCallback,
-    GenerationLogEntry,
+    enhancePrompt,
+    getPromptPreview,
+    GEMINI_IMAGE_MODEL,
+    GEMINI_TEXT_MODEL,
+    StyleId,
+    ComplexityId,
+    AudienceId,
+    ImageSize,
+    GenerateImageResult,
 } from './gemini-client';
 
 import {
     analyzeColoringPage,
     QaResult,
-    QaContext,
-    QaConfig,
+    QaIssue,
+    QaIssueCode,
+    QA_ISSUE_CODES,
 } from './qaService';
 
 import {
@@ -49,218 +46,114 @@ import {
     applyRepairPlan,
     RepairPlan,
     RepairContext,
-    AppliedRepairs,
+    RepairParameters,
 } from './repairs';
-
-import { CharacterDNA, StyleDNA } from '../../types';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TYPE DEFINITIONS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/**
- * Request for the unified generation pipeline
- */
 export interface GenerateAndValidateRequest {
-    /** User's natural language description */
+    /** User's scene description */
     userPrompt: string;
-    /** Visual style ID */
-    styleId: string;
+    /** Visual style */
+    styleId: StyleId;
     /** Complexity level */
-    complexityId: string;
-    /** Target audience ID */
-    audienceId: string;
-    /** Aspect ratio for output */
-    aspectRatio: string;
-    /** Whether the prompt contains text to render */
-    requiresText?: boolean;
-    /** Optional hero character DNA */
-    heroDNA?: CharacterDNA;
-    /** Optional style DNA from reference */
-    styleDNA?: StyleDNA | null;
-    /** Optional reference image */
-    referenceImage?: { base64: string; mimeType: string };
-    /** Abort signal for cancellation */
+    complexityId: ComplexityId;
+    /** Target audience */
+    audienceId: AudienceId;
+    /** Aspect ratio */
+    aspectRatio?: string;
+    /** Image resolution */
+    imageSize?: ImageSize;
+    /** API key */
+    apiKey: string;
+    /** Abort signal */
     signal?: AbortSignal;
-    /** Direct API key */
-    apiKey?: string;
     /** Pipeline configuration */
     config?: Partial<PipelineConfig>;
 }
 
-/**
- * Pipeline configuration options
- */
 export interface PipelineConfig {
-    /** Maximum generation attempts (default: 3) */
+    /** Maximum generation attempts */
     maxAttempts: number;
-    /** Whether to run QA validation (default: true) */
+    /** Enable QA validation */
     enableQa: boolean;
-    /** Whether to auto-retry on QA failure (default: true) */
+    /** Enable auto-retry on QA failure */
     enableAutoRetry: boolean;
-    /** QA mode: 'production' (strict) or 'preview' (lenient) */
-    qaMode: 'production' | 'preview';
-    /** Minimum QA score to pass (default: 70) */
+    /** Enable prompt enhancement */
+    enableEnhancement: boolean;
+    /** QA mode */
+    qaMode: 'preview' | 'production';
+    /** Minimum score to pass */
     minimumPassScore: number;
-    /** Whether to allow parameter changes during repair (default: true) */
+    /** Allow automatic parameter changes */
     allowParameterEscalation: boolean;
-    /** Enable verbose logging (default: false) */
-    enableLogging: boolean;
-    /** Callback for progress updates */
+    /** Progress callback */
     onProgress?: (progress: PipelineProgress) => void;
-    /** Callback for each attempt completion */
+    /** Attempt complete callback */
     onAttemptComplete?: (attempt: AttemptResult) => void;
+    /** Enable verbose logging */
+    enableLogging: boolean;
 }
+
+export interface PipelineProgress {
+    phase: 'initializing' | 'enhancing' | 'generating' | 'validating' | 'repairing' | 'complete' | 'failed';
+    message: string;
+    percentComplete: number;
+    attemptNumber: number;
+    maxAttempts: number;
+}
+
+export interface AttemptResult {
+    attemptNumber: number;
+    imageUrl: string | null;
+    qaResult: QaResult | null;
+    repairPlan: RepairPlan | null;
+    durationMs: number;
+    promptUsed: string;
+    parametersUsed: {
+        styleId: StyleId;
+        complexityId: ComplexityId;
+        audienceId: AudienceId;
+    };
+}
+
+export interface GenerateAndValidateResult {
+    success: boolean;
+    imageUrl: string | null;
+    qualityScore: number;
+    isPublishable: boolean;
+    totalAttempts: number;
+    totalDurationMs: number;
+    finalQaResult: QaResult | null;
+    attemptHistory: AttemptResult[];
+    error?: string;
+    summary: string;
+    promptUsed: string;
+    enhancedPrompt?: string;
+    parametersWereModified: boolean;
+    parameterChanges: string[];
+    metadata: {
+        requestId: string;
+        model: string;
+        imageSize: ImageSize;
+    };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DEFAULT CONFIG
+// ═══════════════════════════════════════════════════════════════════════════════
 
 const DEFAULT_CONFIG: PipelineConfig = {
     maxAttempts: 3,
     enableQa: true,
     enableAutoRetry: true,
+    enableEnhancement: true,
     qaMode: 'production',
     minimumPassScore: 70,
     allowParameterEscalation: true,
     enableLogging: false,
-};
-
-/**
- * Progress update during pipeline execution
- */
-export interface PipelineProgress {
-    /** Current phase */
-    phase: 'initializing' | 'generating' | 'validating' | 'repairing' | 'complete' | 'failed';
-    /** Current attempt number */
-    attemptNumber: number;
-    /** Maximum attempts */
-    maxAttempts: number;
-    /** Human-readable status message */
-    message: string;
-    /** Percentage complete (0-100) */
-    percentComplete: number;
-    /** Timestamp */
-    timestamp: string;
-}
-
-/**
- * Result of a single generation attempt
- */
-export interface AttemptResult {
-    /** Attempt number (1-based) */
-    attemptNumber: number;
-    /** Whether this attempt succeeded */
-    success: boolean;
-    /** Generation result */
-    generationResult: ColoringPageResult | null;
-    /** QA result (if QA was run) */
-    qaResult: QaResult | null;
-    /** Repair plan (if repairs were generated) */
-    repairPlan: RepairPlan | null;
-    /** Applied repairs (if repairs were applied) */
-    appliedRepairs: AppliedRepairs | null;
-    /** Parameters used for this attempt */
-    parameters: {
-        styleId: string;
-        complexityId: string;
-        audienceId: string;
-        temperature?: number;
-    };
-    /** Duration of this attempt in ms */
-    durationMs: number;
-    /** Error message if failed */
-    error?: string;
-}
-
-/**
- * Complete result from the unified pipeline
- */
-export interface GenerateAndValidateResult {
-    /** Whether the pipeline succeeded */
-    success: boolean;
-    /** The final image URL (if successful) */
-    imageUrl: string | null;
-    /** Final QA result */
-    finalQaResult: QaResult | null;
-    /** Whether the image is publishable */
-    isPublishable: boolean;
-    /** Overall quality score (0-100) */
-    qualityScore: number;
-    /** Total attempts made */
-    totalAttempts: number;
-    /** Results from each attempt */
-    attempts: AttemptResult[];
-    /** Final parameters used (may differ from request if escalated) */
-    finalParameters: {
-        styleId: string;
-        complexityId: string;
-        audienceId: string;
-    };
-    /** Whether parameters were modified during repair */
-    parametersWereModified: boolean;
-    /** All parameter changes made */
-    parameterChanges: string[];
-    /** Total pipeline duration in ms */
-    totalDurationMs: number;
-    /** Generation metadata from final successful attempt */
-    metadata: GenerationMetadata | null;
-    /** Summary for display */
-    summary: string;
-    /** Detailed audit trail */
-    auditTrail: AuditEntry[];
-    /** Error message if pipeline failed */
-    error?: string;
-}
-
-/**
- * Audit trail entry for debugging
- */
-export interface AuditEntry {
-    timestamp: string;
-    phase: string;
-    action: string;
-    details?: Record<string, unknown>;
-    durationMs?: number;
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// PROGRESS HELPER
-// ═══════════════════════════════════════════════════════════════════════════════
-
-const emitProgress = (
-    config: PipelineConfig,
-    phase: PipelineProgress['phase'],
-    attemptNumber: number,
-    message: string,
-    percentComplete: number
-): void => {
-    if (config.onProgress) {
-        config.onProgress({
-            phase,
-            attemptNumber,
-            maxAttempts: config.maxAttempts,
-            message,
-            percentComplete,
-            timestamp: new Date().toISOString(),
-        });
-    }
-};
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// AUDIT TRAIL HELPER
-// ═══════════════════════════════════════════════════════════════════════════════
-
-const addAuditEntry = (
-    auditTrail: AuditEntry[],
-    phase: string,
-    action: string,
-    details?: Record<string, unknown>,
-    startTime?: number
-): void => {
-    auditTrail.push({
-        timestamp: new Date().toISOString(),
-        phase,
-        action,
-        details,
-        durationMs: startTime ? Date.now() - startTime : undefined,
-    });
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -268,706 +161,378 @@ const addAuditEntry = (
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Unified generation pipeline with automatic QA and retry
- *
- * This is the PRIMARY function your UI should call for generating coloring pages.
- * It handles the complete workflow:
- * 1. Generate image
- * 2. Run QA validation
- * 3. If QA fails, generate repair plan
- * 4. Apply repairs and retry (up to maxAttempts)
- * 5. Return comprehensive result
- *
- * @example
- * // Basic usage
- * const result = await generateAndValidate({
- *   userPrompt: 'A cute dragon eating a taco',
- *   styleId: 'Bold & Easy',
- *   complexityId: 'Simple',
- *   audienceId: 'preschool',
- *   aspectRatio: '3:4',
- * });
- *
- * if (result.success) {
- *   displayImage(result.imageUrl);
- *   showScore(result.qualityScore);
- * } else {
- *   showError(result.error);
- *   showAttempts(result.attempts);
- * }
- *
- * @example
- * // With progress updates
- * const result = await generateAndValidate({
- *   userPrompt: 'A magical forest',
- *   styleId: 'Whimsical',
- *   complexityId: 'Moderate',
- *   audienceId: 'kids',
- *   aspectRatio: '1:1',
- *   config: {
- *     maxAttempts: 3,
- *     onProgress: (progress) => {
- *       updateProgressBar(progress.percentComplete);
- *       updateStatusText(progress.message);
- *     },
- *     onAttemptComplete: (attempt) => {
- *       if (!attempt.success) {
- *         showWarning(`Attempt ${attempt.attemptNumber} failed, retrying...`);
- *       }
- *     },
- *   },
- * });
+ * Generate a coloring page with full QA validation and auto-repair
  */
 export const generateAndValidate = async (
     request: GenerateAndValidateRequest
 ): Promise<GenerateAndValidateResult> => {
-    const pipelineStartTime = Date.now();
+    const startTime = Date.now();
+    const requestId = `orch_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const config: PipelineConfig = { ...DEFAULT_CONFIG, ...request.config };
-    const auditTrail: AuditEntry[] = [];
-    const attempts: AttemptResult[] = [];
+
+    const {
+        userPrompt,
+        styleId,
+        complexityId,
+        audienceId,
+        aspectRatio = '1:1',
+        imageSize = '2K',
+        apiKey,
+        signal,
+    } = request;
+
+    // Track state
+    const attemptHistory: AttemptResult[] = [];
+    let currentStyleId = styleId;
+    let currentComplexityId = complexityId;
+    let currentPrompt = userPrompt;
+    let enhancedPrompt: string | undefined;
+    let previousIssues: QaIssueCode[] = [];
     const parameterChanges: string[] = [];
 
-    // Current parameters (may be modified during repair)
-    let currentParams = {
-        styleId: request.styleId,
-        complexityId: request.complexityId,
-        audienceId: request.audienceId,
-        temperature: undefined as number | undefined,
+    // Helper: Report progress
+    const reportProgress = (
+        phase: PipelineProgress['phase'],
+        message: string,
+        percent: number,
+        attempt: number
+    ) => {
+        config.onProgress?.({
+            phase,
+            message,
+            percentComplete: percent,
+            attemptNumber: attempt,
+            maxAttempts: config.maxAttempts,
+        });
     };
 
-    // Track original parameters
-    const originalParams = { ...currentParams };
+    // Helper: Log if enabled
+    const log = (msg: string) => {
+        if (config.enableLogging) {
+            console.log(`[${requestId}] ${msg}`);
+        }
+    };
 
-    // Track previous repair plans for escalation
-    const previousRepairs: RepairPlan[] = [];
-
-    // Current prompt (may be modified with repair instructions)
-    let currentPrompt = request.userPrompt;
-    let currentNegativePrompt = ''; // Will be populated from first generation
-
-    addAuditEntry(auditTrail, 'initialization', 'Pipeline started', {
-        userPrompt: request.userPrompt.substring(0, 100),
-        styleId: request.styleId,
-        complexityId: request.complexityId,
-        audienceId: request.audienceId,
-        maxAttempts: config.maxAttempts,
-    });
-
-    emitProgress(config, 'initializing', 0, 'Starting generation pipeline...', 0);
+    log(`Starting pipeline: ${styleId} / ${complexityId} / ${audienceId}`);
+    reportProgress('initializing', 'Initializing generation pipeline...', 0, 0);
 
     // ─────────────────────────────────────────────────────────────────────────────
-    // Main Retry Loop
+    // STEP 1: Enhance prompt (optional)
     // ─────────────────────────────────────────────────────────────────────────────
+    if (config.enableEnhancement) {
+        reportProgress('enhancing', 'Enhancing prompt...', 5, 0);
 
-    let lastSuccessfulGeneration: ColoringPageResult | null = null;
-    let lastQaResult: QaResult | null = null;
-    let finalSuccess = false;
-
-    for (let attemptNumber = 1; attemptNumber <= config.maxAttempts; attemptNumber++) {
-        const attemptStartTime = Date.now();
-
-        // Check abort
-        if (request.signal?.aborted) {
-            addAuditEntry(auditTrail, 'abort', 'Pipeline aborted by user');
-            return buildFailureResult(
-                'Generation cancelled',
-                attempts,
-                auditTrail,
-                currentParams,
-                originalParams,
-                parameterChanges,
-                pipelineStartTime
-            );
-        }
-
-        addAuditEntry(auditTrail, `attempt_${attemptNumber}`, 'Attempt started', {
-            params: currentParams,
-            promptLength: currentPrompt.length,
-        });
-
-        const progressBase = ((attemptNumber - 1) / config.maxAttempts) * 100;
-
-        // ─────────────────────────────────────────────────────────────────────────
-        // Phase 1: Generate
-        // ─────────────────────────────────────────────────────────────────────────
-
-        emitProgress(
-            config,
-            'generating',
-            attemptNumber,
-            `Generating image (attempt ${attemptNumber}/${config.maxAttempts})...`,
-            progressBase + 10
-        );
-
-        const generateStartTime = Date.now();
-
-        let generationResult: ColoringPageResult;
         try {
-            generationResult = await generateColoringPage({
-                userPrompt: currentPrompt,
-                styleId: currentParams.styleId,
-                complexityId: currentParams.complexityId,
-                audienceId: currentParams.audienceId,
-                aspectRatio: request.aspectRatio,
-                requiresText: request.requiresText,
-                heroDNA: request.heroDNA,
-                styleDNA: request.styleDNA,
-                referenceImage: request.referenceImage,
-                signal: request.signal,
-                apiKey: request.apiKey,
-                enableLogging: config.enableLogging,
+            const enhanceResult = await enhancePrompt({
+                userPrompt,
+                styleId: currentStyleId,
+                complexityId: currentComplexityId,
+                audienceId,
+                apiKey,
+                signal,
             });
-        } catch (error) {
-            const err = error instanceof Error ? error : new Error(String(error));
 
-            if (err.message === 'Aborted') {
-                addAuditEntry(auditTrail, `attempt_${attemptNumber}`, 'Aborted during generation');
-                return buildFailureResult(
-                    'Generation cancelled',
-                    attempts,
-                    auditTrail,
-                    currentParams,
-                    originalParams,
-                    parameterChanges,
-                    pipelineStartTime
-                );
+            if (enhanceResult.success) {
+                enhancedPrompt = enhanceResult.enhancedPrompt;
+                currentPrompt = enhancedPrompt;
+                log(`Prompt enhanced: "${enhancedPrompt.substring(0, 100)}..."`);
             }
-
-            addAuditEntry(auditTrail, `attempt_${attemptNumber}`, 'Generation threw error', {
-                error: err.message,
-            });
-
-            attempts.push({
-                attemptNumber,
-                success: false,
-                generationResult: null,
-                qaResult: null,
-                repairPlan: null,
-                appliedRepairs: null,
-                parameters: { ...currentParams },
-                durationMs: Date.now() - attemptStartTime,
-                error: err.message,
-            });
-
-            // Continue to next attempt
-            continue;
+        } catch (error: any) {
+            if (error.message === 'Aborted') throw error;
+            log(`Enhancement failed, using original prompt: ${error.message}`);
         }
-
-        addAuditEntry(auditTrail, `attempt_${attemptNumber}`, 'Generation complete', {
-            hasImage: !!generationResult.imageUrl,
-            error: generationResult.error,
-            durationMs: Date.now() - generateStartTime,
-        }, generateStartTime);
-
-        // Store negative prompt from first successful generation
-        if (attemptNumber === 1) {
-            currentNegativePrompt = generationResult.negativePrompt;
-        }
-
-        // Check for generation failure
-        if (!generationResult.imageUrl) {
-            attempts.push({
-                attemptNumber,
-                success: false,
-                generationResult,
-                qaResult: null,
-                repairPlan: null,
-                appliedRepairs: null,
-                parameters: { ...currentParams },
-                durationMs: Date.now() - attemptStartTime,
-                error: generationResult.error || 'No image generated',
-            });
-
-            config.onAttemptComplete?.({
-                attemptNumber,
-                success: false,
-                generationResult,
-                qaResult: null,
-                repairPlan: null,
-                appliedRepairs: null,
-                parameters: { ...currentParams },
-                durationMs: Date.now() - attemptStartTime,
-                error: generationResult.error,
-            });
-
-            // Continue to next attempt
-            continue;
-        }
-
-        lastSuccessfulGeneration = generationResult;
-
-        // ─────────────────────────────────────────────────────────────────────────
-        // Phase 2: QA Validation
-        // ─────────────────────────────────────────────────────────────────────────
-
-        if (!config.enableQa) {
-            // QA disabled - accept the generation
-            addAuditEntry(auditTrail, `attempt_${attemptNumber}`, 'QA skipped (disabled)');
-
-            attempts.push({
-                attemptNumber,
-                success: true,
-                generationResult,
-                qaResult: null,
-                repairPlan: null,
-                appliedRepairs: null,
-                parameters: { ...currentParams },
-                durationMs: Date.now() - attemptStartTime,
-            });
-
-            finalSuccess = true;
-            break;
-        }
-
-        emitProgress(
-            config,
-            'validating',
-            attemptNumber,
-            `Validating quality (attempt ${attemptNumber}/${config.maxAttempts})...`,
-            progressBase + 50
-        );
-
-        const qaStartTime = Date.now();
-
-        let qaResult: QaResult;
-        try {
-            qaResult = await analyzeColoringPage(
-                {
-                    imageUrl: generationResult.imageUrl,
-                    requestId: generationResult.metadata?.requestId || `attempt_${attemptNumber}`,
-                    styleId: currentParams.styleId,
-                    complexityId: currentParams.complexityId,
-                    audienceId: currentParams.audienceId,
-                    userPrompt: request.userPrompt,
-                    apiKey: request.apiKey,
-                    signal: request.signal,
-                    enableLogging: config.enableLogging,
-                },
-                {
-                    mode: config.qaMode,
-                    minimumPassScore: config.minimumPassScore,
-                    includeRawAnalysis: config.enableLogging,
-                }
-            );
-        } catch (error) {
-            const err = error instanceof Error ? error : new Error(String(error));
-
-            if (err.message === 'Aborted') {
-                addAuditEntry(auditTrail, `attempt_${attemptNumber}`, 'Aborted during QA');
-                return buildFailureResult(
-                    'Generation cancelled',
-                    attempts,
-                    auditTrail,
-                    currentParams,
-                    originalParams,
-                    parameterChanges,
-                    pipelineStartTime
-                );
-            }
-
-            addAuditEntry(auditTrail, `attempt_${attemptNumber}`, 'QA threw error', {
-                error: err.message,
-            });
-
-            // QA error in production mode = fail the attempt
-            if (config.qaMode === 'production') {
-                attempts.push({
-                    attemptNumber,
-                    success: false,
-                    generationResult,
-                    qaResult: null,
-                    repairPlan: null,
-                    appliedRepairs: null,
-                    parameters: { ...currentParams },
-                    durationMs: Date.now() - attemptStartTime,
-                    error: `QA failed: ${err.message}`,
-                });
-                continue;
-            }
-
-            // Preview mode - accept despite QA error
-            attempts.push({
-                attemptNumber,
-                success: true,
-                generationResult,
-                qaResult: null,
-                repairPlan: null,
-                appliedRepairs: null,
-                parameters: { ...currentParams },
-                durationMs: Date.now() - attemptStartTime,
-            });
-
-            finalSuccess = true;
-            break;
-        }
-
-        lastQaResult = qaResult;
-
-        addAuditEntry(auditTrail, `attempt_${attemptNumber}`, 'QA complete', {
-            passed: qaResult.passed,
-            score: qaResult.overallScore,
-            criticalIssues: qaResult.criticalIssues.length,
-            majorIssues: qaResult.majorIssues.length,
-            minorIssues: qaResult.minorIssues.length,
-            durationMs: Date.now() - qaStartTime,
-        }, qaStartTime);
-
-        // ─────────────────────────────────────────────────────────────────────────
-        // Phase 3: Check QA Result
-        // ─────────────────────────────────────────────────────────────────────────
-
-        if (qaResult.passed || qaResult.isPublishable) {
-            // Success!
-            addAuditEntry(auditTrail, `attempt_${attemptNumber}`, 'QA passed');
-
-            attempts.push({
-                attemptNumber,
-                success: true,
-                generationResult,
-                qaResult,
-                repairPlan: null,
-                appliedRepairs: null,
-                parameters: { ...currentParams },
-                durationMs: Date.now() - attemptStartTime,
-            });
-
-            config.onAttemptComplete?.({
-                attemptNumber,
-                success: true,
-                generationResult,
-                qaResult,
-                repairPlan: null,
-                appliedRepairs: null,
-                parameters: { ...currentParams },
-                durationMs: Date.now() - attemptStartTime,
-            });
-
-            finalSuccess = true;
-            break;
-        }
-
-        // ─────────────────────────────────────────────────────────────────────────
-        // Phase 4: Generate Repair Plan
-        // ─────────────────────────────────────────────────────────────────────────
-
-        addAuditEntry(auditTrail, `attempt_${attemptNumber}`, 'QA failed, generating repair plan', {
-            issues: qaResult.issues.map(i => i.code),
-        });
-
-        emitProgress(
-            config,
-            'repairing',
-            attemptNumber,
-            `Analyzing issues and preparing retry...`,
-            progressBase + 75
-        );
-
-        const repairPlan = generateRepairPlan({
-            qaResult,
-            styleId: currentParams.styleId,
-            complexityId: currentParams.complexityId,
-            audienceId: currentParams.audienceId,
-            userPrompt: request.userPrompt,
-            attemptNumber,
-            maxAttempts: config.maxAttempts,
-            previousRepairs,
-        });
-
-        previousRepairs.push(repairPlan);
-
-        addAuditEntry(auditTrail, `attempt_${attemptNumber}`, 'Repair plan generated', {
-            canAutoRepair: repairPlan.canAutoRepair,
-            shouldRegenerate: repairPlan.shouldRegenerate,
-            overallConfidence: repairPlan.overallConfidence,
-            actionsCount: repairPlan.actions.length,
-            parameterSuggestions: repairPlan.parameterSuggestions,
-        });
-
-        // ─────────────────────────────────────────────────────────────────────────
-        // Phase 5: Check if Retry is Possible
-        // ─────────────────────────────────────────────────────────────────────────
-
-        const isLastAttempt = attemptNumber >= config.maxAttempts;
-        const canRetry = !isLastAttempt && config.enableAutoRetry && repairPlan.canAutoRepair;
-
-        if (!canRetry) {
-            // Cannot retry - record this attempt and exit
-            attempts.push({
-                attemptNumber,
-                success: false,
-                generationResult,
-                qaResult,
-                repairPlan,
-                appliedRepairs: null,
-                parameters: { ...currentParams },
-                durationMs: Date.now() - attemptStartTime,
-                error: isLastAttempt
-                    ? 'Maximum attempts reached'
-                    : repairPlan.canAutoRepair
-                        ? 'Auto-retry disabled'
-                        : 'Issues cannot be auto-repaired',
-            });
-
-            config.onAttemptComplete?.({
-                attemptNumber,
-                success: false,
-                generationResult,
-                qaResult,
-                repairPlan,
-                appliedRepairs: null,
-                parameters: { ...currentParams },
-                durationMs: Date.now() - attemptStartTime,
-                error: isLastAttempt ? 'Maximum attempts reached' : 'Cannot auto-repair',
-            });
-
-            break;
-        }
-
-        // ─────────────────────────────────────────────────────────────────────────
-        // Phase 6: Apply Repairs
-        // ─────────────────────────────────────────────────────────────────────────
-
-        const appliedRepairs = applyRepairPlan(
-            repairPlan,
-            request.userPrompt, // Always start from original prompt
-            currentNegativePrompt,
-            {
-                styleId: currentParams.styleId,
-                complexityId: currentParams.complexityId,
-                audienceId: currentParams.audienceId,
-            }
-        );
-
-        addAuditEntry(auditTrail, `attempt_${attemptNumber}`, 'Repairs applied', {
-            changes: appliedRepairs.changesSummary,
-            parametersModified: appliedRepairs.parametersModified,
-        });
-
-        // Update current state for next attempt
-        currentPrompt = appliedRepairs.repairedPrompt;
-        currentNegativePrompt = appliedRepairs.enhancedNegativePrompt;
-
-        // Apply parameter changes if allowed
-        if (config.allowParameterEscalation && appliedRepairs.parametersModified) {
-            if (appliedRepairs.modifiedParams.styleId !== currentParams.styleId) {
-                parameterChanges.push(
-                    `Style: ${currentParams.styleId} → ${appliedRepairs.modifiedParams.styleId}`
-                );
-                currentParams.styleId = appliedRepairs.modifiedParams.styleId;
-            }
-            if (appliedRepairs.modifiedParams.complexityId !== currentParams.complexityId) {
-                parameterChanges.push(
-                    `Complexity: ${currentParams.complexityId} → ${appliedRepairs.modifiedParams.complexityId}`
-                );
-                currentParams.complexityId = appliedRepairs.modifiedParams.complexityId;
-            }
-            if (appliedRepairs.modifiedParams.audienceId !== currentParams.audienceId) {
-                parameterChanges.push(
-                    `Audience: ${currentParams.audienceId} → ${appliedRepairs.modifiedParams.audienceId}`
-                );
-                currentParams.audienceId = appliedRepairs.modifiedParams.audienceId;
-            }
-            if ((appliedRepairs.modifiedParams as any).temperature) {
-                currentParams.temperature = (appliedRepairs.modifiedParams as any).temperature;
-                parameterChanges.push(`Temperature: → ${currentParams.temperature}`);
-            }
-        }
-
-        // Record this attempt
-        attempts.push({
-            attemptNumber,
-            success: false,
-            generationResult,
-            qaResult,
-            repairPlan,
-            appliedRepairs,
-            parameters: { ...currentParams },
-            durationMs: Date.now() - attemptStartTime,
-            error: `QA failed: ${qaResult.criticalIssues.length} critical, ${qaResult.majorIssues.length} major issues`,
-        });
-
-        config.onAttemptComplete?.({
-            attemptNumber,
-            success: false,
-            generationResult,
-            qaResult,
-            repairPlan,
-            appliedRepairs,
-            parameters: { ...currentParams },
-            durationMs: Date.now() - attemptStartTime,
-        });
-
-        // Continue to next attempt...
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
-    // Build Final Result
+    // STEP 2: Generation loop with QA and retry
     // ─────────────────────────────────────────────────────────────────────────────
+    let lastImageUrl: string | null = null;
+    let lastQaResult: QaResult | null = null;
+    let lastPromptUsed = '';
 
-    const totalDurationMs = Date.now() - pipelineStartTime;
+    for (let attempt = 1; attempt <= config.maxAttempts; attempt++) {
+        if (signal?.aborted) {
+            throw new Error('Aborted');
+        }
 
-    addAuditEntry(auditTrail, 'completion', finalSuccess ? 'Pipeline succeeded' : 'Pipeline failed', {
-        totalAttempts: attempts.length,
-        finalSuccess,
-        totalDurationMs,
-    });
+        const attemptStartTime = Date.now();
+        log(`Attempt ${attempt}/${config.maxAttempts}`);
 
-    emitProgress(
-        config,
-        finalSuccess ? 'complete' : 'failed',
-        attempts.length,
-        finalSuccess
-            ? `Generation complete (${attempts.length} attempt${attempts.length > 1 ? 's' : ''})`
-            : `Generation failed after ${attempts.length} attempts`,
-        100
+        // Calculate progress percentage
+        const basePercent = 10 + ((attempt - 1) / config.maxAttempts) * 70;
+        reportProgress('generating', `Generating image (attempt ${attempt})...`, basePercent, attempt);
+
+        // ─── Generate Image ─────────────────────────────────────────────────────────
+        const genResult = await generateColoringPage({
+            userPrompt: currentPrompt,
+            styleId: currentStyleId,
+            complexityId: currentComplexityId,
+            audienceId,
+            aspectRatio,
+            imageSize,
+            apiKey,
+            signal,
+            enableLogging: config.enableLogging,
+        });
+
+        lastPromptUsed = genResult.promptUsed;
+
+        if (!genResult.success || !genResult.imageUrl) {
+            log(`Generation failed: ${genResult.error}`);
+
+            attemptHistory.push({
+                attemptNumber: attempt,
+                imageUrl: null,
+                qaResult: null,
+                repairPlan: null,
+                durationMs: Date.now() - attemptStartTime,
+                promptUsed: genResult.promptUsed,
+                parametersUsed: {
+                    styleId: currentStyleId,
+                    complexityId: currentComplexityId,
+                    audienceId,
+                },
+            });
+
+            // If generation itself fails, try again
+            continue;
+        }
+
+        lastImageUrl = genResult.imageUrl;
+        log(`Image generated in ${genResult.durationMs}ms`);
+
+        // ─── QA Validation ──────────────────────────────────────────────────────────
+        let qaResult: QaResult | null = null;
+
+        if (config.enableQa) {
+            reportProgress('validating', `Validating quality (attempt ${attempt})...`, basePercent + 15, attempt);
+
+            try {
+                qaResult = await analyzeColoringPage(
+                    {
+                        imageUrl: genResult.imageUrl,
+                        requestId: `qa_${requestId}_${attempt}`,
+                        styleId: currentStyleId,
+                        complexityId: currentComplexityId,
+                        audienceId,
+                        userPrompt: currentPrompt,
+                        apiKey,
+                        signal,
+                    },
+                    {
+                        mode: config.qaMode,
+                        minimumPassScore: config.minimumPassScore,
+                        strictTextureCheck: true,
+                        strictColorCheck: true,
+                        checkRestAreas: true,
+                        checkMockupFormat: true,
+                    }
+                );
+
+                lastQaResult = qaResult;
+                log(`QA: ${qaResult.passed ? 'PASSED' : 'FAILED'} (${qaResult.score}/100, ${qaResult.criticalCount} critical, ${qaResult.majorCount} major)`);
+
+            } catch (error: any) {
+                if (error.message === 'Aborted') throw error;
+                log(`QA failed: ${error.message}`);
+            }
+        }
+
+        // ─── Record attempt ─────────────────────────────────────────────────────────
+        const attemptResult: AttemptResult = {
+            attemptNumber: attempt,
+            imageUrl: genResult.imageUrl,
+            qaResult,
+            repairPlan: null,
+            durationMs: Date.now() - attemptStartTime,
+            promptUsed: genResult.promptUsed,
+            parametersUsed: {
+                styleId: currentStyleId,
+                complexityId: currentComplexityId,
+                audienceId,
+            },
+        };
+
+        // ─── Check if we should stop ────────────────────────────────────────────────
+        const passed = !config.enableQa || (qaResult?.passed ?? true);
+
+        if (passed) {
+            log(`Attempt ${attempt} passed QA`);
+            attemptHistory.push(attemptResult);
+            config.onAttemptComplete?.(attemptResult);
+            break;
+        }
+
+        // ─── Generate repair plan ───────────────────────────────────────────────────
+        if (config.enableAutoRetry && attempt < config.maxAttempts && qaResult) {
+            reportProgress('repairing', `Planning repairs (attempt ${attempt})...`, basePercent + 20, attempt);
+
+            const repairContext: RepairContext = {
+                styleId: currentStyleId,
+                complexityId: currentComplexityId,
+                audienceId,
+                attemptNumber: attempt,
+                previousIssues,
+                originalPrompt: currentPrompt,
+            };
+
+            const repairPlan = generateRepairPlan(qaResult.issues, repairContext);
+            attemptResult.repairPlan = repairPlan;
+            log(`Repair plan: ${repairPlan.actions.length} actions, confidence ${repairPlan.overallConfidence}%`);
+
+            // Track issues for next attempt
+            previousIssues = [...previousIssues, ...qaResult.issues.map(i => i.code)];
+
+            // Apply repairs
+            if (repairPlan.canAutoRepair && repairPlan.shouldRegenerate) {
+                const appliedRepairs = applyRepairPlan(
+                    repairPlan,
+                    currentPrompt,
+                    '', // No negative prompt in Gemini 3
+                    {
+                        styleId: currentStyleId,
+                        complexityId: currentComplexityId,
+                        audienceId,
+                        temperature: 1.0,
+                    }
+                );
+
+                // Update prompt with repair instructions
+                currentPrompt = appliedRepairs.modifiedPrompt;
+
+                // Apply parameter changes if allowed
+                if (config.allowParameterEscalation) {
+                    if (appliedRepairs.modifiedParameters.styleId &&
+                        appliedRepairs.modifiedParameters.styleId !== currentStyleId) {
+                        parameterChanges.push(`Style: ${currentStyleId} → ${appliedRepairs.modifiedParameters.styleId}`);
+                        currentStyleId = appliedRepairs.modifiedParameters.styleId as StyleId;
+                    }
+                    if (appliedRepairs.modifiedParameters.complexityId &&
+                        appliedRepairs.modifiedParameters.complexityId !== currentComplexityId) {
+                        parameterChanges.push(`Complexity: ${currentComplexityId} → ${appliedRepairs.modifiedParameters.complexityId}`);
+                        currentComplexityId = appliedRepairs.modifiedParameters.complexityId as ComplexityId;
+                    }
+                }
+
+                log(`Applied repairs: ${appliedRepairs.changesSummary.join(', ')}`);
+            }
+        }
+
+        attemptHistory.push(attemptResult);
+        config.onAttemptComplete?.(attemptResult);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // STEP 3: Build result
+    // ─────────────────────────────────────────────────────────────────────────────
+    const totalDurationMs = Date.now() - startTime;
+    const finalQaResult = lastQaResult;
+    const success = lastImageUrl !== null && (!config.enableQa || (finalQaResult?.passed ?? true));
+    const qualityScore = finalQaResult?.score ?? (success ? 100 : 0);
+    const isPublishable = finalQaResult?.isPublishable ?? success;
+
+    // Build summary
+    let summary: string;
+    if (success) {
+        summary = `Generated successfully in ${attemptHistory.length} attempt(s). Score: ${qualityScore}/100.`;
+    } else if (lastImageUrl) {
+        summary = `Generated but failed QA after ${attemptHistory.length} attempts. Score: ${qualityScore}/100. Issues: ${finalQaResult?.issues.map(i => i.code).join(', ')}.`;
+    } else {
+        summary = `Generation failed after ${attemptHistory.length} attempts.`;
+    }
+
+    reportProgress(
+        success ? 'complete' : 'failed',
+        summary,
+        100,
+        attemptHistory.length
     );
 
-    // Find the best result
-    const successfulAttempt = attempts.find(a => a.success);
-    const lastAttempt = attempts[attempts.length - 1];
-
-    const finalGeneration = successfulAttempt?.generationResult || lastSuccessfulGeneration;
-    const finalQa = successfulAttempt?.qaResult || lastQaResult;
-
-    const parametersWereModified =
-        currentParams.styleId !== originalParams.styleId ||
-        currentParams.complexityId !== originalParams.complexityId ||
-        currentParams.audienceId !== originalParams.audienceId;
-
-    // Generate summary
-    let summary: string;
-    if (finalSuccess) {
-        if (attempts.length === 1) {
-            summary = `Generated successfully on first attempt. Quality score: ${finalQa?.overallScore || 'N/A'}.`;
-        } else {
-            summary = `Generated successfully after ${attempts.length} attempts. Quality score: ${finalQa?.overallScore || 'N/A'}.`;
-            if (parametersWereModified) {
-                summary += ` Parameters were adjusted: ${parameterChanges.join(', ')}.`;
-            }
-        }
-    } else {
-        const lastError = lastAttempt?.error || 'Unknown error';
-        summary = `Generation failed after ${attempts.length} attempt${attempts.length > 1 ? 's' : ''}. ${lastError}`;
-        if (lastQaResult) {
-            summary += ` Final QA score: ${lastQaResult.overallScore}. Issues: ${lastQaResult.criticalIssues.length} critical, ${lastQaResult.majorIssues.length} major.`;
-        }
-    }
+    log(summary);
 
     return {
-        success: finalSuccess,
-        imageUrl: finalGeneration?.imageUrl || null,
-        finalQaResult: finalQa,
-        isPublishable: finalQa?.isPublishable ?? finalSuccess,
-        qualityScore: finalQa?.overallScore ?? 0,
-        totalAttempts: attempts.length,
-        attempts,
-        finalParameters: {
-            styleId: currentParams.styleId,
-            complexityId: currentParams.complexityId,
-            audienceId: currentParams.audienceId,
-        },
-        parametersWereModified,
-        parameterChanges,
+        success,
+        imageUrl: lastImageUrl,
+        qualityScore,
+        isPublishable,
+        totalAttempts: attemptHistory.length,
         totalDurationMs,
-        metadata: finalGeneration?.metadata || null,
+        finalQaResult,
+        attemptHistory,
+        error: success ? undefined : (finalQaResult?.summary || 'Generation failed'),
         summary,
-        auditTrail,
-        error: finalSuccess ? undefined : lastAttempt?.error,
-    };
-};
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// HELPER: Build Failure Result
-// ═══════════════════════════════════════════════════════════════════════════════
-
-const buildFailureResult = (
-    error: string,
-    attempts: AttemptResult[],
-    auditTrail: AuditEntry[],
-    currentParams: { styleId: string; complexityId: string; audienceId: string },
-    originalParams: { styleId: string; complexityId: string; audienceId: string },
-    parameterChanges: string[],
-    startTime: number
-): GenerateAndValidateResult => {
-    return {
-        success: false,
-        imageUrl: null,
-        finalQaResult: null,
-        isPublishable: false,
-        qualityScore: 0,
-        totalAttempts: attempts.length,
-        attempts,
-        finalParameters: currentParams,
-        parametersWereModified:
-            currentParams.styleId !== originalParams.styleId ||
-            currentParams.complexityId !== originalParams.complexityId ||
-            currentParams.audienceId !== originalParams.audienceId,
+        promptUsed: lastPromptUsed,
+        enhancedPrompt,
+        parametersWereModified: parameterChanges.length > 0,
         parameterChanges,
-        totalDurationMs: Date.now() - startTime,
-        metadata: null,
-        summary: error,
-        auditTrail,
-        error,
+        metadata: {
+            requestId,
+            model: GEMINI_IMAGE_MODEL,
+            imageSize,
+        },
     };
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// CONVENIENCE: Quick Generate (No QA)
+// CONVENIENCE FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Quick generation without QA validation
- * Useful for previews or when speed is more important than quality assurance
+ * Quick generation without QA (for previews)
  */
 export const quickGenerate = async (
-    request: Omit<GenerateAndValidateRequest, 'config'>
+    request: GenerateAndValidateRequest
 ): Promise<GenerateAndValidateResult> => {
     return generateAndValidate({
         ...request,
         config: {
+            ...request.config,
             maxAttempts: 1,
             enableQa: false,
             enableAutoRetry: false,
-            qaMode: 'preview',
-            minimumPassScore: 0,
-            allowParameterEscalation: false,
-            enableLogging: false,
         },
     });
 };
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// CONVENIENCE: Strict Generate (Maximum Quality)
-// ═══════════════════════════════════════════════════════════════════════════════
-
 /**
- * Strict generation with maximum QA enforcement
- * Useful for final publication-ready images
+ * Strict generation with maximum QA (for final production)
  */
 export const strictGenerate = async (
-    request: Omit<GenerateAndValidateRequest, 'config'> & {
-        config?: Partial<PipelineConfig>;
-    }
+    request: GenerateAndValidateRequest
 ): Promise<GenerateAndValidateResult> => {
     return generateAndValidate({
         ...request,
         config: {
+            ...request.config,
             maxAttempts: 5,
             enableQa: true,
             enableAutoRetry: true,
             qaMode: 'production',
             minimumPassScore: 80,
             allowParameterEscalation: true,
-            enableLogging: true,
-            ...request.config,
         },
     });
 };
 
+/**
+ * Get a preview of what prompt would be generated
+ */
+export const previewPrompt = (
+    userPrompt: string,
+    styleId: StyleId,
+    complexityId: ComplexityId,
+    audienceId: AudienceId
+): string => {
+    return getPromptPreview(userPrompt, styleId, complexityId, audienceId);
+};
+
 // ═══════════════════════════════════════════════════════════════════════════════
-// RE-EXPORTS FOR CONVENIENCE
+// EXPORTS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export { setLogCallback };
-export type { GenerationLogEntry };
-export type { ColoringPageResult, QaResult, RepairPlan };
+export type {
+    StyleId,
+    ComplexityId,
+    AudienceId,
+    ImageSize,
+};

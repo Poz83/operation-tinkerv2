@@ -1,7 +1,7 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
  * IMAGE EDIT SERVICE v2.0
- * Paint-by-Numbers SaaS
+ * myJoe Creative Suite - Coloring Book Studio
  * ═══════════════════════════════════════════════════════════════════════════════
  *
  * Handles image editing operations using Gemini's image generation capabilities:
@@ -12,8 +12,9 @@
  * v2.0 Changes:
  * - Uses correct model constants from gemini-client.ts
  * - Optional QA validation for edited images
- * - Style preservation enforcement from prompts.ts
+ * - Style preservation enforcement from prompts v5.0
  * - Improved error handling and retry logic
+ * - Aligned with v5.0 style specifications
  *
  * ═══════════════════════════════════════════════════════════════════════════════
  */
@@ -110,15 +111,21 @@ ABSOLUTE RULES (Non-Negotiable)
 `.trim();
 
 /**
- * Generate style-specific instructions
+ * Generate style-specific instructions (aligned with prompts v5.0)
  */
 const getStyleInstructions = (style?: StyleId): string => {
     if (!style) return '';
 
     const styleInstructions: Partial<Record<StyleId, string>> = {
+        'Cozy Hand-Drawn': `
+STYLE: Cozy Hand-Drawn
+- Use organic 0.5-1mm lines with hand-drawn charm
+- Allow slight wobble in lines
+- Maintain warm, inviting aesthetic
+    `,
         'Bold & Easy': `
 STYLE: Bold & Easy
-- Use THICK 4mm uniform lines
+- Use THICK 4mm+ uniform lines
 - NO fine details or thin lines
 - Simple, bold shapes only
     `,
@@ -126,19 +133,25 @@ STYLE: Bold & Easy
 STYLE: Kawaii
 - Use thick 3mm smooth curves
 - ALL corners must be ROUNDED
-- Maintain cute, friendly aesthetic
+- Maintain cute, friendly aesthetic with chibi proportions
+    `,
+        'Whimsical': `
+STYLE: Whimsical
+- Use flowing variable-width lines (0.5-1.5mm)
+- Elongated fairy-tale proportions
+- Maintain dreamy, magical atmosphere
+    `,
+        'Cartoon': `
+STYLE: Cartoon
+- Use bold outlines (1.5-2mm) with thinner internal lines (0.5mm)
+- Clear silhouettes and expressive poses
+- Maintain dynamic cartoon aesthetic
     `,
         'Botanical': `
 STYLE: Botanical
-- Use fine 0.3mm precise lines
-- Stippling for texture is OK (but must not create closed regions)
-- Maintain scientific illustration aesthetic
-    `,
-        'Geometric': `
-STYLE: Geometric
-- Use ONLY straight lines
-- NO curves permitted
-- Maintain low-poly/faceted aesthetic
+- Use fine 0.3-0.5mm precise lines
+- Scientific illustration accuracy
+- Each petal/leaf is a closed shape
     `,
         'Realistic': `
 STYLE: Realistic (Ligne Claire)
@@ -146,11 +159,35 @@ STYLE: Realistic (Ligne Claire)
 - NO line weight variation
 - Maintain clean, precise contours
     `,
+        'Geometric': `
+STYLE: Geometric
+- Use ONLY straight lines (0.8mm uniform)
+- NO curves permitted
+- Maintain low-poly/faceted aesthetic
+    `,
         'Fantasy': `
 STYLE: Fantasy
-- Use varied line weight (thick for shadows, thin for details)
-- Maintain dramatic, detailed aesthetic
-- Keep heroic proportions
+- Use varied dramatic lines (0.5-2mm)
+- Epic compositions with detailed world-building
+- Maintain heroic proportions
+    `,
+        'Gothic': `
+STYLE: Gothic
+- Use fine to medium varied lines
+- Ornate decorative details
+- Dramatic atmospheric composition
+    `,
+        'Mandala': `
+STYLE: Mandala
+- Use fine uniform 0.5mm lines
+- Perfect circular symmetry
+- Repeating radial patterns
+    `,
+        'Zentangle': `
+STYLE: Zentangle
+- Use fine uniform 0.5mm lines
+- Structured repetitive patterns
+- Defined pattern boundaries
     `,
     };
 
@@ -399,7 +436,7 @@ export async function editAndValidate(
             {
                 imageUrl: editResult.imageUrl,
                 requestId: editResult.requestId,
-                styleId: options.style || 'default',
+                styleId: options.style || 'Cozy Hand-Drawn',
                 complexityId: options.complexity || 'Moderate',
                 audienceId: options.audience || 'kids',
                 userPrompt: `Edit: ${options.editPrompt}`,

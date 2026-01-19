@@ -1,1134 +1,1029 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
- * QA SERVICE v2.0 — Specification-Driven Quality Assurance
+ * QA SERVICE v2.1 — Enhanced Detection
  * Paint-by-Numbers SaaS
  * ═══════════════════════════════════════════════════════════════════════════════
  *
- * Architecture:
- * 1. Imports validation rules directly from style/complexity/audience specs
- * 2. Generates dynamic QA prompts based on actual constraints used
- * 3. Validates against structural requirements (regions, closures, line weights)
- * 4. Correlates results with generation metadata
- * 5. Categorises issues by severity (critical/major/minor)
- *
- * Design Principles:
- * - Closed-loop validation: QA checks the SAME specs used for generation
- * - Deterministic failure criteria: no subjective judgements on spec violations
- * - Actionable feedback: every issue includes remediation guidance
- * - Configurable strictness: production vs preview modes
+ * PATCH NOTES (v2.1):
+ * - Added GREY_TONES_DETECTED issue code with specific detection
+ * - Added STIPPLING_DETECTED issue code
+ * - Added HATCHING_DETECTED issue code  
+ * - Added TEXTURE_MARKS_DETECTED issue code
+ * - Added UNCLOSED_WATER_REGIONS issue code
+ * - Added HORROR_VACUI (no rest areas) issue code
+ * - Added MOCKUP_FORMAT_DETECTED issue code
+ * - Added MULTIPLE_IMAGES_DETECTED issue code
+ * - Added DECORATIVE_TEXTURE_LINES issue code
+ * - Enhanced visual analysis prompts for AI detection
+ * - Added severity escalation for texture violations
  *
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import { generateObject, GEMINI_TEXT_MODEL } from './gemini-client';
-import { BuildPromptResult } from './prompts';
+import { GoogleGenAI } from '@google/genai';
+import { GEMINI_TEXT_MODEL, STYLE_SPECS, COMPLEXITY_SPECS, AUDIENCE_SPECS, StyleId, ComplexityId, AudienceId } from './gemini-client';
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ISSUE CODE DEFINITIONS (v2.1 - Expanded)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * All possible QA issue codes
+ * Organized by category for clarity
+ */
+export const QA_ISSUE_CODES = {
+    // ─────────────────────────────────────────────────────────────────────────────
+    // COLOR & TONE VIOLATIONS (Severity: CRITICAL)
+    // ─────────────────────────────────────────────────────────────────────────────
+    COLOR_DETECTED: 'COLOR_DETECTED',
+    GREY_TONES_DETECTED: 'GREY_TONES_DETECTED',
+    GRADIENT_DETECTED: 'GRADIENT_DETECTED',
+    SHADING_DETECTED: 'SHADING_DETECTED',
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // TEXTURE VIOLATIONS (Severity: CRITICAL)
+    // ─────────────────────────────────────────────────────────────────────────────
+    STIPPLING_DETECTED: 'STIPPLING_DETECTED',
+    HATCHING_DETECTED: 'HATCHING_DETECTED',
+    CROSSHATCHING_DETECTED: 'CROSSHATCHING_DETECTED',
+    TEXTURE_MARKS_DETECTED: 'TEXTURE_MARKS_DETECTED',
+    DECORATIVE_TEXTURE_LINES: 'DECORATIVE_TEXTURE_LINES',
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // REGION VIOLATIONS (Severity: CRITICAL)
+    // ─────────────────────────────────────────────────────────────────────────────
+    UNCLOSED_REGIONS: 'UNCLOSED_REGIONS',
+    UNCLOSED_WATER_REGIONS: 'UNCLOSED_WATER_REGIONS',
+    UNCLOSED_HAIR_STRANDS: 'UNCLOSED_HAIR_STRANDS',
+    REGIONS_TOO_SMALL: 'REGIONS_TOO_SMALL',
+    SOLID_BLACK_FILLS: 'SOLID_BLACK_FILLS',
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // COMPOSITION VIOLATIONS (Severity: MAJOR)
+    // ─────────────────────────────────────────────────────────────────────────────
+    HORROR_VACUI: 'HORROR_VACUI',
+    NO_REST_AREAS: 'NO_REST_AREAS',
+    INSUFFICIENT_REST_AREAS: 'INSUFFICIENT_REST_AREAS',
+    COMPOSITION_IMBALANCED: 'COMPOSITION_IMBALANCED',
+    SUBJECT_CROPPED: 'SUBJECT_CROPPED',
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // FORMAT VIOLATIONS (Severity: CRITICAL)
+    // ─────────────────────────────────────────────────────────────────────────────
+    MOCKUP_FORMAT_DETECTED: 'MOCKUP_FORMAT_DETECTED',
+    MULTIPLE_IMAGES_DETECTED: 'MULTIPLE_IMAGES_DETECTED',
+    CONTAINS_FRAME_BORDER: 'CONTAINS_FRAME_BORDER',
+    CONTAINS_TEXT: 'CONTAINS_TEXT',
+    PHOTO_REALISTIC: 'PHOTO_REALISTIC',
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // STYLE VIOLATIONS (Severity: MAJOR)
+    // ─────────────────────────────────────────────────────────────────────────────
+    STYLE_MISMATCH: 'STYLE_MISMATCH',
+    LINE_WEIGHT_WRONG: 'LINE_WEIGHT_WRONG',
+    LINE_WEIGHT_INCONSISTENT: 'LINE_WEIGHT_INCONSISTENT',
+    CURVES_IN_GEOMETRIC: 'CURVES_IN_GEOMETRIC',
+    SHARP_ANGLES_IN_KAWAII: 'SHARP_ANGLES_IN_KAWAII',
+    THIN_LINES_IN_BOLD: 'THIN_LINES_IN_BOLD',
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // COMPLEXITY VIOLATIONS (Severity: MAJOR)
+    // ─────────────────────────────────────────────────────────────────────────────
+    TOO_COMPLEX: 'TOO_COMPLEX',
+    TOO_SIMPLE: 'TOO_SIMPLE',
+    REGION_COUNT_EXCEEDED: 'REGION_COUNT_EXCEEDED',
+    REGION_COUNT_INSUFFICIENT: 'REGION_COUNT_INSUFFICIENT',
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // AUDIENCE VIOLATIONS (Severity: CRITICAL for young audiences)
+    // ─────────────────────────────────────────────────────────────────────────────
+    INAPPROPRIATE_CONTENT: 'INAPPROPRIATE_CONTENT',
+    SCARY_FOR_YOUNG: 'SCARY_FOR_YOUNG',
+    TOO_COMPLEX_FOR_AUDIENCE: 'TOO_COMPLEX_FOR_AUDIENCE',
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // TECHNICAL ISSUES (Severity: MINOR to MAJOR)
+    // ─────────────────────────────────────────────────────────────────────────────
+    LOW_RESOLUTION: 'LOW_RESOLUTION',
+    ARTIFACTS_PRESENT: 'ARTIFACTS_PRESENT',
+    BLURRY_LINES: 'BLURRY_LINES',
+    ANTI_ALIASING_GREY: 'ANTI_ALIASING_GREY',
+} as const;
+
+export type QaIssueCode = typeof QA_ISSUE_CODES[keyof typeof QA_ISSUE_CODES];
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ISSUE DEFINITIONS WITH SEVERITY AND DETECTION CRITERIA
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface IssueDefinition {
+    code: QaIssueCode;
+    severity: 'critical' | 'major' | 'minor';
+    category: string;
+    description: string;
+    detectionCriteria: string;
+    autoRepairable: boolean;
+    repairStrategy: string;
+}
+
+export const ISSUE_DEFINITIONS: Record<QaIssueCode, IssueDefinition> = {
+    // ─── COLOR & TONE ─────────────────────────────────────────────────────────────
+    [QA_ISSUE_CODES.COLOR_DETECTED]: {
+        code: 'COLOR_DETECTED',
+        severity: 'critical',
+        category: 'color',
+        description: 'Non-black/white colors detected in the image',
+        detectionCriteria: 'Any pixel that is not pure black (#000000) or pure white (#FFFFFF)',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with stronger color prohibition in prompt',
+    },
+    [QA_ISSUE_CODES.GREY_TONES_DETECTED]: {
+        code: 'GREY_TONES_DETECTED',
+        severity: 'critical',
+        category: 'color',
+        description: 'Grey tones or intermediate values detected',
+        detectionCriteria: 'Pixels with RGB values between 20-235 that appear as grey shading, not just anti-aliasing',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with explicit grey prohibition and stronger negative prompt',
+    },
+    [QA_ISSUE_CODES.GRADIENT_DETECTED]: {
+        code: 'GRADIENT_DETECTED',
+        severity: 'critical',
+        category: 'color',
+        description: 'Gradual tonal transitions or gradients detected',
+        detectionCriteria: 'Areas where pixel values gradually transition from light to dark',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with gradient prohibition',
+    },
+    [QA_ISSUE_CODES.SHADING_DETECTED]: {
+        code: 'SHADING_DETECTED',
+        severity: 'critical',
+        category: 'color',
+        description: 'Light/shadow shading effects detected',
+        detectionCriteria: 'Areas that appear to represent light sources or shadows through tonal variation',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with shading prohibition',
+    },
+
+    // ─── TEXTURE VIOLATIONS ───────────────────────────────────────────────────────
+    [QA_ISSUE_CODES.STIPPLING_DETECTED]: {
+        code: 'STIPPLING_DETECTED',
+        severity: 'critical',
+        category: 'texture',
+        description: 'Dot-based stippling texture detected',
+        detectionCriteria: 'Clusters of small dots used to create tonal effects or texture',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with explicit stippling prohibition in both prompt and negative',
+    },
+    [QA_ISSUE_CODES.HATCHING_DETECTED]: {
+        code: 'HATCHING_DETECTED',
+        severity: 'critical',
+        category: 'texture',
+        description: 'Parallel line hatching detected',
+        detectionCriteria: 'Sets of parallel lines used to create shading or texture effects',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with explicit hatching prohibition',
+    },
+    [QA_ISSUE_CODES.CROSSHATCHING_DETECTED]: {
+        code: 'CROSSHATCHING_DETECTED',
+        severity: 'critical',
+        category: 'texture',
+        description: 'Cross-hatching pattern detected',
+        detectionCriteria: 'Intersecting sets of parallel lines creating grid-like shading',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with explicit cross-hatching prohibition',
+    },
+    [QA_ISSUE_CODES.TEXTURE_MARKS_DETECTED]: {
+        code: 'TEXTURE_MARKS_DETECTED',
+        severity: 'critical',
+        category: 'texture',
+        description: 'Decorative texture marks that don\'t enclose regions',
+        detectionCriteria: 'Lines or marks that represent texture (fur, fabric, wood grain) but don\'t create closed colorable regions',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with instruction to represent texture through outlined shapes only',
+    },
+    [QA_ISSUE_CODES.DECORATIVE_TEXTURE_LINES]: {
+        code: 'DECORATIVE_TEXTURE_LINES',
+        severity: 'critical',
+        category: 'texture',
+        description: 'Decorative lines on surfaces (knit patterns, fur strokes, wood grain)',
+        detectionCriteria: 'Lines on fabric, fur, or surfaces that are decorative rather than structural',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with explicit instruction: knit=outlined shapes, fur=sections, wood=planks',
+    },
+
+    // ─── REGION VIOLATIONS ────────────────────────────────────────────────────────
+    [QA_ISSUE_CODES.UNCLOSED_REGIONS]: {
+        code: 'UNCLOSED_REGIONS',
+        severity: 'critical',
+        category: 'regions',
+        description: 'Regions that are not fully enclosed (would leak paint)',
+        detectionCriteria: 'Line endpoints that don\'t connect, gaps in outlines',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with stronger closed-region requirement',
+    },
+    [QA_ISSUE_CODES.UNCLOSED_WATER_REGIONS]: {
+        code: 'UNCLOSED_WATER_REGIONS',
+        severity: 'critical',
+        category: 'regions',
+        description: 'Water/waves rendered as wavy lines instead of enclosed shapes',
+        detectionCriteria: 'Water depicted as decorative wavy lines rather than enclosed wave shapes',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with explicit instruction: water must be enclosed wave SHAPES',
+    },
+    [QA_ISSUE_CODES.UNCLOSED_HAIR_STRANDS]: {
+        code: 'UNCLOSED_HAIR_STRANDS',
+        severity: 'critical',
+        category: 'regions',
+        description: 'Hair rendered as individual strands instead of enclosed sections',
+        detectionCriteria: 'Hair depicted as many individual lines rather than grouped enclosed sections',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with explicit instruction: hair must be enclosed SECTIONS',
+    },
+    [QA_ISSUE_CODES.REGIONS_TOO_SMALL]: {
+        code: 'REGIONS_TOO_SMALL',
+        severity: 'major',
+        category: 'regions',
+        description: 'Colorable regions smaller than minimum size',
+        detectionCriteria: 'Enclosed regions smaller than specified minimum (typically 3-5mm)',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with simpler complexity or suggest complexity downgrade',
+    },
+    [QA_ISSUE_CODES.SOLID_BLACK_FILLS]: {
+        code: 'SOLID_BLACK_FILLS',
+        severity: 'critical',
+        category: 'regions',
+        description: 'Areas filled with solid black instead of outlined',
+        detectionCriteria: 'Large areas of solid black (not just thick lines)',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with instruction that ALL areas must be outlined, not filled',
+    },
+
+    // ─── COMPOSITION VIOLATIONS ───────────────────────────────────────────────────
+    [QA_ISSUE_CODES.HORROR_VACUI]: {
+        code: 'HORROR_VACUI',
+        severity: 'major',
+        category: 'composition',
+        description: 'Fear of empty space - entire canvas filled with detail',
+        detectionCriteria: 'Less than 10% white space, no clear rest areas for the eye',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with explicit rest area requirement',
+    },
+    [QA_ISSUE_CODES.NO_REST_AREAS]: {
+        code: 'NO_REST_AREAS',
+        severity: 'major',
+        category: 'composition',
+        description: 'No clear white space rest areas for visual comfort',
+        detectionCriteria: 'No distinct areas of undetailed white space',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with mandatory rest area count based on complexity',
+    },
+    [QA_ISSUE_CODES.INSUFFICIENT_REST_AREAS]: {
+        code: 'INSUFFICIENT_REST_AREAS',
+        severity: 'major',
+        category: 'composition',
+        description: 'Rest areas present but fewer than required for complexity level',
+        detectionCriteria: 'Rest area count below complexity specification',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with explicit rest area count requirement',
+    },
+    [QA_ISSUE_CODES.COMPOSITION_IMBALANCED]: {
+        code: 'COMPOSITION_IMBALANCED',
+        severity: 'minor',
+        category: 'composition',
+        description: 'Visual weight unevenly distributed',
+        detectionCriteria: 'One quadrant significantly more detailed than others',
+        autoRepairable: false,
+        repairStrategy: 'Suggest recomposition or accept with warning',
+    },
+    [QA_ISSUE_CODES.SUBJECT_CROPPED]: {
+        code: 'SUBJECT_CROPPED',
+        severity: 'minor',
+        category: 'composition',
+        description: 'Main subject extends beyond canvas edges',
+        detectionCriteria: 'Key elements cut off at canvas boundary',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with centering instruction and margin requirement',
+    },
+
+    // ─── FORMAT VIOLATIONS ────────────────────────────────────────────────────────
+    [QA_ISSUE_CODES.MOCKUP_FORMAT_DETECTED]: {
+        code: 'MOCKUP_FORMAT_DETECTED',
+        severity: 'critical',
+        category: 'format',
+        description: 'Image shows mockup presentation (paper on table, art supplies visible)',
+        detectionCriteria: 'Image depicts the coloring page as a photo/mockup rather than the illustration itself',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with explicit instruction: output single illustration, NO mockup',
+    },
+    [QA_ISSUE_CODES.MULTIPLE_IMAGES_DETECTED]: {
+        code: 'MULTIPLE_IMAGES_DETECTED',
+        severity: 'critical',
+        category: 'format',
+        description: 'Output contains multiple separate images/panels',
+        detectionCriteria: 'Image shows a grid, collage, or multiple separate illustrations',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with explicit instruction: SINGLE illustration only',
+    },
+    [QA_ISSUE_CODES.CONTAINS_FRAME_BORDER]: {
+        code: 'CONTAINS_FRAME_BORDER',
+        severity: 'minor',
+        category: 'format',
+        description: 'Image contains decorative frame or border (unless requested)',
+        detectionCriteria: 'Decorative frame element around the illustration',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate without frame or accept if minor',
+    },
+    [QA_ISSUE_CODES.CONTAINS_TEXT]: {
+        code: 'CONTAINS_TEXT',
+        severity: 'major',
+        category: 'format',
+        description: 'Image contains text when none was requested',
+        detectionCriteria: 'Visible text, letters, or words in the image',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with explicit no-text instruction',
+    },
+    [QA_ISSUE_CODES.PHOTO_REALISTIC]: {
+        code: 'PHOTO_REALISTIC',
+        severity: 'critical',
+        category: 'format',
+        description: 'Output is photorealistic rather than line art',
+        detectionCriteria: 'Image appears to be a photograph or photorealistic render',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with stronger line art style enforcement',
+    },
+
+    // ─── STYLE VIOLATIONS ─────────────────────────────────────────────────────────
+    [QA_ISSUE_CODES.STYLE_MISMATCH]: {
+        code: 'STYLE_MISMATCH',
+        severity: 'major',
+        category: 'style',
+        description: 'Output style doesn\'t match requested style',
+        detectionCriteria: 'Visual characteristics don\'t align with style specification',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with stronger style enforcement',
+    },
+    [QA_ISSUE_CODES.LINE_WEIGHT_WRONG]: {
+        code: 'LINE_WEIGHT_WRONG',
+        severity: 'major',
+        category: 'style',
+        description: 'Line weight doesn\'t match style specification',
+        detectionCriteria: 'Lines significantly thicker or thinner than specified',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with explicit line weight in prompt',
+    },
+    [QA_ISSUE_CODES.LINE_WEIGHT_INCONSISTENT]: {
+        code: 'LINE_WEIGHT_INCONSISTENT',
+        severity: 'major',
+        category: 'style',
+        description: 'Line weight varies when it should be uniform',
+        detectionCriteria: 'Significant variation in line thickness for styles requiring uniformity',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with uniform line weight instruction',
+    },
+    [QA_ISSUE_CODES.CURVES_IN_GEOMETRIC]: {
+        code: 'CURVES_IN_GEOMETRIC',
+        severity: 'critical',
+        category: 'style',
+        description: 'Curved lines present in Geometric style (requires straight lines only)',
+        detectionCriteria: 'Any curved lines in an image specified as Geometric style',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with absolute curve prohibition, lower temperature',
+    },
+    [QA_ISSUE_CODES.SHARP_ANGLES_IN_KAWAII]: {
+        code: 'SHARP_ANGLES_IN_KAWAII',
+        severity: 'major',
+        category: 'style',
+        description: 'Sharp angles present in Kawaii style (requires rounded corners)',
+        detectionCriteria: 'Corners with radius less than 2mm in Kawaii style',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with rounded corner enforcement',
+    },
+    [QA_ISSUE_CODES.THIN_LINES_IN_BOLD]: {
+        code: 'THIN_LINES_IN_BOLD',
+        severity: 'major',
+        category: 'style',
+        description: 'Thin lines present in Bold & Easy style',
+        detectionCriteria: 'Lines thinner than 4mm in Bold & Easy style',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with minimum line weight enforcement',
+    },
+
+    // ─── COMPLEXITY VIOLATIONS ────────────────────────────────────────────────────
+    [QA_ISSUE_CODES.TOO_COMPLEX]: {
+        code: 'TOO_COMPLEX',
+        severity: 'major',
+        category: 'complexity',
+        description: 'Image more complex than specified complexity level',
+        detectionCriteria: 'Region count or detail level exceeds specification',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with complexity enforcement or suggest simpler setting',
+    },
+    [QA_ISSUE_CODES.TOO_SIMPLE]: {
+        code: 'TOO_SIMPLE',
+        severity: 'minor',
+        category: 'complexity',
+        description: 'Image simpler than specified complexity level',
+        detectionCriteria: 'Region count or detail level below specification',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with more detail instruction',
+    },
+    [QA_ISSUE_CODES.REGION_COUNT_EXCEEDED]: {
+        code: 'REGION_COUNT_EXCEEDED',
+        severity: 'major',
+        category: 'complexity',
+        description: 'Estimated region count exceeds maximum for complexity level',
+        detectionCriteria: 'More colorable regions than complexity specification allows',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with region count limit in prompt',
+    },
+    [QA_ISSUE_CODES.REGION_COUNT_INSUFFICIENT]: {
+        code: 'REGION_COUNT_INSUFFICIENT',
+        severity: 'minor',
+        category: 'complexity',
+        description: 'Estimated region count below minimum for complexity level',
+        detectionCriteria: 'Fewer colorable regions than complexity specification requires',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with minimum region count instruction',
+    },
+
+    // ─── AUDIENCE VIOLATIONS ──────────────────────────────────────────────────────
+    [QA_ISSUE_CODES.INAPPROPRIATE_CONTENT]: {
+        code: 'INAPPROPRIATE_CONTENT',
+        severity: 'critical',
+        category: 'audience',
+        description: 'Content inappropriate for specified audience',
+        detectionCriteria: 'Content matching audience prohibition list',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with stronger audience content restrictions',
+    },
+    [QA_ISSUE_CODES.SCARY_FOR_YOUNG]: {
+        code: 'SCARY_FOR_YOUNG',
+        severity: 'critical',
+        category: 'audience',
+        description: 'Content potentially scary for young children',
+        detectionCriteria: 'Scary elements (teeth, claws, angry expressions) for toddler/preschool audience',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with friendly/cute enforcement, switch to Kawaii style',
+    },
+    [QA_ISSUE_CODES.TOO_COMPLEX_FOR_AUDIENCE]: {
+        code: 'TOO_COMPLEX_FOR_AUDIENCE',
+        severity: 'major',
+        category: 'audience',
+        description: 'Complexity exceeds audience capability',
+        detectionCriteria: 'Complexity level exceeds audience maximum',
+        autoRepairable: true,
+        repairStrategy: 'Downgrade complexity to audience maximum',
+    },
+
+    // ─── TECHNICAL ISSUES ─────────────────────────────────────────────────────────
+    [QA_ISSUE_CODES.LOW_RESOLUTION]: {
+        code: 'LOW_RESOLUTION',
+        severity: 'major',
+        category: 'technical',
+        description: 'Image resolution too low for print quality',
+        detectionCriteria: 'Resolution below 300 DPI at target print size',
+        autoRepairable: false,
+        repairStrategy: 'Request higher resolution output',
+    },
+    [QA_ISSUE_CODES.ARTIFACTS_PRESENT]: {
+        code: 'ARTIFACTS_PRESENT',
+        severity: 'minor',
+        category: 'technical',
+        description: 'Compression artifacts or noise present',
+        detectionCriteria: 'Visible JPEG artifacts, noise, or distortion',
+        autoRepairable: false,
+        repairStrategy: 'Regenerate or request PNG format',
+    },
+    [QA_ISSUE_CODES.BLURRY_LINES]: {
+        code: 'BLURRY_LINES',
+        severity: 'major',
+        category: 'technical',
+        description: 'Line edges are blurry or soft',
+        detectionCriteria: 'Lines lack crisp edges, appear out of focus',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with sharp line instruction',
+    },
+    [QA_ISSUE_CODES.ANTI_ALIASING_GREY]: {
+        code: 'ANTI_ALIASING_GREY',
+        severity: 'minor',
+        category: 'technical',
+        description: 'Excessive grey from anti-aliasing (acceptable in small amounts)',
+        detectionCriteria: 'Grey pixels along line edges exceed normal anti-aliasing threshold',
+        autoRepairable: false,
+        repairStrategy: 'Accept for screen, flag for print post-processing',
+    },
+};
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TYPE DEFINITIONS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/**
- * Severity levels for QA issues
- * - critical: Blocks publication, image is unusable
- * - major: Strongly recommends regeneration, significant quality issue
- * - minor: Logged for analytics, doesn't block user
- */
-export type IssueSeverity = 'critical' | 'major' | 'minor';
-
-/**
- * Structured QA issue with actionable information
- */
 export interface QaIssue {
-    /** Unique issue code for programmatic handling */
-    code: string;
-    /** Severity level */
-    severity: IssueSeverity;
-    /** Human-readable description */
-    description: string;
-    /** Specific location or element affected (if applicable) */
-    location?: string;
-    /** Suggested fix or regeneration parameters */
-    remediation: string;
-    /** Confidence score 0-100 (from AI analysis) */
-    confidence: number;
-}
-
-/**
- * Rubric scores for each quality dimension
- */
-export interface QaRubric {
-    /** Pure black lines, no grey, no artifacts (0-100) */
-    lineQuality: number;
-    /** All regions closed, colourable, correct sizes (0-100) */
-    regionIntegrity: number;
-    /** Composition, framing, visual balance (0-100) */
-    composition: number;
-    /** Appropriate for target demographic (0-100) */
-    audienceAlignment: number;
-    /** Matches requested style characteristics (0-100) */
-    styleCompliance: number;
-    /** Matches requested complexity level (0-100) */
-    complexityCompliance: number;
-}
-
-/**
- * Complete QA result
- */
-export interface QaResult {
-    /** Unique ID correlating to generation request */
-    requestId: string;
-    /** Overall pass/fail determination */
-    passed: boolean;
-    /** Overall quality score 0-100 */
-    overallScore: number;
-    /** Detailed rubric breakdown */
-    rubric: QaRubric;
-    /** All identified issues */
-    issues: QaIssue[];
-    /** Critical issues that block publication */
-    criticalIssues: QaIssue[];
-    /** Major issues that warrant user attention */
-    majorIssues: QaIssue[];
-    /** Minor issues logged for analytics */
-    minorIssues: QaIssue[];
-    /** Whether image is publishable (no critical issues) */
-    isPublishable: boolean;
-    /** Whether regeneration is recommended */
-    shouldRegenerate: boolean;
-    /** Timestamp of QA analysis */
-    timestamp: string;
-    /** Duration of QA analysis in ms */
-    analysisDurationMs: number;
-    /** Raw AI analysis (for debugging) */
-    rawAnalysis?: RawAiAnalysis;
-}
-
-/**
- * Raw response from AI model (internal use)
- */
-interface RawAiAnalysis {
-    lineQuality: number;
-    regionIntegrity: number;
-    composition: number;
-    audienceAlignment: number;
-    styleCompliance: number;
-    complexityCompliance: number;
-    issues: Array<{
-        code: string;
-        severity: 'critical' | 'major' | 'minor';
-        description: string;
-        location?: string;
-        confidence: number;
-    }>;
-    overallAssessment: string;
-}
-
-/**
- * Context required for QA analysis
- */
-export interface QaContext {
-    /** The generated image as data URL or base64 */
-    imageUrl: string;
-    /** Request ID for correlation */
-    requestId: string;
-    /** Style ID used for generation */
-    styleId: string;
-    /** Complexity ID used for generation */
-    complexityId: string;
-    /** Audience ID used for generation */
-    audienceId: string;
-    /** Original user prompt */
-    userPrompt: string;
-    /** Full prompt result from buildPrompt (contains resolved params) */
-    promptResult?: BuildPromptResult;
-    /** Optional API key override */
-    apiKey?: string;
-    /** Abort signal */
-    signal?: AbortSignal;
-    /** Enable verbose logging */
-    enableLogging?: boolean;
-}
-
-/**
- * QA configuration options
- */
-export interface QaConfig {
-    /** Strictness mode: 'production' (strict), 'preview' (lenient) */
-    mode: 'production' | 'preview';
-    /** Minimum overall score to pass (default: 70) */
-    minimumPassScore: number;
-    /** Whether to include raw AI analysis in result */
-    includeRawAnalysis: boolean;
-    /** Custom issue code overrides for severity */
-    severityOverrides?: Record<string, IssueSeverity>;
-}
-
-const DEFAULT_CONFIG: QaConfig = {
-    mode: 'production',
-    minimumPassScore: 70,
-    includeRawAnalysis: false,
-};
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// STYLE SPECIFICATIONS (Imported from prompts-v4 logic)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Style-specific validation rules
- * These MUST match the specifications in prompts-v4.ts
- */
-const STYLE_VALIDATION_RULES: Record<string, {
-    minRegionMm: number;
-    minGapMm: number;
-    maxRegions: number | null;
-    lineWeightMm: string;
-    allowsTextureMarks: boolean;
-    specificChecks: string[];
-}> = {
-    'Bold & Easy': {
-        minRegionMm: 8,
-        minGapMm: 2,
-        maxRegions: 50,
-        lineWeightMm: '4mm consistent',
-        allowsTextureMarks: false,
-        specificChecks: [
-            'Line weight must be consistently 4mm (no thin lines)',
-            'No fine details or intricate patterns',
-            'Minimum 2mm gap between parallel lines',
-            'Maximum 50 distinct regions total',
-        ],
-    },
-    'Kawaii': {
-        minRegionMm: 6,
-        minGapMm: 1.5,
-        maxRegions: 80,
-        lineWeightMm: '3mm consistent',
-        allowsTextureMarks: false,
-        specificChecks: [
-            'All corners must be rounded (2mm+ radius)',
-            'Eye highlights must be enclosed regions, not filled white',
-            'No sharp angles anywhere',
-            'Chibi proportions (1:2 head-to-body ratio)',
-        ],
-    },
-    'Botanical': {
-        minRegionMm: 3,
-        minGapMm: 0.5,
-        maxRegions: 150,
-        lineWeightMm: '0.3mm fine',
-        allowsTextureMarks: true,
-        specificChecks: [
-            'Stipple dots must NOT form enclosed regions',
-            'Hatch lines must be OPEN-ENDED (not closing spaces)',
-            'White space must exceed 60% within plant forms',
-            'Fine controlled lines throughout',
-        ],
-    },
-    'Gothic': {
-        minRegionMm: 15,
-        minGapMm: 3,
-        maxRegions: 60,
-        lineWeightMm: '5mm+ minimum',
-        allowsTextureMarks: false,
-        specificChecks: [
-            'No line thinner than 3mm',
-            'All regions must exceed 15mm²',
-            'Compartmentalised stained-glass structure',
-            'Angular shapes preferred over curves',
-        ],
-    },
-    'Geometric': {
-        minRegionMm: 5,
-        minGapMm: 0.8,
-        maxRegions: 120,
-        lineWeightMm: '0.8mm consistent',
-        allowsTextureMarks: false,
-        specificChecks: [
-            'ZERO curved lines (absolute requirement)',
-            'All shapes must be straight-edged polygons',
-            'Clean vertex intersections',
-            'Triangular/polygonal tessellation only',
-        ],
-    },
-    'Wildlife': {
-        minRegionMm: 4,
-        minGapMm: 0.8,
-        maxRegions: 120,
-        lineWeightMm: '1mm contours, 0.4mm texture',
-        allowsTextureMarks: true,
-        specificChecks: [
-            'Texture lines must be directional strokes, NOT boundaries',
-            'No texture line may enclose a sub-region',
-            'White space must exceed 70%',
-            'Anatomically accurate proportions',
-        ],
-    },
-    'Zentangle': {
-        minRegionMm: 4,
-        minGapMm: 0.8,
-        maxRegions: 120,
-        lineWeightMm: '0.8mm consistent',
-        allowsTextureMarks: true,
-        specificChecks: [
-            'Pattern marks must NOT create sub-regions',
-            'Each string section must be independently closed',
-            'No pattern area smaller than 4mm²',
-            'Clear string boundary divisions',
-        ],
-    },
-    'Realistic': {
-        minRegionMm: 4,
-        minGapMm: 0.8,
-        maxRegions: 120,
-        lineWeightMm: '0.6mm uniform (Ligne Claire)',
-        allowsTextureMarks: false,
-        specificChecks: [
-            'Line weight must be uniform throughout (0.6mm)',
-            'No hatching or cross-hatching present',
-            'No rendering or tonal indication',
-            'Anatomically correct proportions',
-        ],
-    },
-    'default': {
-        minRegionMm: 5,
-        minGapMm: 1.5,
-        maxRegions: 120,
-        lineWeightMm: '1mm consistent',
-        allowsTextureMarks: false,
-        specificChecks: [
-            'Clean, continuous vector lines',
-            'All regions fully enclosed',
-            'No stylistic flourishes',
-            'Professional neutral appearance',
-        ],
-    },
-};
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// COMPLEXITY VALIDATION RULES
-// ═══════════════════════════════════════════════════════════════════════════════
-
-const COMPLEXITY_VALIDATION_RULES: Record<string, {
-    maxShapes: number | null;
-    minGapMm: number;
-    allowsBackground: boolean;
-    allowsTexture: boolean;
-    densityDescription: string;
-    specificChecks: string[];
-}> = {
-    'Very Simple': {
-        maxShapes: 5,
-        minGapMm: 5,
-        allowsBackground: false,
-        allowsTexture: false,
-        densityDescription: '3-5 major shapes only',
-        specificChecks: [
-            'Maximum 3-5 major shapes total',
-            'No internal divisions within shapes',
-            'No background elements',
-            'Subject instantly recognisable',
-        ],
-    },
-    'Simple': {
-        maxShapes: 25,
-        minGapMm: 3,
-        allowsBackground: true,
-        allowsTexture: false,
-        densityDescription: '10-25 distinct regions',
-        specificChecks: [
-            'Clear separation between all elements',
-            'Minimal internal detail',
-            'Sparse background (max 2-3 elements)',
-        ],
-    },
-    'Moderate': {
-        maxShapes: 80,
-        minGapMm: 1.5,
-        allowsBackground: true,
-        allowsTexture: false,
-        densityDescription: '40-80 distinct regions',
-        specificChecks: [
-            'Standard colouring book density',
-            'Balanced foreground/background',
-            'Appropriate internal detail',
-        ],
-    },
-    'Intricate': {
-        maxShapes: 120,
-        minGapMm: 0.8,
-        allowsBackground: true,
-        allowsTexture: true,
-        densityDescription: '80-120 distinct regions',
-        specificChecks: [
-            'High element density appropriate',
-            'Textures permitted',
-            'Fine motor control required',
-        ],
-    },
-    'Extreme Detail': {
-        maxShapes: 150,
-        minGapMm: 0.5,
-        allowsBackground: true,
-        allowsTexture: true,
-        densityDescription: '120-150+ distinct regions',
-        specificChecks: [
-            'Fractal detail appropriate',
-            '90% space utilisation expected',
-            'Maximum density permitted',
-        ],
-    },
-};
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// AUDIENCE VALIDATION RULES
-// ═══════════════════════════════════════════════════════════════════════════════
-
-const AUDIENCE_VALIDATION_RULES: Record<string, {
-    maxComplexity: string;
-    prohibitedContent: string[];
-    requiredCharacteristics: string[];
-    specificChecks: string[];
-}> = {
-    'toddlers': {
-        maxComplexity: 'Very Simple',
-        prohibitedContent: ['scary', 'teeth', 'claws', 'fire', 'weapons', 'villains', 'aggressive expressions'],
-        requiredCharacteristics: ['friendly', 'cute', 'simple', 'recognisable'],
-        specificChecks: [
-            'Subject must be instantly recognisable',
-            'Must be 100% friendly/cute aesthetic',
-            'No scary or aggressive elements',
-            'Centre-weighted composition',
-        ],
-    },
-    'preschool': {
-        maxComplexity: 'Simple',
-        prohibitedContent: ['scary', 'violence', 'weapons', 'death', 'aggressive'],
-        requiredCharacteristics: ['happy', 'friendly', 'simple story'],
-        specificChecks: [
-            'Simple storytelling scene appropriate',
-            'Characters must be clearly friendly',
-            'No violent or scary elements',
-        ],
-    },
-    'kids': {
-        maxComplexity: 'Moderate',
-        prohibitedContent: ['gore', 'sexual content', 'extreme violence', 'drugs'],
-        requiredCharacteristics: ['fun', 'energetic', 'age-appropriate'],
-        specificChecks: [
-            'Content must be age-appropriate',
-            'Action/adventure themes OK',
-            'Cartoon-style "spooky" acceptable',
-        ],
-    },
-    'teens': {
-        maxComplexity: 'Intricate',
-        prohibitedContent: ['gore', 'sexual content', 'drug use'],
-        requiredCharacteristics: ['stylish', 'dynamic'],
-        specificChecks: [
-            'Mature themes handled appropriately',
-            'Stylish aesthetic appropriate',
-        ],
-    },
-    'adults': {
-        maxComplexity: 'Extreme Detail',
-        prohibitedContent: ['illegal content'],
-        requiredCharacteristics: ['sophisticated', 'artistic'],
-        specificChecks: [
-            'Adult complexity appropriate',
-            'Artistic sophistication expected',
-        ],
-    },
-    'seniors': {
-        maxComplexity: 'Moderate',
-        prohibitedContent: ['tiny details', 'cluttered compositions'],
-        requiredCharacteristics: ['clear', 'visible', 'dignified'],
-        specificChecks: [
-            'All details clearly visible',
-            'No tiny hard-to-see elements',
-            'Clear section divisions',
-        ],
-    },
-    'sen': {
-        maxComplexity: 'Simple',
-        prohibitedContent: ['chaotic', 'busy', 'unpredictable', 'scary', 'overwhelming'],
-        requiredCharacteristics: ['calming', 'predictable', 'structured'],
-        specificChecks: [
-            'Calm, predictable composition',
-            'No chaotic or busy areas',
-            'Structured, orderly layout',
-        ],
-    },
-    'default': {
-        maxComplexity: 'Moderate',
-        prohibitedContent: ['inappropriate content'],
-        requiredCharacteristics: ['broadly appealing'],
-        specificChecks: [
-            'Generally appropriate content',
-        ],
-    },
-};
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// ISSUE CODE DEFINITIONS
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Comprehensive issue codes with default severities and remediations
- */
-const ISSUE_DEFINITIONS: Record<string, {
-    defaultSeverity: IssueSeverity;
+    code: QaIssueCode;
+    severity: 'critical' | 'major' | 'minor';
     category: string;
-    remediation: string;
-}> = {
-    // Critical: Fundamental failures
-    'COLOR_DETECTED': {
-        defaultSeverity: 'critical',
-        category: 'output_format',
-        remediation: 'Regenerate with emphasis on black-and-white only. Check negative prompt includes color terms.',
-    },
-    'GREY_SHADING': {
-        defaultSeverity: 'critical',
-        category: 'output_format',
-        remediation: 'Regenerate. Add "grey, gray, shading, gradient" to negative prompt.',
-    },
-    'SOLID_BLACK_FILL': {
-        defaultSeverity: 'critical',
-        category: 'output_format',
-        remediation: 'Regenerate. Ensure prompt specifies "outline only, no fills".',
-    },
-    'MOCKUP_DETECTED': {
-        defaultSeverity: 'critical',
-        category: 'output_format',
-        remediation: 'Regenerate. Add "mockup, photo, staged, paper texture, pencils" to negative prompt.',
-    },
-    'UNCLOSED_REGIONS': {
-        defaultSeverity: 'critical',
-        category: 'topology',
-        remediation: 'Regenerate. This is a fundamental failure for paint-by-numbers. Emphasise "closed paths" in prompt.',
-    },
-    'INAPPROPRIATE_CONTENT': {
-        defaultSeverity: 'critical',
-        category: 'safety',
-        remediation: 'Regenerate with modified prompt. Content violates audience safety guidelines.',
-    },
+    message: string;
+    details?: string;
+    location?: string;
+    confidence: number;
+    autoRepairable: boolean;
+}
 
-    // Major: Significant quality issues
-    'REGIONS_TOO_SMALL': {
-        defaultSeverity: 'major',
-        category: 'topology',
-        remediation: 'Regenerate with lower complexity or different style with larger minimum regions.',
-    },
-    'REGIONS_TOO_MANY': {
-        defaultSeverity: 'major',
-        category: 'complexity',
-        remediation: 'Regenerate with lower complexity setting.',
-    },
-    'REGIONS_TOO_FEW': {
-        defaultSeverity: 'major',
-        category: 'complexity',
-        remediation: 'Regenerate with higher complexity setting.',
-    },
-    'LINE_WEIGHT_WRONG': {
-        defaultSeverity: 'major',
-        category: 'style',
-        remediation: 'Regenerate. Style-specific line weight not achieved.',
-    },
-    'STYLE_MISMATCH': {
-        defaultSeverity: 'major',
-        category: 'style',
-        remediation: 'Regenerate. Image does not match requested style characteristics.',
-    },
-    'COMPLEXITY_MISMATCH': {
-        defaultSeverity: 'major',
-        category: 'complexity',
-        remediation: 'Regenerate with adjusted complexity or clearer prompt.',
-    },
-    'TEXTURE_WHERE_FORBIDDEN': {
-        defaultSeverity: 'major',
-        category: 'style',
-        remediation: 'Regenerate. This style does not permit texture marks.',
-    },
-    'CURVES_IN_GEOMETRIC': {
-        defaultSeverity: 'major',
-        category: 'style',
-        remediation: 'Regenerate. Geometric style requires straight lines only.',
-    },
-    'SHARP_ANGLES_IN_KAWAII': {
-        defaultSeverity: 'major',
-        category: 'style',
-        remediation: 'Regenerate. Kawaii style requires all rounded corners.',
-    },
-    'THIN_LINES_IN_BOLD': {
-        defaultSeverity: 'major',
-        category: 'style',
-        remediation: 'Regenerate. Bold & Easy requires 4mm consistent line weight.',
-    },
-    'AUDIENCE_MISMATCH': {
-        defaultSeverity: 'major',
-        category: 'audience',
-        remediation: 'Regenerate with clearer audience-appropriate content guidance.',
-    },
-    'SCARY_FOR_YOUNG': {
-        defaultSeverity: 'major',
-        category: 'safety',
-        remediation: 'Regenerate. Content too scary for target young audience.',
-    },
+export interface QaResult {
+    passed: boolean;
+    score: number;
+    isPublishable: boolean;
+    issues: QaIssue[];
+    criticalCount: number;
+    majorCount: number;
+    minorCount: number;
+    summary: string;
+    analysisTimestamp: string;
+    requestId: string;
+    recommendations: string[];
+}
 
-    // Minor: Quality observations
-    'COMPOSITION_IMBALANCED': {
-        defaultSeverity: 'minor',
-        category: 'composition',
-        remediation: 'Consider regenerating for better visual balance.',
-    },
-    'SUBJECT_OFF_CENTER': {
-        defaultSeverity: 'minor',
-        category: 'composition',
-        remediation: 'Acceptable, but centre-weighted composition preferred for this audience.',
-    },
-    'BACKGROUND_SPARSE': {
-        defaultSeverity: 'minor',
-        category: 'composition',
-        remediation: 'Background could be more developed for this complexity level.',
-    },
-    'BACKGROUND_BUSY': {
-        defaultSeverity: 'minor',
-        category: 'composition',
-        remediation: 'Background may be too busy for comfortable colouring.',
-    },
-    'MINOR_STYLE_DEVIATION': {
-        defaultSeverity: 'minor',
-        category: 'style',
-        remediation: 'Minor style inconsistencies detected. Acceptable for publication.',
-    },
-    'LINE_QUALITY_VARIABLE': {
-        defaultSeverity: 'minor',
-        category: 'style',
-        remediation: 'Some line weight variation detected. May be acceptable depending on style.',
-    },
-};
+export interface QaConfig {
+    mode: 'production' | 'preview';
+    minimumPassScore: number;
+    strictTextureCheck: boolean;
+    strictColorCheck: boolean;
+    checkRestAreas: boolean;
+    checkMockupFormat: boolean;
+}
+
+export interface AnalyzeRequest {
+    imageUrl: string;
+    requestId: string;
+    styleId: string;
+    complexityId: string;
+    audienceId: string;
+    userPrompt: string;
+    apiKey?: string;
+    signal?: AbortSignal;
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// DYNAMIC PROMPT BUILDER
+// AI ANALYSIS PROMPT (v2.1 - Enhanced Detection)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/**
- * Build a QA prompt dynamically based on the actual specifications used
- */
-const buildQaPrompt = (context: QaContext): string => {
-    const styleRules = STYLE_VALIDATION_RULES[context.styleId] || STYLE_VALIDATION_RULES['default'];
-    const complexityRules = COMPLEXITY_VALIDATION_RULES[context.complexityId] || COMPLEXITY_VALIDATION_RULES['Moderate'];
-    const audienceRules = AUDIENCE_VALIDATION_RULES[context.audienceId] || AUDIENCE_VALIDATION_RULES['default'];
+const buildAnalysisPrompt = (
+    styleId: string,
+    complexityId: string,
+    audienceId: string
+): string => {
+    const styleSpec = STYLE_SPECS[styleId as StyleId] || STYLE_SPECS['Cozy Hand-Drawn'];
+    const complexitySpec = COMPLEXITY_SPECS[complexityId as ComplexityId] || COMPLEXITY_SPECS['Moderate'];
+    const audienceSpec = AUDIENCE_SPECS[audienceId as AudienceId] || AUDIENCE_SPECS['adults'];
 
     return `
-ROLE: Senior Technical Art Director and Quality Assurance Specialist for commercial coloring books.
-
-TASK: Analyse this coloring page image against EXACT specifications used during generation.
-
-═══════════════════════════════════════════════════════════════════════════════
-GENERATION CONTEXT
-═══════════════════════════════════════════════════════════════════════════════
-User Prompt: "${context.userPrompt}"
-Style: ${context.styleId}
-Complexity: ${context.complexityId}
-Audience: ${context.audienceId}
+You are an expert Quality Assurance analyst for professional coloring book production.
+Your task is to analyze this image and identify ANY issues that would make it unsuitable for publication.
 
 ═══════════════════════════════════════════════════════════════════════════════
-UNIVERSAL REQUIREMENTS (Non-Negotiable)
+TARGET SPECIFICATIONS
 ═══════════════════════════════════════════════════════════════════════════════
-These are CRITICAL requirements. Violation = immediate failure.
 
-1. OUTPUT FORMAT:
-   - ONLY pure black (#000000) lines on pure white (#FFFFFF) background
-   - ZERO colour pixels (no red, blue, green, etc.)
-   - ZERO grey tones or gradients
-   - ZERO solid black filled areas (everything outlined only)
+STYLE: ${styleId}
+- Style: ${styleSpec.styleKeyword}
+- Line Weight: ${styleSpec.lineWeight}
+- Requirements: ${styleSpec.visualRequirements.join(', ')}
 
-2. TOPOLOGY:
-   - ALL shapes must be fully CLOSED (no gaps in outlines)
-   - Every white area must be a distinct, colourable region
-   - No open-ended strokes
+COMPLEXITY: ${complexityId}
+- Region Range: ${complexitySpec.regionRange}
+- Rest Areas: ${complexitySpec.restAreaRule}
 
-3. PRESENTATION:
-   - Must be line art, NOT a mockup/photo
-   - No paper texture, shadows, or staged photography
-   - No art supplies visible in frame
+AUDIENCE: ${audienceId}
+- Maximum Complexity: ${audienceSpec.maxComplexity}
+- Content Guidance: ${audienceSpec.contentGuidance}
 
 ═══════════════════════════════════════════════════════════════════════════════
-STYLE-SPECIFIC REQUIREMENTS: ${context.styleId}
+CRITICAL CHECKS (Must pass for publication)
 ═══════════════════════════════════════════════════════════════════════════════
-Line Weight: ${styleRules.lineWeightMm}
-Minimum Region Size: ${styleRules.minRegionMm}mm²
-Minimum Gap Between Lines: ${styleRules.minGapMm}mm
-Maximum Regions: ${styleRules.maxRegions || 'No limit'}
-Texture Marks Allowed: ${styleRules.allowsTextureMarks ? 'YES' : 'NO'}
 
-Style-Specific Checks:
-${styleRules.specificChecks.map(check => `• ${check}`).join('\n')}
+1. COLOR CHECK:
+   □ Is the image ONLY pure black lines on pure white background?
+   □ Are there ANY grey tones, gradients, or shading? (FAIL if yes)
+   □ Are there any colors other than black and white? (FAIL if yes)
 
-═══════════════════════════════════════════════════════════════════════════════
-COMPLEXITY REQUIREMENTS: ${context.complexityId}
-═══════════════════════════════════════════════════════════════════════════════
-Density: ${complexityRules.densityDescription}
-Maximum Shapes: ${complexityRules.maxShapes || 'No limit'}
-Minimum Gap: ${complexityRules.minGapMm}mm
-Background Elements: ${complexityRules.allowsBackground ? 'Allowed' : 'NOT allowed'}
-Texture: ${complexityRules.allowsTexture ? 'Allowed' : 'NOT allowed'}
+2. TEXTURE CHECK (NO texture allowed for coloring books):
+   □ Is there STIPPLING (dots creating tonal effects)? (FAIL if yes)
+   □ Is there HATCHING (parallel lines for shading)? (FAIL if yes)
+   □ Is there CROSS-HATCHING? (FAIL if yes)
+   □ Are there decorative texture MARKS on surfaces (fur strokes, fabric lines, wood grain lines)? (FAIL if yes)
+   □ Texture should be represented by SHAPE OUTLINES only, not decorative strokes
 
-Complexity-Specific Checks:
-${complexityRules.specificChecks.map(check => `• ${check}`).join('\n')}
+3. REGION CHECK:
+   □ Are ALL regions CLOSED (would hold paint without leaking)? 
+   □ Is WATER/WAVES depicted as enclosed shapes or just wavy lines? (FAIL if wavy lines)
+   □ Is HAIR depicted as enclosed sections or individual strands? (FAIL if strands)
+   □ Are there any SOLID BLACK FILLS (not just thick lines)? (FAIL if yes)
+   □ Are regions large enough to color?
 
-SCORING GUIDANCE FOR COMPLEXITY:
-${context.complexityId === 'Very Simple' || context.complexityId === 'Simple' ? `
-⚠️ IMPORTANT: This is a LOW complexity image.
-- High scores (80+) are CORRECT for clear, bold, simple shapes
-- Do NOT penalise for "lack of detail" — simplicity IS the goal
-- Few regions is CORRECT, not a failure
-` : `
-Standard complexity scoring applies.
-`}
+4. COMPOSITION CHECK:
+   □ Are there clear REST AREAS (white space zones)?
+   □ For ${complexityId}: ${complexitySpec.restAreaRule}
+   □ Is the entire canvas filled with detail (HORROR VACUI)? (FAIL if yes for Moderate or below)
+   □ What percentage is white space? (Should be at least 15% for Moderate)
 
-═══════════════════════════════════════════════════════════════════════════════
-AUDIENCE REQUIREMENTS: ${context.audienceId}
-═══════════════════════════════════════════════════════════════════════════════
-Maximum Appropriate Complexity: ${audienceRules.maxComplexity}
-Required Characteristics: ${audienceRules.requiredCharacteristics.join(', ')}
+5. FORMAT CHECK:
+   □ Is this a MOCKUP showing paper/table/art supplies? (FAIL if yes)
+   □ Does it show MULTIPLE separate images/panels? (FAIL if yes)
+   □ Is there an unwanted FRAME or BORDER?
+   □ Is there TEXT when none was requested?
 
-PROHIBITED CONTENT (Immediate Fail):
-${audienceRules.prohibitedContent.map(item => `• ${item}`).join('\n')}
+6. STYLE CHECK:
+   □ Does line weight match specification (${styleSpec.lineWeight})?
+   ${styleId === 'Geometric' ? '□ Are there ANY curved lines? (FAIL if yes - Geometric requires straight lines ONLY)' : ''}
+   ${styleId === 'Kawaii' ? '□ Are all corners rounded? (FAIL if sharp angles)' : ''}
+   ${styleId === 'Bold & Easy' ? '□ Are all lines thick (4mm+)? (FAIL if thin lines present)' : ''}
 
-Audience-Specific Checks:
-${audienceRules.specificChecks.map(check => `• ${check}`).join('\n')}
-
-${context.audienceId === 'toddlers' || context.audienceId === 'preschool' ? `
-⚠️ CRITICAL SAFETY CHECK:
-This is for YOUNG CHILDREN. Immediate fail if:
-- Image is scary, aggressive, or threatening
-- Sharp/angry faces or expressions
-- Weapons, fire, or violence of any kind
-- Must be 100% cute/friendly
-` : ''}
+7. AUDIENCE CHECK:
+   □ Is content appropriate for ${audienceId}?
+   □ Content guidance: ${audienceSpec.contentGuidance}
+   ${audienceId === 'toddlers' || audienceId === 'preschool' ? '□ Is everything friendly and non-scary?' : ''}
 
 ═══════════════════════════════════════════════════════════════════════════════
-ANALYSIS INSTRUCTIONS
+OUTPUT FORMAT (JSON)
 ═══════════════════════════════════════════════════════════════════════════════
-Score each dimension 0-100 based on compliance with the above specifications.
 
-For ISSUES, use ONLY these codes with appropriate severity:
-- CRITICAL (blocks publication): COLOR_DETECTED, GREY_SHADING, SOLID_BLACK_FILL, MOCKUP_DETECTED, UNCLOSED_REGIONS, INAPPROPRIATE_CONTENT
-- MAJOR (recommend regeneration): REGIONS_TOO_SMALL, REGIONS_TOO_MANY, REGIONS_TOO_FEW, LINE_WEIGHT_WRONG, STYLE_MISMATCH, COMPLEXITY_MISMATCH, TEXTURE_WHERE_FORBIDDEN, CURVES_IN_GEOMETRIC, SHARP_ANGLES_IN_KAWAII, THIN_LINES_IN_BOLD, AUDIENCE_MISMATCH, SCARY_FOR_YOUNG
-- MINOR (logged only): COMPOSITION_IMBALANCED, SUBJECT_OFF_CENTER, BACKGROUND_SPARSE, BACKGROUND_BUSY, MINOR_STYLE_DEVIATION, LINE_QUALITY_VARIABLE
+{
+  "overallPass": true/false,
+  "qualityScore": 0-100,
+  "isPublishable": true/false,
+  "issues": [
+    {
+      "code": "ISSUE_CODE",
+      "severity": "critical|major|minor",
+      "message": "Description of the issue",
+      "details": "Specific details about where/what",
+      "location": "e.g., 'cat fur', 'water area', 'top-left corner'",
+      "confidence": 0.0-1.0
+    }
+  ],
+  "positives": ["Things done well"],
+  "estimatedRegionCount": number,
+  "estimatedWhiteSpacePercent": number,
+  "restAreaCount": number,
+  "recommendations": ["Suggestions for improvement"]
+}
 
-Be PRECISE and OBJECTIVE. Score against the specifications, not subjective aesthetics.
+IMPORTANT: Be STRICT. A coloring book page that cannot be colored properly is worthless.
+- Any grey = FAIL
+- Any stippling = FAIL (unless Botanical with sparse stippling)
+- Any unclosed regions = FAIL
+- No rest areas for Moderate complexity = FAIL
+- Mockup format = FAIL
+- Multiple images = FAIL
 
-Return ONLY the JSON object defined in the schema.
+Analyze the image now and provide your assessment.
 `.trim();
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// GOOGLE SCHEMA DEFINITION
-// ═══════════════════════════════════════════════════════════════════════════════
-
-const QA_RESPONSE_SCHEMA = {
-    type: "OBJECT",
-    properties: {
-        lineQuality: {
-            type: "NUMBER",
-            description: "Score 0-100 for line quality: pure black, consistent weight, no grey"
-        },
-        regionIntegrity: {
-            type: "NUMBER",
-            description: "Score 0-100 for region closure: all paths closed, correct sizes"
-        },
-        composition: {
-            type: "NUMBER",
-            description: "Score 0-100 for composition: framing, balance, visual flow"
-        },
-        audienceAlignment: {
-            type: "NUMBER",
-            description: "Score 0-100 for audience appropriateness"
-        },
-        styleCompliance: {
-            type: "NUMBER",
-            description: "Score 0-100 for matching requested style characteristics"
-        },
-        complexityCompliance: {
-            type: "NUMBER",
-            description: "Score 0-100 for matching requested complexity level"
-        },
-        issues: {
-            type: "ARRAY",
-            items: {
-                type: "OBJECT",
-                properties: {
-                    code: {
-                        type: "STRING",
-                        enum: [
-                            "COLOR_DETECTED", "GREY_SHADING", "SOLID_BLACK_FILL", "MOCKUP_DETECTED",
-                            "UNCLOSED_REGIONS", "INAPPROPRIATE_CONTENT",
-                            "REGIONS_TOO_SMALL", "REGIONS_TOO_MANY", "REGIONS_TOO_FEW",
-                            "LINE_WEIGHT_WRONG", "STYLE_MISMATCH", "COMPLEXITY_MISMATCH",
-                            "TEXTURE_WHERE_FORBIDDEN", "CURVES_IN_GEOMETRIC", "SHARP_ANGLES_IN_KAWAII",
-                            "THIN_LINES_IN_BOLD", "AUDIENCE_MISMATCH", "SCARY_FOR_YOUNG",
-                            "COMPOSITION_IMBALANCED", "SUBJECT_OFF_CENTER", "BACKGROUND_SPARSE",
-                            "BACKGROUND_BUSY", "MINOR_STYLE_DEVIATION", "LINE_QUALITY_VARIABLE"
-                        ]
-                    },
-                    severity: {
-                        type: "STRING",
-                        enum: ["critical", "major", "minor"]
-                    },
-                    description: {
-                        type: "STRING",
-                        description: "Specific description of the issue found"
-                    },
-                    location: {
-                        type: "STRING",
-                        description: "Where in the image the issue was found (optional)"
-                    },
-                    confidence: {
-                        type: "NUMBER",
-                        description: "Confidence score 0-100 for this issue detection"
-                    }
-                },
-                required: ["code", "severity", "description", "confidence"]
-            }
-        },
-        overallAssessment: {
-            type: "STRING",
-            description: "Brief overall assessment in 1-2 sentences"
-        }
-    },
-    required: [
-        "lineQuality", "regionIntegrity", "composition",
-        "audienceAlignment", "styleCompliance", "complexityCompliance",
-        "issues", "overallAssessment"
-    ]
-};
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// MAIN QA FUNCTION
+// MAIN ANALYSIS FUNCTION
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Analyse a generated coloring page against its specifications
- *
- * @example
- * const qaResult = await analyzeColoringPage({
- *   imageUrl: generationResult.imageUrl,
- *   requestId: generationResult.metadata.requestId,
- *   styleId: 'Bold & Easy',
- *   complexityId: 'Simple',
- *   audienceId: 'preschool',
- *   userPrompt: 'A cute dragon eating a taco',
- * });
- *
- * if (!qaResult.isPublishable) {
- *   console.log('Critical issues:', qaResult.criticalIssues);
- * }
+ * Analyze a coloring page image for quality issues
  */
 export const analyzeColoringPage = async (
-    context: QaContext,
-    config: Partial<QaConfig> = {}
-): Promise<QaResult> => {
-    const startTime = Date.now();
-    const finalConfig: QaConfig = { ...DEFAULT_CONFIG, ...config };
-
-    if (context.enableLogging) {
-        console.log(`[QA ${context.requestId}] Starting analysis`, {
-            style: context.styleId,
-            complexity: context.complexityId,
-            audience: context.audienceId,
-        });
+    request: AnalyzeRequest,
+    config: QaConfig = {
+        mode: 'production',
+        minimumPassScore: 70,
+        strictTextureCheck: true,
+        strictColorCheck: true,
+        checkRestAreas: true,
+        checkMockupFormat: true,
     }
+): Promise<QaResult> => {
+    const {
+        imageUrl,
+        requestId,
+        styleId,
+        complexityId,
+        audienceId,
+        userPrompt,
+        apiKey,
+        signal,
+    } = request;
+
+    // Check abort
+    if (signal?.aborted) {
+        throw new Error('Aborted');
+    }
+
+    // Validate API key
+    if (!apiKey) {
+        throw new Error('API key required for QA analysis');
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
+    const analysisPrompt = buildAnalysisPrompt(styleId, complexityId, audienceId);
+
+    // Extract base64 from data URL if needed
+    const imageData = imageUrl.startsWith('data:')
+        ? imageUrl.split(',')[1]
+        : imageUrl;
+
+    const mimeType = imageUrl.startsWith('data:')
+        ? imageUrl.split(';')[0].split(':')[1]
+        : 'image/png';
 
     try {
-        // Check abort
-        if (context.signal?.aborted) {
+        const response = await ai.models.generateContent({
+            model: GEMINI_TEXT_MODEL,
+            contents: {
+                parts: [
+                    { text: analysisPrompt },
+                    {
+                        inlineData: {
+                            data: imageData,
+                            mimeType,
+                        },
+                    },
+                ],
+            },
+            config: {
+                responseMimeType: 'application/json',
+                temperature: 0.2, // Low temperature for consistent analysis
+            },
+        });
+
+        if (signal?.aborted) {
             throw new Error('Aborted');
         }
 
-        // Build dynamic prompt
-        const qaPrompt = buildQaPrompt(context);
+        // Parse response
+        const analysisText = response.text || '{}';
+        let analysis: any;
 
-        // Call AI for analysis
-        const rawAnalysis = await generateObject<RawAiAnalysis>({
-            model: GEMINI_TEXT_MODEL,
-            system: "You are a precise technical auditor for commercial coloring book line art. Analyse objectively against specifications.",
-            prompt: qaPrompt,
-            image: context.imageUrl,
-            schema: QA_RESPONSE_SCHEMA,
-            apiKey: context.apiKey,
-            signal: context.signal,
-            temperature: 0.1, // Very low for consistent analysis
-            enableLogging: context.enableLogging,
-        });
+        try {
+            analysis = JSON.parse(analysisText);
+        } catch (parseError) {
+            console.error('Failed to parse QA response:', analysisText);
+            // Return a fail-safe result
+            return createFailSafeResult(requestId, 'Failed to parse QA analysis');
+        }
 
-        // Process issues with definitions
-        const processedIssues: QaIssue[] = rawAnalysis.issues.map(issue => {
-            const definition = ISSUE_DEFINITIONS[issue.code] || {
-                defaultSeverity: issue.severity,
-                category: 'unknown',
-                remediation: 'Review and consider regenerating.',
-            };
-
-            // Apply severity overrides if configured
-            const severity = finalConfig.severityOverrides?.[issue.code] || definition.defaultSeverity;
-
+        // Convert to QaResult format
+        const issues: QaIssue[] = (analysis.issues || []).map((issue: any) => {
+            const definition = ISSUE_DEFINITIONS[issue.code as QaIssueCode];
             return {
                 code: issue.code,
-                severity,
-                description: issue.description,
+                severity: issue.severity || definition?.severity || 'major',
+                category: definition?.category || 'unknown',
+                message: issue.message,
+                details: issue.details,
                 location: issue.location,
-                remediation: definition.remediation,
-                confidence: issue.confidence,
+                confidence: issue.confidence || 0.8,
+                autoRepairable: definition?.autoRepairable ?? true,
             };
         });
 
-        // Categorise issues by severity
-        const criticalIssues = processedIssues.filter(i => i.severity === 'critical');
-        const majorIssues = processedIssues.filter(i => i.severity === 'major');
-        const minorIssues = processedIssues.filter(i => i.severity === 'minor');
+        // Count by severity
+        const criticalCount = issues.filter(i => i.severity === 'critical').length;
+        const majorCount = issues.filter(i => i.severity === 'major').length;
+        const minorCount = issues.filter(i => i.severity === 'minor').length;
 
-        // Build rubric
-        const rubric: QaRubric = {
-            lineQuality: rawAnalysis.lineQuality,
-            regionIntegrity: rawAnalysis.regionIntegrity,
-            composition: rawAnalysis.composition,
-            audienceAlignment: rawAnalysis.audienceAlignment,
-            styleCompliance: rawAnalysis.styleCompliance,
-            complexityCompliance: rawAnalysis.complexityCompliance,
-        };
-
-        // Calculate overall score (weighted average)
-        const overallScore = Math.round(
-            (rubric.lineQuality * 0.25) +
-            (rubric.regionIntegrity * 0.25) +
-            (rubric.styleCompliance * 0.20) +
-            (rubric.complexityCompliance * 0.10) +
-            (rubric.audienceAlignment * 0.10) +
-            (rubric.composition * 0.10)
-        );
+        // Calculate score
+        const score = analysis.qualityScore ?? calculateScore(issues);
 
         // Determine pass/fail
-        const hasCriticalIssues = criticalIssues.length > 0;
-        const meetsMinimumScore = overallScore >= finalConfig.minimumPassScore;
-        const passed = !hasCriticalIssues && meetsMinimumScore;
+        const passed = config.mode === 'preview'
+            ? criticalCount === 0 && score >= 50
+            : criticalCount === 0 && majorCount <= 2 && score >= config.minimumPassScore;
 
-        // Publishability and regeneration recommendation
-        const isPublishable = !hasCriticalIssues;
-        const shouldRegenerate = hasCriticalIssues || majorIssues.length >= 2 || overallScore < 60;
+        const isPublishable = criticalCount === 0 && majorCount === 0 && score >= 80;
 
-        const analysisDurationMs = Date.now() - startTime;
-
-        if (context.enableLogging) {
-            console.log(`[QA ${context.requestId}] Analysis complete`, {
-                passed,
-                overallScore,
-                criticalCount: criticalIssues.length,
-                majorCount: majorIssues.length,
-                durationMs: analysisDurationMs,
-            });
-        }
+        // Build summary
+        const summary = buildSummary(passed, score, criticalCount, majorCount, minorCount);
 
         return {
-            requestId: context.requestId,
             passed,
-            overallScore,
-            rubric,
-            issues: processedIssues,
-            criticalIssues,
-            majorIssues,
-            minorIssues,
+            score,
             isPublishable,
-            shouldRegenerate,
-            timestamp: new Date().toISOString(),
-            analysisDurationMs,
-            rawAnalysis: finalConfig.includeRawAnalysis ? rawAnalysis : undefined,
+            issues,
+            criticalCount,
+            majorCount,
+            minorCount,
+            summary,
+            analysisTimestamp: new Date().toISOString(),
+            requestId,
+            recommendations: analysis.recommendations || [],
         };
 
-    } catch (error) {
-        const err = error instanceof Error ? error : new Error(String(error));
-
-        // Propagate abort
-        if (err.message === 'Aborted' || context.signal?.aborted) {
-            throw new Error('Aborted');
+    } catch (error: any) {
+        if (error.message === 'Aborted') {
+            throw error;
         }
 
-        console.error(`[QA ${context.requestId}] Analysis failed:`, err.message);
-
-        // Return safe fallback based on mode
-        const analysisDurationMs = Date.now() - startTime;
-
-        if (finalConfig.mode === 'production') {
-            // In production, failure to QA = fail the image (safety first)
-            return {
-                requestId: context.requestId,
-                passed: false,
-                overallScore: 0,
-                rubric: {
-                    lineQuality: 0,
-                    regionIntegrity: 0,
-                    composition: 0,
-                    audienceAlignment: 0,
-                    styleCompliance: 0,
-                    complexityCompliance: 0,
-                },
-                issues: [{
-                    code: 'QA_SERVICE_ERROR',
-                    severity: 'critical',
-                    description: `QA analysis failed: ${err.message}`,
-                    remediation: 'Retry QA analysis or manually review image.',
-                    confidence: 100,
-                }],
-                criticalIssues: [{
-                    code: 'QA_SERVICE_ERROR',
-                    severity: 'critical',
-                    description: `QA analysis failed: ${err.message}`,
-                    remediation: 'Retry QA analysis or manually review image.',
-                    confidence: 100,
-                }],
-                majorIssues: [],
-                minorIssues: [],
-                isPublishable: false,
-                shouldRegenerate: true,
-                timestamp: new Date().toISOString(),
-                analysisDurationMs,
-            };
-        } else {
-            // In preview mode, allow through with warning
-            return {
-                requestId: context.requestId,
-                passed: true,
-                overallScore: 50,
-                rubric: {
-                    lineQuality: 50,
-                    regionIntegrity: 50,
-                    composition: 50,
-                    audienceAlignment: 50,
-                    styleCompliance: 50,
-                    complexityCompliance: 50,
-                },
-                issues: [{
-                    code: 'QA_SERVICE_ERROR',
-                    severity: 'minor',
-                    description: `QA analysis unavailable: ${err.message}`,
-                    remediation: 'Image not validated. Manual review recommended.',
-                    confidence: 100,
-                }],
-                criticalIssues: [],
-                majorIssues: [],
-                minorIssues: [{
-                    code: 'QA_SERVICE_ERROR',
-                    severity: 'minor',
-                    description: `QA analysis unavailable: ${err.message}`,
-                    remediation: 'Image not validated. Manual review recommended.',
-                    confidence: 100,
-                }],
-                isPublishable: true,
-                shouldRegenerate: false,
-                timestamp: new Date().toISOString(),
-                analysisDurationMs,
-            };
-        }
+        console.error('QA Analysis failed:', error);
+        return createFailSafeResult(requestId, error.message);
     }
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// BATCH QA FUNCTION
+// HELPER FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Analyse multiple images in parallel with rate limiting
+ * Calculate quality score from issues
  */
-export const analyzeColoringPageBatch = async (
-    contexts: QaContext[],
-    config: Partial<QaConfig> = {},
-    concurrency = 3
-): Promise<QaResult[]> => {
-    const results: QaResult[] = [];
-    const queue = [...contexts];
+const calculateScore = (issues: QaIssue[]): number => {
+    let score = 100;
 
-    const worker = async () => {
-        while (queue.length > 0) {
-            const context = queue.shift();
-            if (context) {
-                const result = await analyzeColoringPage(context, config);
-                results.push(result);
-            }
-        }
-    };
+    for (const issue of issues) {
+        const penalty = issue.severity === 'critical' ? 25 : issue.severity === 'major' ? 10 : 3;
+        score -= penalty * issue.confidence;
+    }
 
-    // Run workers in parallel
-    const workers = Array(Math.min(concurrency, contexts.length))
-        .fill(null)
-        .map(() => worker());
-
-    await Promise.all(workers);
-
-    // Sort results to match input order
-    return contexts.map(ctx =>
-        results.find(r => r.requestId === ctx.requestId)!
-    );
+    return Math.max(0, Math.round(score));
 };
 
+/**
+ * Build human-readable summary
+ */
+const buildSummary = (
+    passed: boolean,
+    score: number,
+    critical: number,
+    major: number,
+    minor: number
+): string => {
+    if (passed && score >= 90) {
+        return `Excellent quality (${score}/100). Ready for publication.`;
+    }
+    if (passed && score >= 70) {
+        return `Good quality (${score}/100). ${major} major and ${minor} minor issues found.`;
+    }
+    if (!passed && critical > 0) {
+        return `Failed QA (${score}/100). ${critical} critical issue(s) must be resolved.`;
+    }
+    return `Below threshold (${score}/100). ${major} major issues require attention.`;
+};
+
+/**
+ * Create fail-safe result when analysis fails
+ */
+const createFailSafeResult = (requestId: string, errorMessage: string): QaResult => ({
+    passed: false,
+    score: 0,
+    isPublishable: false,
+    issues: [{
+        code: 'ARTIFACTS_PRESENT' as QaIssueCode,
+        severity: 'critical',
+        category: 'technical',
+        message: `QA analysis failed: ${errorMessage}`,
+        confidence: 1,
+        autoRepairable: false,
+    }],
+    criticalCount: 1,
+    majorCount: 0,
+    minorCount: 0,
+    summary: `QA analysis failed: ${errorMessage}`,
+    analysisTimestamp: new Date().toISOString(),
+    requestId,
+    recommendations: ['Regenerate the image and retry QA'],
+});
+
 // ═══════════════════════════════════════════════════════════════════════════════
-// LEGACY COMPATIBILITY WRAPPER
+// QUICK CHECK FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Legacy wrapper for backwards compatibility with existing code
- * @deprecated Use analyzeColoringPage instead
+ * Quick check for specific issue categories
  */
-export const analyzeImageQuality = async (
+export const quickCheckForTexture = async (
     imageUrl: string,
-    audience: string,
-    style?: string,
-    complexity?: string
-): Promise<{
-    tags: string[];
-    score: number;
-    hardFail: boolean;
-    reasons: string[];
-    rubricBreakdown: {
-        printCleanliness: number;
-        colorability: number;
-        composition: number;
-        audienceAlignment: number;
-        consistency: number;
-    };
-}> => {
-    const result = await analyzeColoringPage({
-        imageUrl,
-        requestId: `legacy_${Date.now()}`,
-        styleId: style || 'default',
-        complexityId: complexity || 'Moderate',
-        audienceId: audience || 'default',
-        userPrompt: 'Unknown (legacy call)',
-    }, { mode: 'preview' });
+    apiKey: string
+): Promise<{ hasTexture: boolean; type?: string }> => {
+    const ai = new GoogleGenAI({ apiKey });
 
-    // Map to legacy format
-    return {
-        tags: result.issues.map(i => i.code.toLowerCase()),
-        score: result.overallScore,
-        hardFail: !result.isPublishable,
-        reasons: result.issues.map(i => i.description),
-        rubricBreakdown: {
-            printCleanliness: result.rubric.lineQuality,
-            colorability: result.rubric.regionIntegrity,
-            composition: result.rubric.composition,
-            audienceAlignment: result.rubric.audienceAlignment,
-            consistency: result.rubric.styleCompliance,
+    const response = await ai.models.generateContent({
+        model: GEMINI_TEXT_MODEL,
+        contents: {
+            parts: [
+                {
+                    text: `Analyze this coloring book image. Does it contain ANY of the following texture techniques?
+1. STIPPLING (dots creating tonal effect)
+2. HATCHING (parallel lines for shading)
+3. CROSS-HATCHING (intersecting parallel lines)
+4. DECORATIVE TEXTURE MARKS (fur strokes, fabric lines, wood grain)
+
+Respond with JSON: {"hasTexture": true/false, "type": "stippling|hatching|crosshatching|decorative|none", "location": "where found"}`,
+                },
+                {
+                    inlineData: {
+                        data: imageUrl.startsWith('data:') ? imageUrl.split(',')[1] : imageUrl,
+                        mimeType: 'image/png',
+                    },
+                },
+            ],
         },
-    };
+        config: {
+            responseMimeType: 'application/json',
+            temperature: 0.1,
+        },
+    });
+
+    try {
+        const result = JSON.parse(response.text || '{}');
+        return { hasTexture: result.hasTexture || false, type: result.type };
+    } catch {
+        return { hasTexture: false };
+    }
+};
+
+/**
+ * Quick check for grey tones
+ */
+export const quickCheckForGrey = async (
+    imageUrl: string,
+    apiKey: string
+): Promise<{ hasGrey: boolean; severity?: string }> => {
+    const ai = new GoogleGenAI({ apiKey });
+
+    const response = await ai.models.generateContent({
+        model: GEMINI_TEXT_MODEL,
+        contents: {
+            parts: [
+                {
+                    text: `Analyze this coloring book image. Does it contain ANY grey tones, gradients, or shading?
+A proper coloring book should have ONLY pure black lines on pure white background.
+
+Respond with JSON: {"hasGrey": true/false, "severity": "none|minor|moderate|severe", "description": "what was found"}`,
+                },
+                {
+                    inlineData: {
+                        data: imageUrl.startsWith('data:') ? imageUrl.split(',')[1] : imageUrl,
+                        mimeType: 'image/png',
+                    },
+                },
+            ],
+        },
+        config: {
+            responseMimeType: 'application/json',
+            temperature: 0.1,
+        },
+    });
+
+    try {
+        const result = JSON.parse(response.text || '{}');
+        return { hasGrey: result.hasGrey || false, severity: result.severity };
+    } catch {
+        return { hasGrey: false };
+    }
+};
+
+/**
+ * Quick check for mockup/multiple images
+ */
+export const quickCheckFormat = async (
+    imageUrl: string,
+    apiKey: string
+): Promise<{ isMockup: boolean; isMultiple: boolean }> => {
+    const ai = new GoogleGenAI({ apiKey });
+
+    const response = await ai.models.generateContent({
+        model: GEMINI_TEXT_MODEL,
+        contents: {
+            parts: [
+                {
+                    text: `Analyze this image format:
+1. Is this a MOCKUP showing the coloring page on a table/desk with art supplies visible?
+2. Does this show MULTIPLE separate images/panels/pages in a grid or collage?
+
+A valid output should be a SINGLE illustration filling the canvas, not a photo of paper or multiple images.
+
+Respond with JSON: {"isMockup": true/false, "isMultiple": true/false, "description": "what was detected"}`,
+                },
+                {
+                    inlineData: {
+                        data: imageUrl.startsWith('data:') ? imageUrl.split(',')[1] : imageUrl,
+                        mimeType: 'image/png',
+                    },
+                },
+            ],
+        },
+        config: {
+            responseMimeType: 'application/json',
+            temperature: 0.1,
+        },
+    });
+
+    try {
+        const result = JSON.parse(response.text || '{}');
+        return { isMockup: result.isMockup || false, isMultiple: result.isMultiple || false };
+    } catch {
+        return { isMockup: false, isMultiple: false };
+    }
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // EXPORTS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export {
-    STYLE_VALIDATION_RULES,
-    COMPLEXITY_VALIDATION_RULES,
-    AUDIENCE_VALIDATION_RULES,
-    ISSUE_DEFINITIONS,
-};
+export { QA_ISSUE_CODES as ISSUE_CODES };

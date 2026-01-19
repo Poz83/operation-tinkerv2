@@ -1,7 +1,7 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
- * GENERATION SERVICE v1.0 — Unified UI Service Layer
- * Color-by-Numbers SaaS
+ * GENERATION SERVICE v2.0 — Unified UI Service Layer
+ * myJoe Creative Suite - Coloring Book Studio
  * ═══════════════════════════════════════════════════════════════════════════════
  *
  * This is the PRIMARY service layer for UI components to interact with
@@ -14,6 +14,14 @@
  * - Batch generation for book plans
  * - Cost estimation and usage tracking
  *
+ * v2.0 Changes:
+ * - Integrated with Orchestrator v2.0 (Gemini 3 Pro Image optimized)
+ * - Uses qaService v2.1 (enhanced texture/format detection)
+ * - Uses repairs v2.1 (comprehensive repair strategies)
+ * - Removed negative_prompt handling (deprecated in Gemini 3)
+ * - Updated type imports for new service structure
+ * - Aligned with prompts v5.0 specifications
+ *
  * Architecture:
  *
  *   React Component
@@ -21,12 +29,11 @@
  *       ▼
  *   generationService.generatePage()
  *       │
- *       ├─► orchestrator.generateAndValidate()
+ *       ├─► Orchestrator.generateAndValidate()
  *       │       │
- *       │       ├─► prompts.ts
- *       │       ├─► gemini-client.ts
- *       │       ├─► qaService.ts
- *       │       └─► repairs.ts
+ *       │       ├─► gemini-client.ts v3.0
+ *       │       ├─► qaService.ts v2.1
+ *       │       └─► repairs.ts v2.1
  *       │
  *       ├─► projectsService.saveProject()
  *       │
@@ -39,15 +46,21 @@ import {
     generateAndValidate,
     quickGenerate,
     strictGenerate,
+    previewPrompt,
     GenerateAndValidateRequest,
     GenerateAndValidateResult,
     PipelineConfig,
     PipelineProgress,
     AttemptResult,
+    StyleId,
+    ComplexityId,
+    AudienceId,
+    ImageSize,
 } from '../server/ai/Orchestrator';
 
 import {
     QaResult,
+    QaIssue,
 } from '../server/ai/qaService';
 
 import { getStoredApiKey } from '../lib/crypto';
@@ -71,7 +84,7 @@ import type {
     StyleDNA
 } from '../types';
 
-import type { StyleId, ComplexityId, AudienceId } from './ColoringStudioService';
+// StyleId, ComplexityId, AudienceId imported from Orchestrator above
 import type { PageQa, QaTag } from '../types';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -131,7 +144,7 @@ export interface GeneratePageConfig {
  */
 export interface GenerationProgress {
     /** Current phase */
-    phase: 'preparing' | 'generating' | 'validating' | 'saving' | 'complete' | 'failed';
+    phase: 'preparing' | 'enhancing' | 'generating' | 'validating' | 'saving' | 'complete' | 'failed';
     /** Current step message */
     message: string;
     /** Percentage complete (0-100) */
@@ -281,6 +294,7 @@ const adaptProgress = (
 ): GenerationProgress => {
     const phaseMap: Record<string, GenerationProgress['phase']> = {
         'initializing': 'preparing',
+        'enhancing': 'enhancing',
         'generating': 'generating',
         'validating': 'validating',
         'repairing': 'validating',
@@ -297,26 +311,45 @@ const adaptProgress = (
     };
 };
 
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // QA MAPPERS
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
+ * Calculate score for a category based on issues
+ */
+const calculateCategoryScore = (issues: QaIssue[], category: string): number => {
+    const categoryIssues = issues.filter(i => i.category === category);
+    if (categoryIssues.length === 0) return 100;
+
+    let deduction = 0;
+    for (const issue of categoryIssues) {
+        if (issue.severity === 'critical') deduction += 30;
+        else if (issue.severity === 'major') deduction += 15;
+        else deduction += 5;
+    }
+
+    return Math.max(0, 100 - deduction);
+};
+
+/**
  * Map Orchestrator QA result to UI PageQa format
  */
 const mapQaToPageQa = (qaResult: QaResult): PageQa => ({
-    score: qaResult.overallScore,
+    score: qaResult.score,
     hardFail: !qaResult.passed,
-    reasons: qaResult.issues.map(i => i.description),
-    tags: qaResult.issues.map(i => i.code as any),
+    reasons: qaResult.issues.map(i => i.message),
+    tags: qaResult.issues.map(i => i.code as QaTag),
     rubricBreakdown: {
-        printCleanliness: qaResult.rubric.lineQuality,
-        colorability: qaResult.rubric.regionIntegrity,
-        composition: qaResult.rubric.composition,
-        audienceAlignment: qaResult.rubric.audienceAlignment,
-        consistency: qaResult.rubric.styleCompliance
+        printCleanliness: calculateCategoryScore(qaResult.issues, 'color') + calculateCategoryScore(qaResult.issues, 'texture'),
+        colorability: calculateCategoryScore(qaResult.issues, 'region'),
+        composition: calculateCategoryScore(qaResult.issues, 'composition'),
+        audienceAlignment: calculateCategoryScore(qaResult.issues, 'audience'),
+        consistency: calculateCategoryScore(qaResult.issues, 'style'),
     }
 });
+
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SINGLE PAGE GENERATION
@@ -389,6 +422,9 @@ export const generatePage = async (
         maxAttempts: config.maxAttempts || 3,
     });
 
+    // Determine image size from complexity
+    const imageSize: ImageSize = COMPLEXITY_TO_RESOLUTION[request.complexity] || '2K';
+
     // Build orchestrator request
     const orchestratorRequest: GenerateAndValidateRequest = {
         userPrompt: request.prompt,
@@ -396,12 +432,9 @@ export const generatePage = async (
         complexityId: request.complexity,
         audienceId: request.audience,
         aspectRatio: request.aspectRatio,
-        requiresText: request.requiresText,
-        heroDNA: request.heroDNA,
-        styleDNA: request.styleDNA,
-        referenceImage: request.referenceImage,
-        signal: request.signal,
+        imageSize,
         apiKey,
+        signal: request.signal,
         config: buildPipelineConfig(config),
     };
 

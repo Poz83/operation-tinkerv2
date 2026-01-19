@@ -1,5 +1,23 @@
 # Release Notes
 
+## [5.0.0] - v5.0 AI & Unified Pipeline
+- **Gemini 3 Pro Image (Nano Banana Pro)**: Upgraded the entire AI core to leverage the latest model, featuring superior prompt adherence, text rendering, and native style understanding.
+- **Unified Style System (v5.0)**: Standardized 12 distinct styles (including new additions like Geometric, Botanical, Gothic, and refined existing ones) across the entire platform (Studio, Hero Lab, Book Planner).
+- **Prompt Engine v5.0**:
+  - **No Negative Prompts**: Deprecated negative prompts in favor of positive constraints, aligning with Gemini 3 best practices.
+  - **Critical Constraint Placement**: Constraints are now strategically placed at the end of prompts for maximum adherence.
+  - **Audience-Specific Complexity**: 5 complexity levels (Very Simple to Extreme Detail) tailored to 6 specific audience age groups.
+- **Service Architecture v2.0**:
+  - **Unified Orchestrator**: A single "brain" now manages the entire pipeline: Prompt Enhancement -> Generation -> QA -> Auto-Repair.
+  - **Agentic QA v2.1**: Enhanced inspection for texture leaks, mockup artifacts, and grey tones with stricter rubrics.
+  - **Auto-Repair v2.1**: Comprehensive repair strategies for every potential failure mode (e.g., "Horror Vacui" detection for simple pages).
+- **Hero Lab v2.0**:
+  - **Style Lock**: Heroes now carry precise v5.0 style DNA.
+  - **Constraint Inheritance**: Character consistency rules are now fully compatible with the new prompt engine.
+- **Performance**:
+  - **Optimized Caching**: Smarter image and API response caching.
+  - **Cost Estimation**: Real-time tracking of generation costs based on complexity and resolution.
+
 ## [2.2.1] - Cinematic Intelligence
 - **Dynamic Camera System**: The AI now acts as a cinematographer, automatically choosing from 8 distinct camera angles (Low, High, Dutch, etc.) found in professional comics to create dynamic, non-repetitive compositions.
 - **Clean Login Flow**: Fixed the "duplicate tab" annoyance. If you log in via a magic link in a new tab, the old tab will now stay put and confirm your success, rather than opening a second dashboard.

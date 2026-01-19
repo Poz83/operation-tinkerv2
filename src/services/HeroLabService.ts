@@ -1,7 +1,7 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
  * HERO LAB SERVICE v2.0
- * Paint-by-Numbers SaaS
+ * myJoe Creative Suite - Hero Lab
  * ═══════════════════════════════════════════════════════════════════════════════
  *
  * Handles all AI operations for the Hero Lab character consistency system:
@@ -10,8 +10,8 @@
  * - generateCharacterVariation(): Creates consistent character in new pose/scene
  *
  * v2.0 Changes:
- * - Style IDs aligned with prompts-v4.ts exactly
- * - Audience validation integrated
+ * - Style IDs aligned with prompts-v5.0 exactly
+ * - Audience validation integrated (removed deprecated 'sen' audience)
  * - Improved DNA extraction with coloring-book-specific attributes
  * - Added character variation generation
  *
@@ -65,11 +65,6 @@ const AUDIENCE_CHARACTER_RULES: Record<string, {
         required: ['clear features', 'dignified representation'],
         adjustments: 'Ensure character features are clearly visible and not too intricate.',
     },
-    'sen': {
-        prohibited: ['scary', 'chaotic', 'overwhelming details', 'aggressive poses'],
-        required: ['calm', 'predictable', 'friendly'],
-        adjustments: 'Character must be calming and predictable. Avoid any potentially distressing features.',
-    },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -121,7 +116,7 @@ export interface CharacterVariationRequest {
  * HeroLabService v2.0
  * 
  * Handles all AI operations for character consistency in the Hero Lab.
- * Integrated with prompts-v4.ts style system.
+ * Integrated with prompts-v5.0 style system.
  */
 export class HeroLabService {
     private ai: GoogleGenAI | null = null;
@@ -537,8 +532,14 @@ RESPOND WITH JSON ONLY. No explanations.
         if (description.includes('whimsical') || description.includes('fairy') || description.includes('magical')) {
             return 'Whimsical';
         }
-        if (description.includes('animal') || description.includes('creature')) {
-            return 'Wildlife';
+        if (description.includes('geometric') || description.includes('angular') || description.includes('faceted')) {
+            return 'Geometric';
+        }
+        if (description.includes('botanical') || description.includes('plant') || description.includes('flower')) {
+            return 'Botanical';
+        }
+        if (description.includes('gothic') || description.includes('dark') || description.includes('ornate')) {
+            return 'Gothic';
         }
 
         // Default to Cartoon as it's versatile
