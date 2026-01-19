@@ -48,6 +48,7 @@ import {
     RepairContext,
     RepairParameters,
 } from './repairs';
+import { Logger } from '../../lib/logger';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TYPE DEFINITIONS
@@ -209,7 +210,7 @@ export const generateAndValidate = async (
     // Helper: Log if enabled
     const log = (msg: string) => {
         if (config.enableLogging) {
-            console.log(`[${requestId}] ${msg}`);
+            Logger.info('AI', `[${requestId}] ${msg}`);
         }
     };
 

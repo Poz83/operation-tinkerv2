@@ -92,7 +92,7 @@ export const useGeneration = ({
         } finally {
             setIsEnhancing(false);
         }
-    }, [validateApiKey, setUserPrompt, showToast]);
+    }, [validateApiKey, setUserPrompt, showToast, apiKey]);
 
     const handleCancel = useCallback(() => {
         console.log("User requested cancellation.");

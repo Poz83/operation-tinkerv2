@@ -22,6 +22,7 @@ import { SummaryCard } from '../components/SummaryCard';
 import { useProject } from '../hooks/useProject';
 import { useGeneration } from '../hooks/useGeneration';
 import { DesignersTip } from '../components/DesignersTip';
+import { LogViewer } from '../components/debug/LogViewer';
 
 const App: React.FC = () => {
   const { apiKey, hasApiKey } = useApiKeyContext();

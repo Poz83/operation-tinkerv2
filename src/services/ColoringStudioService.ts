@@ -23,6 +23,7 @@
 import { GoogleGenAI, Type } from '@google/genai';
 import { GEMINI_TEXT_MODEL, StyleId, ComplexityId, AudienceId, STYLE_SPECS } from '../server/ai/gemini-client';
 import { getStoredApiKey } from '../lib/crypto';
+import { Logger } from '../lib/logger';
 import type { StyleDNA } from '../types';
 
 /**
@@ -263,7 +264,7 @@ export class ColoringStudioService {
         const key = apiKey || await getStoredApiKey() || (envKey && envKey.startsWith('AIza') ? envKey : undefined);
 
         if (!key) {
-            console.warn('ColoringStudioService: No API key available');
+            Logger.warn('SYSTEM', 'ColoringStudioService: No API key available');
             this.ai = null;
             this.apiKey = null;
             return;
@@ -495,7 +496,7 @@ Generate the plan now.
             if (error.name === 'AbortError' || error.message === 'Aborted' || signal?.aborted) {
                 throw new Error('Aborted');
             }
-            console.error('Failed to generate book plan:', error);
+            Logger.error('AI', 'Failed to generate book plan:', error);
             return [];
         }
     }
@@ -648,7 +649,10 @@ Return ONLY the enhanced scene description. No explanations. No technical instru
             return response.text?.trim() || rawPrompt;
 
         } catch (error) {
-            console.error('Failed to brainstorm prompt:', error);
+            Logger.error('AI', 'Failed to brainstorm prompt:', error);
+            if (error instanceof Error) {
+                Logger.debug('AI', 'Error details:', { message: error.message, stack: error.stack });
+            }
             return rawPrompt;
         }
     }
@@ -777,7 +781,7 @@ RESPOND WITH JSON ONLY. No explanations.
                     // We use Object.keys(STYLE_SPECS) to check validity
                     const knownStyles = Object.keys(STYLE_SPECS);
                     if (parsed.styleFamily && !knownStyles.includes(parsed.styleFamily)) {
-                        console.warn(`Invalid styleFamily "${parsed.styleFamily}", defaulting to closest match`);
+                        Logger.warn('AI', `Invalid styleFamily "${parsed.styleFamily}", defaulting to closest match`);
                         // Attempt to find closest match
                         const closestMatch = knownStyles.find(id =>
                             parsed.styleFamily?.toLowerCase().includes(id.toLowerCase()) ||
@@ -786,11 +790,14 @@ RESPOND WITH JSON ONLY. No explanations.
                         parsed.styleFamily = closestMatch || 'Cartoon';
                     }
 
-                    console.log('🔬 Style DNA extracted:', parsed);
+                    Logger.info('AI', '🔬 Style DNA extracted:', parsed);
                     return parsed;
 
                 } catch (parseError) {
-                    console.error('Failed to parse StyleDNA JSON:', parseError, response.text);
+                    Logger.error('AI', 'Failed to parse StyleDNA JSON', {
+                        error: parseError,
+                        text: response.text
+                    });
                     return null;
                 }
             }

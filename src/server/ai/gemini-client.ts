@@ -20,6 +20,7 @@
  */
 
 import { GoogleGenAI } from '@google/genai';
+import { Logger } from '../../lib/logger';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // MODEL CONSTANTS
@@ -446,8 +447,8 @@ export const generateColoringPage = async (
   const { prompt, effectiveComplexity } = buildPrompt(userPrompt, styleId, complexityId, audienceId);
 
   if (enableLogging) {
-    console.log(`[${requestId}] Generating with prompt (${prompt.length} chars)`);
-    console.log(`[${requestId}] Style: ${styleId}, Complexity: ${effectiveComplexity}, Size: ${imageSize}`);
+    Logger.info('AI', `[${requestId}] Generating with prompt (${prompt.length} chars)`);
+    Logger.debug('AI', `[${requestId}] Params`, { styleId, effectiveComplexity, imageSize });
   }
 
   try {
@@ -497,7 +498,7 @@ export const generateColoringPage = async (
     }
 
     if (enableLogging) {
-      console.log(`[${requestId}] Generated successfully in ${Date.now() - startTime}ms`);
+      Logger.info('AI', `[${requestId}] Generated successfully in ${Date.now() - startTime}ms`);
     }
 
     return {
@@ -516,7 +517,7 @@ export const generateColoringPage = async (
     const errorMessage = error.message || 'Unknown error';
 
     if (enableLogging) {
-      console.error(`[${requestId}] Generation failed:`, errorMessage);
+      Logger.error('AI', `[${requestId}] Generation failed`, { error: errorMessage });
     }
 
     return {
