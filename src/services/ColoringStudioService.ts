@@ -21,7 +21,7 @@
 /// <reference types="vite/client" />
 
 import { GoogleGenAI, Type } from '@google/genai';
-import { GEMINI_TEXT_MODEL, StyleId, ComplexityId, AudienceId, STYLE_SPECS } from '../server/ai/gemini-client';
+import { GEMINI_TEXT_MODEL, GEMINI_FLASH_MODEL, StyleId, ComplexityId, AudienceId, STYLE_SPECS } from '../server/ai/gemini-client';
 import { getStoredApiKey } from '../lib/crypto';
 import { Logger } from '../lib/logger';
 import type { StyleDNA } from '../types';
@@ -638,11 +638,11 @@ Return ONLY the enhanced scene description. No explanations. No technical instru
 
         try {
             const response = await this.ai!.models.generateContent({
-                model: GEMINI_TEXT_MODEL,
+                model: GEMINI_FLASH_MODEL,
                 contents: rawPrompt,
                 config: {
                     systemInstruction,
-                    temperature: 0.85,
+                    temperature: 0.9, // Higher creative temp for Flash
                 },
             });
 

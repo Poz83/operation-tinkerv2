@@ -63,15 +63,9 @@ import {
     QaIssue,
 } from '../server/ai/qaService';
 
-import { getStoredApiKey } from '../lib/crypto';
-// import { saveProject, fetchProject } from './projectsService'; 
-// Note: saveProject isn't exported from projectsService yet so we'll likely rely on internal save logic or update projectsService. 
-// For now, mirroring user request but let's check projectsService exports first. 
-// Actually, looking at the user's provided code, they assume saveProject and fetchProject are exported.
-// Given strict instructions, I will assume they are or will be. 
-// However, the `savePageToProject` function below implements its own Supabase logic, 
-// so `saveProject` import might not be strictly needed for *page* saving, but is used for types.
+import { Logger } from '../lib/logger';
 
+import { getStoredApiKey } from '../lib/crypto';
 import { fetchProject } from './projectsService';
 import { uploadProjectImage, getSignedUrl } from './storageService';
 import { cacheImage, getCachedImage, cacheFromUrl } from './ImageCacheService';
@@ -510,7 +504,7 @@ export const generatePage = async (
         try {
             await savePageToProject(request.projectId, page, orchestratorResult.imageUrl);
         } catch (saveError) {
-            console.error('Failed to auto-save page:', saveError);
+            Logger.error('SYSTEM', 'Failed to auto-save page:', saveError);
             // Don't fail the generation just because save failed
         }
     }
@@ -523,7 +517,7 @@ export const generatePage = async (
             const blob = await response.blob();
             await cacheImage(page.id, blob, `generated/${page.id}`);
         } catch (cacheError) {
-            console.warn('Failed to cache generated image:', cacheError);
+            Logger.warn('SYSTEM', 'Failed to cache generated image:', cacheError);
         }
     }
 
@@ -712,13 +706,13 @@ export const batchGenerate = async (
                     const matches = result.imageUrl.match(/^data:(.+);base64,(.+)$/);
                     if (matches) {
                         sessionReferenceImage = { mimeType: matches[1], base64: matches[2] };
-                        console.log(`✅ Using Page ${pageSpec.pageIndex} as Style Reference (QA Score: ${result.qualityScore}).`);
+                        Logger.info('AI', `✅ Using Page ${pageSpec.pageIndex} as Style Reference (QA Score: ${result.qualityScore}).`);
                     }
                 } catch (e) {
                     // ignore
                 }
             } else if (autoConsistency && !sessionReferenceImage && result.success && !isReferenceWorthy) {
-                console.log(`⚠️ Page ${pageSpec.pageIndex} was low quality (Score: ${result.qualityScore}). SKIPPING consistency to avoid pollution.`);
+                Logger.info('AI', `⚠️ Page ${pageSpec.pageIndex} was low quality (Score: ${result.qualityScore}). SKIPPING consistency to avoid pollution.`);
             }
 
             totalCost += result.estimatedCost;

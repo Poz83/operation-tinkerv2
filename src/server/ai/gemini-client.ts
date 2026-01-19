@@ -19,7 +19,7 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from '@google/genai';
 import { Logger } from '../../lib/logger';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -31,6 +31,7 @@ export const GEMINI_TEXT_MODEL = 'gemini-1.5-pro';
 
 /** Image generation model */
 export const GEMINI_IMAGE_MODEL = 'gemini-3-pro-image-preview';
+export const GEMINI_FLASH_MODEL = 'gemini-2.5-flash-lite-preview';
 
 /** Alias for clarity */
 export const NANO_BANANA_PRO = GEMINI_IMAGE_MODEL;
@@ -393,7 +394,7 @@ STYLE: ${styleSpec.lineWeight}. ${styleSpec.visualRequirements.join('. ')}.
 
 COMPOSITION: ${complexitySpec.regionRange}. ${complexitySpec.backgroundRule}. ${complexitySpec.restAreaRule}. ${complexitySpec.detailLevel}. PRINT MARGINS: Keep main subjects within the CENTER 85% of the canvas, leaving at least 7% margin on all edges for print safety.
 
-OUTPUT: A single black and white coloring book page. Pure black lines on pure white background. Every area is a closed shape that can be colored in.
+OUTPUT: A single high-contrast black and white coloring book page. Pure black lines on pure white background. Every area is a closed shape that can be colored in.
 
 CRITICAL REQUIREMENTS - COLORING BOOK PAGE:
 
@@ -464,6 +465,25 @@ export const generateColoringPage = async (
         temperature: 1.0,
         // Image generation config
         responseModalities: ['image', 'text'],
+        // Safety: Prevent false positives on line art
+        safetySettings: [
+          {
+            category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+            threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+            threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+            threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+            threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+          },
+        ],
         // Image size (must be uppercase K)
         ...(imageSize && { imageSize }),
       },
@@ -580,7 +600,7 @@ Enhance this into a detailed scene description:
     const ai = new GoogleGenAI({ apiKey });
 
     const response = await ai.models.generateContent({
-      model: GEMINI_TEXT_MODEL,
+      model: GEMINI_FLASH_MODEL,
       contents: userMessage,
       config: {
         systemInstruction: ENHANCER_SYSTEM_PROMPT,
