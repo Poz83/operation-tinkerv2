@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Navigation } from '../components/Navigation';
 import { PAGE_SIZES, VISUAL_STYLES, SavedProject } from '../types';
-import { fetchUserProjects, deleteProject, fetchUserReferences, deleteReference, ReferenceImage } from '../services/projectsService';
+import { fetchUserProjects, deleteProject, deleteProjects, fetchUserReferences, deleteReference, ReferenceImage } from '../services/projectsService';
 
 export const Vault: React.FC = () => {
     const [projects, setProjects] = useState<SavedProject[]>([]);
@@ -12,6 +12,11 @@ export const Vault: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
+
+    // Selection Mode State
+    const [isSelectionMode, setIsSelectionMode] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // Fetch data based on active tab
     useEffect(() => {
@@ -49,6 +54,9 @@ export const Vault: React.FC = () => {
         loadData();
     }, [activeTab]);
 
+
+
+
     const handleDeleteProject = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
         if (window.confirm('Are you sure you want to delete this project?')) {
@@ -59,6 +67,50 @@ export const Vault: React.FC = () => {
                 console.error('Failed to delete project:', err);
                 alert('Failed to delete project. Please try again.');
             }
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        if (selectedIds.size === 0) return;
+
+        if (window.confirm(`Are you sure you want to delete ${selectedIds.size} projects? This cannot be undone.`)) {
+            try {
+                setIsDeleting(true);
+                await deleteProjects(Array.from(selectedIds));
+
+                // Update local state
+                setProjects(projects.filter(p => !selectedIds.has(p.id)));
+
+                // Reset selection
+                setSelectedIds(new Set());
+                setIsSelectionMode(false);
+            } catch (err) {
+                console.error('Failed to delete projects:', err);
+                alert('Failed to delete projects. Please try again.');
+            } finally {
+                setIsDeleting(false);
+            }
+        }
+    };
+
+    const toggleSelection = (id: string, e?: React.MouseEvent) => {
+        if (e) e.stopPropagation();
+        const newSet = new Set(selectedIds);
+        if (newSet.has(id)) {
+            newSet.delete(id);
+        } else {
+            newSet.add(id);
+        }
+        setSelectedIds(newSet);
+    };
+
+    const toggleSelectionMode = () => {
+        if (isSelectionMode) {
+            // Cancel selection
+            setIsSelectionMode(false);
+            setSelectedIds(new Set());
+        } else {
+            setIsSelectionMode(true);
         }
     };
 
@@ -76,7 +128,11 @@ export const Vault: React.FC = () => {
     };
 
     const handleOpenProject = (project: SavedProject) => {
-        navigate(`/studio/project/${project.id}`);
+        if (isSelectionMode) {
+            toggleSelection(project.id);
+        } else {
+            navigate(`/studio/project/${project.id}`);
+        }
     };
 
     const handleCreateFromReference = (ref: ReferenceImage) => {
@@ -127,6 +183,42 @@ export const Vault: React.FC = () => {
                                 className="bg-white/5 border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all w-64"
                             />
                         </div>
+                    </div>
+
+                    {/* Bulk Selection Toggle */}
+                    {activeTab === 'projects' && projects.length > 0 && (
+                        <div className="flex gap-4 items-center">
+                            {isSelectionMode ? (
+                                <button
+                                    onClick={toggleSelectionMode}
+                                    className="px-4 py-2 rounded-lg bg-zinc-800 text-zinc-300 hover:text-white transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={toggleSelectionMode}
+                                    className="px-4 py-2 text-zinc-400 hover:text-white transition-colors text-sm font-medium"
+                                >
+                                    Select
+                                </button>
+                            )}
+
+                            {!isSelectionMode && (
+                                <button
+                                    onClick={() => {
+                                        const randomId = Math.floor(100000 + Math.random() * 900000).toString();
+                                        navigate(`/studio/project/${randomId}`);
+                                    }}
+                                    className="btn-primary shadow-lg shadow-purple-500/20 px-6 py-2.5 flex items-center gap-2"
+                                >
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14" /></svg>
+                                    Create New
+                                </button>
+                            )}
+                        </div>
+                    )}
+                    {projects.length === 0 && !isLoading && (
                         <button
                             onClick={() => {
                                 const randomId = Math.floor(100000 + Math.random() * 900000).toString();
@@ -137,7 +229,7 @@ export const Vault: React.FC = () => {
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14" /></svg>
                             Create New
                         </button>
-                    </div>
+                    )}
                 </header>
 
                 {/* Tabs */}
@@ -208,8 +300,24 @@ export const Vault: React.FC = () => {
                                     <div
                                         key={project.id}
                                         onClick={() => handleOpenProject(project)}
-                                        className="group relative bg-[#131314] border border-white/10 rounded-2xl overflow-hidden hover:border-purple-500/30 hover:shadow-2xl hover:shadow-purple-500/10 transition-all duration-300 cursor-pointer flex flex-col"
+                                        className={`group relative bg-[#131314] border rounded-2xl overflow-hidden hover:shadow-2xl transition-all duration-300 cursor-pointer flex flex-col ${isSelectionMode && selectedIds.has(project.id)
+                                            ? 'border-purple-500 ring-2 ring-purple-500/20'
+                                            : 'border-white/10 hover:border-purple-500/30 hover:shadow-purple-500/10'
+                                            }`}
                                     >
+                                        {/* Selection Checkbox Overlay */}
+                                        {isSelectionMode && (
+                                            <div className="absolute top-3 left-3 z-20">
+                                                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${selectedIds.has(project.id)
+                                                    ? 'bg-purple-500 border-purple-500'
+                                                    : 'bg-black/50 border-white/30 hover:border-white'
+                                                    }`}>
+                                                    {selectedIds.has(project.id) && (
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-white"><path d="M20 6L9 17l-5-5" /></svg>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
                                         <div className="aspect-[16/9] bg-black/50 relative overflow-hidden flex items-center justify-center border-b border-white/5">
                                             <div className="absolute inset-0 opacity-20 group-hover:opacity-30 transition-opacity bg-gradient-to-br from-purple-500/20 via-blue-500/10 to-transparent" />
                                             {project.thumbnail ? (
@@ -234,14 +342,18 @@ export const Vault: React.FC = () => {
                                                 Last edited {new Date(project.updatedAt).toLocaleDateString()}
                                             </p>
                                             <div className="mt-auto pt-4 border-t border-white/5 flex items-center justify-between">
-                                                <span className="text-xs font-medium text-purple-400 group-hover:underline">Open Project</span>
-                                                <button
-                                                    onClick={(e) => handleDeleteProject(project.id, e)}
-                                                    className="p-1.5 rounded-lg hover:bg-red-500/20 text-zinc-500 hover:text-red-400 transition-colors"
-                                                    title="Delete Project"
-                                                >
-                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2-2v2" /></svg>
-                                                </button>
+                                                <span className="text-xs font-medium text-purple-400 group-hover:underline">
+                                                    {isSelectionMode ? (selectedIds.has(project.id) ? 'Selected' : 'Select') : 'Open Project'}
+                                                </span>
+                                                {!isSelectionMode && (
+                                                    <button
+                                                        onClick={(e) => handleDeleteProject(project.id, e)}
+                                                        className="p-1.5 rounded-lg hover:bg-red-500/20 text-zinc-500 hover:text-red-400 transition-colors"
+                                                        title="Delete Project"
+                                                    >
+                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2-2v2" /></svg>
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -328,6 +440,35 @@ export const Vault: React.FC = () => {
                     )
                 )}
             </main>
+
+            {/* Bulk Actions Floating Bar */}
+            {isSelectionMode && selectedIds.size > 0 && (
+                <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50">
+                    <div className="bg-[#1a1a1c] border border-white/10 rounded-2xl shadow-2xl p-4 flex items-center gap-6 animate-in slide-in-from-bottom-4 duration-200">
+                        <div className="pl-2">
+                            <span className="text-white font-medium">{selectedIds.size} selected</span>
+                        </div>
+                        <div className="h-6 w-px bg-white/10" />
+                        <button
+                            onClick={handleBulkDelete}
+                            disabled={isDeleting}
+                            className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-xl text-sm font-bold transition-colors shadow-lg shadow-red-500/20 flex items-center gap-2"
+                        >
+                            {isDeleting ? (
+                                <>
+                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    Deleting...
+                                </>
+                            ) : (
+                                <>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2-2v2" /></svg>
+                                    Delete Selected
+                                </>
+                            )}
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

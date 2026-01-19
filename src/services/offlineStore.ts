@@ -27,7 +27,7 @@ interface OfflineDB extends DBSchema {
     };
 }
 
-const DB_NAME = 'myjoe-data-v1';
+const DB_NAME = 'myjoe-data-v2'; // Renamed to ensure fresh start
 const DB_VERSION = 1;
 
 let dbPromise: Promise<IDBPDatabase<OfflineDB>> | null = null;
@@ -35,7 +35,15 @@ let dbPromise: Promise<IDBPDatabase<OfflineDB>> | null = null;
 function getDB(): Promise<IDBPDatabase<OfflineDB>> {
     if (!dbPromise) {
         dbPromise = openDB<OfflineDB>(DB_NAME, DB_VERSION, {
-            upgrade(db) {
+            upgrade(db, oldVersion, newVersion, transaction) {
+                // If store names exist, we might be upgrading (though changing DB name avoids this, being safe)
+                if (db.objectStoreNames.contains('projects')) {
+                    db.deleteObjectStore('projects');
+                }
+                if (db.objectStoreNames.contains('lists')) {
+                    db.deleteObjectStore('lists');
+                }
+
                 const projectStore = db.createObjectStore('projects', { keyPath: 'id' });
                 projectStore.createIndex('by-updatedAt', 'updatedAt');
 
@@ -61,6 +69,15 @@ export async function getCachedProject(publicId: string): Promise<SavedProject |
 export async function deleteCachedProject(publicId: string): Promise<void> {
     const db = await getDB();
     await db.delete('projects', publicId);
+}
+
+export async function deleteCachedProjects(publicIds: string[]): Promise<void> {
+    const db = await getDB();
+    const tx = db.transaction('projects', 'readwrite');
+    await Promise.all([
+        ...publicIds.map(id => tx.store.delete(id)),
+        tx.done
+    ]);
 }
 
 // --- Lists ---

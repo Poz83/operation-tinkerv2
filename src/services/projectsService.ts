@@ -8,7 +8,7 @@
 import { supabase } from '../lib/supabase';
 import type { SavedProject, ColoringPage } from '../types';
 import { uploadProjectImage, getSignedUrl, getSignedUrls } from './storageService';
-import { cacheProject, getCachedProject, cacheProjectList, getCachedProjectList, deleteCachedProject } from './offlineStore';
+import { cacheProject, getCachedProject, cacheProjectList, getCachedProjectList, deleteCachedProject, deleteCachedProjects } from './offlineStore';
 
 /**
  * Helper to remove invalid URLs (blob:) from project before caching.
@@ -588,6 +588,28 @@ export async function deleteProject(publicId: string): Promise<void> {
 
     // Remove from cache
     await deleteCachedProject(publicId);
+}
+
+/**
+ * Delete multiple projects (Bulk)
+ */
+export async function deleteProjects(publicIds: string[]): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const { error } = await supabase
+        .from('projects')
+        .update({ is_archived: true })
+        .in('public_id', publicIds)
+        .eq('user_id', user.id);
+
+    if (error) {
+        console.error('Error deleting projects:', error);
+        throw error;
+    }
+
+    // Remove from cache
+    await deleteCachedProjects(publicIds);
 }
 
 export interface ReferenceImage {
