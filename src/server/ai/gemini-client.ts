@@ -398,6 +398,7 @@ STYLE: ${styleSpec.lineWeight}. ${styleSpec.visualRequirements.join('. ')}.
 
 COMPOSITION: ${complexitySpec.regionRange}. ${complexitySpec.backgroundRule}. ${complexitySpec.detailLevel}. 
 LAYOUT: Full-bleed composition filling the entire canvas. No borders. No frames. Direct 2D flat view.
+SUBJECT PLACEMENT: Keep all main characters and key details within the center 85% safe zone. Do NOT cut off heads, feet, or important elements at the edges.
 
 OUTPUT: A single high-contrast black and white coloring book page. Pure black lines on pure white background.
 
