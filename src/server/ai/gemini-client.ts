@@ -140,36 +140,36 @@ interface StyleSpec {
 
 const STYLE_SPECS: Record<StyleId, StyleSpec> = {
   'Cozy Hand-Drawn': {
-    styleKeyword: 'hand-drawn coloring book illustration',
-    positiveDescription: 'warm organic style with smooth handmade charm',
+    styleKeyword: 'Hygge cottagecore coloring page',
+    positiveDescription: 'warm organic style with smooth handmade charm and cluttercore details',
     lineWeight: 'medium weight organic lines (0.8mm) with varying thickness',
     visualRequirements: [
-      'Clean organic outlines',
+      'Clean organic outlines (ink sketch style)',
       'Rounded friendly shapes',
-      'Hand-drawn aesthetic but professional quality',
-      'Inviting compositions',
+      'Inviting compositions with soft details',
+      'Hygge atmosphere',
     ],
   },
   'Bold & Easy': {
-    styleKeyword: 'simple bold outline coloring page',
-    positiveDescription: 'extremely simple bold-line coloring page with sticker-like aesthetic',
+    styleKeyword: 'sticker art coloring page',
+    positiveDescription: 'extremely simple bold-line coloring page with marker style aesthetic',
     lineWeight: 'very thick uniform lines (4mm minimum)',
     visualRequirements: [
       'Maximum 30 large colorable regions',
-      'Thick bold outlines only',
+      'Thick bold sticker-like outlines',
       'Large simple shapes',
       'Absolutely no fine details',
     ],
   },
   'Kawaii': {
-    styleKeyword: 'kawaii cute coloring page',
+    styleKeyword: 'kawaii sticker sheet style',
     positiveDescription: 'adorable kawaii style with chibi proportions and soft rounded shapes',
     lineWeight: 'thick smooth lines (3mm)',
     visualRequirements: [
       'All corners rounded with no sharp angles',
       'Large heads small bodies (chibi proportions)',
       'Friendly smiling expressions',
-      'Soft bubble-like shapes',
+      'Floating filler elements (sparkles, hearts)',
     ],
   },
   'Whimsical': {
@@ -195,12 +195,12 @@ const STYLE_SPECS: Record<StyleId, StyleSpec> = {
     ],
   },
   'Botanical': {
-    styleKeyword: 'botanical illustration coloring page',
-    positiveDescription: 'scientific botanical illustration style with precise fine linework',
+    styleKeyword: 'vintage botanical illustration',
+    positiveDescription: 'scientific botanical illustration style with woodcut influence',
     lineWeight: 'fine precise lines (0.3-0.5mm)',
     visualRequirements: [
       'Accurate plant anatomy',
-      'Fine detailed linework',
+      'Fine detailed linework (vintage engraving style)',
       'Each petal and leaf is a closed shape',
       'Clean scientific illustration style',
     ],
@@ -217,8 +217,8 @@ const STYLE_SPECS: Record<StyleId, StyleSpec> = {
     ],
   },
   'Geometric': {
-    styleKeyword: 'geometric low-poly coloring page',
-    positiveDescription: 'geometric faceted style using ONLY straight lines with polygonal construction',
+    styleKeyword: 'geometric abstraction coloring page',
+    positiveDescription: 'geometric faceted style using ONLY straight lines with sacred geometry influence',
     lineWeight: 'uniform straight lines (0.8mm)',
     visualRequirements: [
       'ONLY straight lines with absolutely no curves',
@@ -228,35 +228,35 @@ const STYLE_SPECS: Record<StyleId, StyleSpec> = {
     ],
   },
   'Fantasy': {
-    styleKeyword: 'fantasy coloring book illustration',
-    positiveDescription: 'epic fantasy illustration style with dramatic compositions',
+    styleKeyword: 'high fantasy concept art outline',
+    positiveDescription: 'epic fantasy illustration style with RPG character sketch aesthetic',
     lineWeight: 'varied dramatic lines (0.5-2mm)',
     visualRequirements: [
       'Epic dramatic compositions',
-      'Detailed fantasy elements',
+      'Detailed armor and texture elements',
       'Clear outlined regions',
-      'Rich imaginative details',
+      'Full body shots (no cropped heads)',
     ],
   },
   'Gothic': {
-    styleKeyword: 'gothic dark art coloring page',
-    positiveDescription: 'elegant gothic style with ornate details and dramatic atmosphere',
+    styleKeyword: 'gothic horror style line art',
+    positiveDescription: 'elegant gothic style with stained glass motifs and macabre elegance',
     lineWeight: 'fine to medium varied lines',
     visualRequirements: [
       'Ornate decorative details',
-      'Gothic architectural elements',
+      'Stained glass window outlines',
       'Dramatic atmospheric composition',
       'Intricate pattern work as outlined shapes',
     ],
   },
   'Mandala': {
-    styleKeyword: 'mandala coloring page',
-    positiveDescription: 'circular symmetrical mandala with repeating geometric patterns',
+    styleKeyword: 'complex mandala coloring page',
+    positiveDescription: 'circular symmetrical mandala with floral geometric fusion',
     lineWeight: 'fine uniform lines (0.5mm)',
     visualRequirements: [
-      'Perfect circular symmetry',
+      'Perfect radial symmetry',
       'Repeating radial patterns',
-      'Geometric precision',
+      'Uncropped centered composition',
       'Meditative balanced design',
     ],
   },
@@ -409,6 +409,7 @@ CRITICAL REQUIREMENTS - PROFESSIONAL DIGITAL VECTOR ART:
 2. NO GREYSCALE: Zero shading. Zero gradients. Zero tints. Zero grey areas. This is strictly line art.
 
 3. CLEAN LINES: Solid continuous lines. No sketching. No disconnects. No "hairline" gaps.
+   NEGATIVE CONSTRAINTS: No cross-hatching. No stippling. No dithering. No 3D renders. No photorealism. No gradients.
 
 4. CLOSED SHAPES: Every element must be a closed loop for coloring.
 
