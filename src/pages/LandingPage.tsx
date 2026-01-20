@@ -54,10 +54,13 @@ const LandingPage: React.FC = () => {
                 {settings.theme === 'light' ? '☀️' : '🌙'}
             </button>
 
-            {/* Ambient Background */}
+            {/* Image Background */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-aurora-purple/20 blur-[120px] rounded-full mix-blend-screen animate-pulse-slow" />
-                <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-aurora-blue/20 blur-[120px] rounded-full mix-blend-screen animate-pulse-slow delay-1000" />
+                <div
+                    className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-50 dark:opacity-80 transition-opacity duration-700"
+                    style={{ backgroundImage: `url('/landing-bg.png')` }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[hsl(var(--background))]/50 to-[hsl(var(--background))] mix-blend-overlay" />
             </div>
 
             <div className="relative z-10 w-full max-w-md px-6">
@@ -150,6 +153,17 @@ const LandingPage: React.FC = () => {
                             </motion.form>
                         )}
                     </AnimatePresence>
+
+                    {status === 'idle' && (
+                        <div className="mt-6 text-center">
+                            <button
+                                onClick={() => navigate('/waitlist')}
+                                className="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+                            >
+                                Don't have an account? <span className="font-medium bg-gradient-to-r from-aurora-blue to-aurora-purple bg-clip-text text-transparent hover:opacity-80 transition-opacity">Join the waitlist</span>
+                            </button>
+                        </div>
+                    )}
 
                     {/* DEV ONLY: Debug Login */}
                     {import.meta.env.DEV && (

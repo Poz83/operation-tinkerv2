@@ -36,10 +36,13 @@ const WaitlistPage: React.FC = () => {
                 <span className="hidden sm:inline">Sign In</span>
             </button>
 
-            {/* Ambient Background */}
+            {/* Image Background */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-aurora-purple/20 blur-[120px] rounded-full mix-blend-screen animate-pulse-slow" />
-                <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-aurora-blue/20 blur-[120px] rounded-full mix-blend-screen animate-pulse-slow delay-1000" />
+                <div
+                    className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-50 dark:opacity-80 transition-opacity duration-700"
+                    style={{ backgroundImage: `url('/landing-bg.png')` }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[hsl(var(--background))]/50 to-[hsl(var(--background))] mix-blend-overlay" />
             </div>
 
             <div className="relative z-10 w-full max-w-md px-6">
