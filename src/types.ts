@@ -5,6 +5,19 @@
 
 import { PageQa, QaTag } from './logging/types';
 
+// ============================================================================
+// Style Reference Upload Types
+// ============================================================================
+
+export interface StyleReference {
+  base64: string;
+  mimeType: string;
+  fileName: string;
+}
+
+export const ALLOWED_REFERENCE_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'application/pdf'];
+export const MAX_STYLE_REFERENCES = 5;
+
 export const PAGE_SIZES = [
   { id: 'square', label: '8.5" x 8.5"', ratio: '1:1', cssRatio: 1, width: 8.5, height: 8.5 },
   { id: 'portrait', label: '8.5" x 11"', ratio: '3:4', cssRatio: 0.77, width: 8.5, height: 11 }
@@ -131,6 +144,7 @@ export interface SavedProject {
   characterDNA?: CharacterDNA; // Hero character DNA for consistency across pages
   heroPresence?: number; // 0-100 percentage of hero appearance
   cinematics?: CinematicOption; // Camera framing preference
+  styleReferences?: StyleReference[]; // Up to 5 style reference images for AI
 }
 
 export const VISIBILITY_OPTIONS = [

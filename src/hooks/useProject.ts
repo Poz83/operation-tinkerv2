@@ -5,7 +5,7 @@
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { PAGE_SIZES, VISUAL_STYLES, TARGET_AUDIENCES, COMPLEXITY_LEVELS, SavedProject, CreativeVariation, ColoringPage, CharacterDNA } from '../types';
+import { PAGE_SIZES, VISUAL_STYLES, TARGET_AUDIENCES, COMPLEXITY_LEVELS, SavedProject, CreativeVariation, ColoringPage, CharacterDNA, StyleReference } from '../types';
 import { useAutosave } from './useAutosave';
 import { saveProject, fetchProject } from '../services/projectsService';
 
@@ -32,6 +32,7 @@ export const useProject = (
     const [autoConsistency, setAutoConsistency] = useState(false);
     const [heroPresence, setHeroPresence] = useState<number | undefined>(undefined);
     const [cinematics, setCinematics] = useState('dynamic');
+    const [styleReferences, setStyleReferences] = useState<StyleReference[]>([]);
 
     // --- Persistence State ---
     const { projectId: urlProjectId } = useParams<{ projectId?: string }>();
@@ -59,12 +60,13 @@ export const useProject = (
         characterDNA: characterDNA || undefined,
         heroPresence,
         cinematics: cinematics as any, // Cast to avoid strict type issues locally only
+        styleReferences: styleReferences.length > 0 ? styleReferences : undefined,
         // autoConsistency - consider adding to type if needed, but for now treating as session state mixed in
         // actually, let's keep it purely session-based for "Lite" mode unless requested
     }), [
         currentProjectId, projectName, pageAmount, pageSizeId, visualStyle,
         complexity, targetAudienceId, userPrompt, hasHeroRef, heroImage,
-        includeText, pages, visibility, characterDNA, heroPresence, cinematics
+        includeText, pages, visibility, characterDNA, heroPresence, cinematics, styleReferences
     ]);
 
     const { status: saveStatus, lastSavedAt } = useAutosave({
@@ -135,6 +137,7 @@ export const useProject = (
         setVisibility(project.visibility || 'private');
         setHeroPresence(project.heroPresence);
         setCinematics(project.cinematics || 'dynamic');
+        setStyleReferences(project.styleReferences || []);
 
         if (project.pages) {
             // Hydrate pages from local cache for instant loading
@@ -179,6 +182,7 @@ export const useProject = (
         setCharacterDNA(null);
         setHeroPresence(undefined);
         setCinematics('dynamic');
+        setStyleReferences([]);
     }, [setPages]);
 
     // Load project on mount if URL ID exists
@@ -227,6 +231,7 @@ export const useProject = (
         autoConsistency, setAutoConsistency,
         heroPresence, setHeroPresence,
         cinematics, setCinematics,
+        styleReferences, setStyleReferences,
 
         currentProjectId,
         saveStatus,

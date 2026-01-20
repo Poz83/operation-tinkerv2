@@ -91,6 +91,8 @@ export interface GenerateImageRequest {
   signal?: AbortSignal;
   /** Enable verbose logging */
   enableLogging?: boolean;
+  /** Style reference images (multimodal input for style transfer) - max 5 */
+  styleReferenceImages?: Array<{ base64: string; mimeType: string }>;
 }
 
 export interface GenerateImageResult {
@@ -489,6 +491,7 @@ export const generateColoringPage = async (
     apiKey,
     signal,
     enableLogging = false,
+    styleReferenceImages,
   } = request;
 
   // Check abort
@@ -514,11 +517,42 @@ export const generateColoringPage = async (
   try {
     const ai = new GoogleGenAI({ apiKey });
 
+    // Build multimodal contents when style references exist
+    // Reference images go FIRST so the model sees them before the prompt
+    let contents: any;
+    if (styleReferenceImages && styleReferenceImages.length > 0) {
+      const parts: any[] = [];
+
+      // Add reference images first
+      for (const refImg of styleReferenceImages) {
+        parts.push({
+          inlineData: {
+            mimeType: refImg.mimeType,
+            data: refImg.base64
+          }
+        });
+      }
+
+      // Add text prompt with style matching instruction
+      const styleMatchingPrompt = prompt + `
+
+STYLE REFERENCE: Study the uploaded reference image(s) carefully. Match their exact line weight, artistic style, density, and overall aesthetic while creating the new scene.`;
+
+      parts.push({ text: styleMatchingPrompt });
+      contents = parts;
+
+      if (enableLogging) {
+        Logger.info('AI', `[${requestId}] Using ${styleReferenceImages.length} style reference image(s)`);
+      }
+    } else {
+      contents = prompt;
+    }
+
     // Call Gemini 3 Pro Image
     // NOTE: No negative_prompt - it's deprecated in Imagen 3+
     const response = await ai.models.generateContent({
       model: GEMINI_IMAGE_MODEL,
-      contents: prompt,
+      contents,
       config: {
         // Google recommends temperature 1.0 for Gemini 3
         temperature: 1.0,

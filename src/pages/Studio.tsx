@@ -450,7 +450,8 @@ const App: React.FC = () => {
       creativeVariation: project.creativeVariation,
       characterDNA: project.characterDNA,
       heroPresence: project.heroPresence,
-      cinematics: project.cinematics
+      cinematics: project.cinematics,
+      styleReferences: project.styleReferences
     });
   };
 
@@ -579,6 +580,8 @@ const App: React.FC = () => {
                 setCreativeVariation={project.setCreativeVariation}
                 visibility={project.visibility}
                 setVisibility={project.setVisibility}
+                styleReferences={project.styleReferences}
+                setStyleReferences={project.setStyleReferences}
               />
 
               <div className="px-6 pb-6">

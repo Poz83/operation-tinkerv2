@@ -5,7 +5,7 @@
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import confetti from 'canvas-confetti';
-import { ColoringPage, PAGE_SIZES, VISUAL_STYLES, TARGET_AUDIENCES, CreativeVariation, CharacterDNA } from '../types';
+import { ColoringPage, PAGE_SIZES, VISUAL_STYLES, TARGET_AUDIENCES, CreativeVariation, CharacterDNA, StyleReference } from '../types';
 import { brainstormPrompt } from '../services/geminiService';
 import { batchGenerate, GenerationProgress, GeneratePageResult } from '../services/generationService';
 import { ColoringStudioService, BookPlanItem } from '../services/ColoringStudioService';
@@ -119,6 +119,7 @@ export const useGeneration = ({
         autoConsistency?: boolean;
         heroPresence?: number;
         cinematics?: string;
+        styleReferences?: StyleReference[];
     }) => {
         if (!apiKey) return;
 
@@ -254,7 +255,12 @@ export const useGeneration = ({
                     sessionReferenceImage: (params.autoConsistency && !params.hasHeroRef)
                         ? undefined
                         : (params.hasHeroRef && params.heroImage) ? params.heroImage : undefined,
-                    signal: controller.signal
+                    signal: controller.signal,
+                    // Pass style reference images for multimodal AI generation
+                    styleReferenceImages: params.styleReferences?.map(ref => ({
+                        base64: ref.base64,
+                        mimeType: ref.mimeType
+                    }))
                 },
                 {
                     mode: 'standard',

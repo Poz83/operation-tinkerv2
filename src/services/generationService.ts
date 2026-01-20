@@ -109,6 +109,8 @@ export interface GeneratePageRequest {
     styleDNA?: StyleDNA | null;
     /** Reference image for style transfer */
     referenceImage?: { base64: string; mimeType: string };
+    /** Multiple style reference images for multimodal style transfer (max 5) */
+    styleReferenceImages?: Array<{ base64: string; mimeType: string }>;
     /** Project ID to save to (optional) */
     projectId?: string;
     /** Save to project automatically */
@@ -198,6 +200,8 @@ export interface BatchGenerateRequest {
     autoConsistency?: boolean;
     /** Helper logic for auto-consistency carried over from legacy pipeline */
     sessionReferenceImage?: { base64: string; mimeType: string };
+    /** Style reference images for multimodal style transfer (max 5) */
+    styleReferenceImages?: Array<{ base64: string; mimeType: string }>;
     /** Abort signal */
     signal?: AbortSignal;
 }
@@ -435,6 +439,8 @@ export const generatePage = async (
         apiKey,
         signal: request.signal,
         config: buildPipelineConfig(config),
+        // Pass style reference images for multimodal generation
+        styleReferenceImages: request.styleReferenceImages,
     };
 
     // Run generation
@@ -671,6 +677,8 @@ export const batchGenerate = async (
                     heroDNA: project.characterDNA,
                     // [CRITICAL FIX] Pass Style DNA (if applicable)
                     // styleDNA: project.styleDNA, // Assuming SavedProject has styleDNA property, if not comment out
+                    // Pass style reference images for multimodal generation
+                    styleReferenceImages: request.styleReferenceImages,
                     signal,
                 },
                 {

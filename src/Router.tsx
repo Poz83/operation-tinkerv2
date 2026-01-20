@@ -7,6 +7,7 @@ import StudioLaunchpad from './pages/StudioLaunchpad';
 import Settings from './pages/Settings';
 import NotFound from './pages/NotFound';
 import LandingPage from './pages/LandingPage';
+import WaitlistPage from './pages/WaitlistPage';
 import AuthCallback from './pages/AuthCallback';
 import AdminDashboard from './pages/AdminDashboard';
 import Updates from './pages/Updates';
@@ -67,6 +68,7 @@ const AppContent: React.FC = () => {
             {isAuthenticated && <FeedbackWidget />}
             <Routes>
                 <Route path="/landing" element={<LandingPage />} />
+                <Route path="/waitlist" element={<WaitlistPage />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
 
                 {/* Public route redirect */}

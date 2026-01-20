@@ -1204,6 +1204,33 @@ export type Database = {
           },
         ]
       }
+      waitlist: {
+        Row: {
+          id: string
+          full_name: string
+          email: string
+          privacy_consent: boolean
+          contact_consent: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          full_name: string
+          email: string
+          privacy_consent: boolean
+          contact_consent?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          full_name?: string
+          email?: string
+          privacy_consent?: boolean
+          contact_consent?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
       users: {
         Row: {
           avatar_url: string | null

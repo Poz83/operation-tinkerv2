@@ -80,6 +80,8 @@ export interface GenerateAndValidateRequest {
     signal?: AbortSignal;
     /** Pipeline configuration */
     config?: Partial<PipelineConfig>;
+    /** Style reference images for multimodal style transfer (max 5) */
+    styleReferenceImages?: Array<{ base64: string; mimeType: string }>;
 }
 
 export interface PipelineConfig {
@@ -190,6 +192,7 @@ export const generateAndValidate = async (
         imageSize = '2K',
         apiKey,
         signal,
+        styleReferenceImages,
     } = request;
 
     // Track state
@@ -284,6 +287,7 @@ export const generateAndValidate = async (
             apiKey,
             signal,
             enableLogging: config.enableLogging,
+            styleReferenceImages,
         });
 
         lastPromptUsed = genResult.promptUsed;
