@@ -59,11 +59,11 @@ export default defineConfig(({ mode }) => {
             'vendor-export': ['jspdf', 'jszip', 'modern-screenshot'],
 
             // Cloud Storage
-            'vendor-aws': ['@aws-sdk/client-s3', '@aws-sdk/s3-request-presigner'],
+            // 'vendor-aws': ['@aws-sdk/client-s3', '@aws-sdk/s3-request-presigner'],
           },
         },
       },
-      chunkSizeWarningLimit: 600,
+      chunkSizeWarningLimit: 1000,
     },
   };
 });
