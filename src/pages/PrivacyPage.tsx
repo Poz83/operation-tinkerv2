@@ -7,7 +7,7 @@ export function PrivacyPage() {
     const navigate = useNavigate();
 
     return (
-        <div className="min-h-screen relative flex items-center justify-center bg-[hsl(var(--background))]">
+        <div className="min-h-screen relative flex flex-col bg-[hsl(var(--background))]">
             {/* Image Background - fixed to viewport */}
             <div className="fixed inset-0 overflow-hidden pointer-events-none">
                 <div
@@ -17,7 +17,7 @@ export function PrivacyPage() {
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[hsl(var(--background))]/50 to-[hsl(var(--background))] mix-blend-overlay" />
             </div>
 
-            <div className="relative z-10 w-full max-w-4xl px-6 py-12">
+            <div className="relative z-10 w-full max-w-4xl mx-auto px-6 py-12 my-auto">
                 <div className="mb-8">
                     <button
                         onClick={() => navigate('/')}
