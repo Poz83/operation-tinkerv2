@@ -164,7 +164,7 @@ const WaitlistForm: React.FC<WaitlistFormProps> = ({ onSuccess }) => {
                             htmlFor="waitlist-privacy"
                             className="text-sm text-[hsl(var(--muted-foreground))] cursor-pointer"
                         >
-                            I agree to the <span className="text-[hsl(var(--foreground))] underline underline-offset-2">Privacy Policy</span> and consent to my data being stored. <span className="text-red-400">*</span>
+                            I agree to the <button type="button" onClick={() => window.open('/privacy', '_blank')} className="text-[hsl(var(--foreground))] underline underline-offset-2 hover:opacity-80 transition-opacity bg-transparent border-none p-0 cursor-pointer font-inherit">Privacy Policy</button> and <button type="button" onClick={() => window.open('/terms', '_blank')} className="text-[hsl(var(--foreground))] underline underline-offset-2 hover:opacity-80 transition-opacity bg-transparent border-none p-0 cursor-pointer font-inherit">Terms of Service</button>, and consent to my data being stored. <span className="text-red-400">*</span>
                         </label>
                     </div>
 

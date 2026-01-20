@@ -179,7 +179,7 @@ const LandingPage: React.FC = () => {
 
                     <div className="mt-8 text-center">
                         <p className="text-[hsl(var(--muted-foreground))]/50 text-xs">
-                            © 2026 myjoe. All rights reserved. • <button onClick={() => navigate('/contact')} className="hover:text-[hsl(var(--foreground))] transition-colors">Contact</button> • <button onClick={() => navigate('/terms')} className="hover:text-[hsl(var(--foreground))] transition-colors">Terms of Service</button>
+                            © 2026 myjoe. All rights reserved. • <button onClick={() => navigate('/contact')} className="hover:text-[hsl(var(--foreground))] transition-colors">Contact</button> • <button onClick={() => navigate('/terms')} className="hover:text-[hsl(var(--foreground))] transition-colors">Terms</button> • <button onClick={() => navigate('/privacy')} className="hover:text-[hsl(var(--foreground))] transition-colors">Privacy</button>
                         </p>
                     </div>
                 </motion.div>

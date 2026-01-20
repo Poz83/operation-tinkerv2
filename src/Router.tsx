@@ -10,6 +10,7 @@ import LandingPage from './pages/LandingPage';
 import WaitlistPage from './pages/WaitlistPage';
 import ContactPage from './pages/ContactPage';
 import { TermsPage } from './pages/TermsPage';
+import { PrivacyPage } from './pages/PrivacyPage'; // Import added
 import AuthCallback from './pages/AuthCallback';
 import AdminDashboard from './pages/AdminDashboard';
 import Updates from './pages/Updates';
@@ -75,6 +76,7 @@ const AppContent: React.FC = () => {
                 <Route path="/waitlist" element={<WaitlistPage />} />
                 <Route path="/contact" element={<ContactPage />} />
                 <Route path="/terms" element={<TermsPage />} />
+                <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
 
                 {/* Public route redirect */}
