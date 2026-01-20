@@ -43,12 +43,23 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         output: {
           manualChunks: {
-            // Core React libraries
-            'react-vendor': ['react', 'react-dom'],
-            // Animation library
-            'animation': ['framer-motion'],
-            // AI client
-            'gemini': ['@google/genai'],
+            // Core React & Router
+            'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+
+            // Supabase (large dependency)
+            'vendor-supabase': ['@supabase/supabase-js'],
+
+            // AI Client
+            'vendor-gemini': ['@google/genai'],
+
+            // UI & Visualization
+            'vendor-ui': ['framer-motion', 'lucide-react', 'recharts', 'canvas-confetti'],
+
+            // PDF & Export (Heavy)
+            'vendor-export': ['jspdf', 'jszip', 'modern-screenshot'],
+
+            // Cloud Storage
+            'vendor-aws': ['@aws-sdk/client-s3', '@aws-sdk/s3-request-presigner'],
           },
         },
       },
