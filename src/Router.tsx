@@ -8,6 +8,8 @@ import Settings from './pages/Settings';
 import NotFound from './pages/NotFound';
 import LandingPage from './pages/LandingPage';
 import WaitlistPage from './pages/WaitlistPage';
+import ContactPage from './pages/ContactPage';
+import { TermsPage } from './pages/TermsPage';
 import AuthCallback from './pages/AuthCallback';
 import AdminDashboard from './pages/AdminDashboard';
 import Updates from './pages/Updates';
@@ -71,6 +73,8 @@ const AppContent: React.FC = () => {
             <Routes>
                 <Route path="/landing" element={<LandingPage />} />
                 <Route path="/waitlist" element={<WaitlistPage />} />
+                <Route path="/contact" element={<ContactPage />} />
+                <Route path="/terms" element={<TermsPage />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
 
                 {/* Public route redirect */}
