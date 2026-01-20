@@ -993,7 +993,7 @@ export const resetUsageStats = (): void => {
 const getAspectRatioFromPageSize = (pageSizeId: string): string => {
     const aspectRatios: Record<string, string> = {
         'square': '1:1',
-        'portrait': '3:4',
+        'portrait': '17:22', // Precise 8.5" x 11" ratio (Gemini client handles fallback to 3:4)
         'landscape': '4:3',
         'letter': '17:22',
         'a4': '210:297',

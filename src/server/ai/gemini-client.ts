@@ -402,10 +402,16 @@ const buildPrompt = (
 
   // Specific framing guidance based on aspect ratio
   let framingGuidance = 'Full-bleed composition filling the entire canvas.';
-  if (aspectRatio === '17:22' || aspectRatio === '3:4' || aspectRatio === '210:297') {
-    framingGuidance = 'Vertical portrait composition. Tall aspect ratio. Fit full height.';
+  if (aspectRatio === '17:22' || aspectRatio === 'letter') {
+    framingGuidance = 'Vertical portrait composition (8.5" x 11"). Tall aspect ratio (17:22). Fit full height. 8.5x11 inches.';
+  } else if (aspectRatio === '210:297' || aspectRatio === 'a4') {
+    framingGuidance = 'Vertical portrait composition (A4). Tall aspect ratio. Fit full height.';
+  } else if (aspectRatio === '3:4' || aspectRatio === 'portrait') {
+    framingGuidance = 'Vertical portrait composition (3:4). Tall aspect ratio. Fit full height.';
   } else if (aspectRatio === '4:3' || aspectRatio === 'landscape') {
     framingGuidance = 'Horizontal landscape composition. Wide aspect ratio.';
+  } else if (aspectRatio === '1:1' || aspectRatio === 'square') {
+    framingGuidance = 'Square composition (1:1). Balanced height and width.';
   }
 
   const prompt = `
