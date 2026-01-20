@@ -7,17 +7,21 @@ export function PrivacyPage() {
     const navigate = useNavigate();
 
     return (
-        <div className="min-h-screen bg-slate-50 relative overflow-hidden">
-            {/* Background with noise texture */}
-            <div className="absolute inset-0 z-0 opacity-40">
-                <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-20 brightness-100 contrast-150"></div>
+        <div className="min-h-screen relative overflow-hidden flex items-center justify-center bg-[hsl(var(--background))]">
+            {/* Image Background */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <div
+                    className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-50 dark:opacity-80 transition-opacity duration-700"
+                    style={{ backgroundImage: `url('/landing-bg.png')` }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[hsl(var(--background))]/50 to-[hsl(var(--background))] mix-blend-overlay" />
             </div>
 
-            <div className="relative z-10 max-w-4xl mx-auto px-6 py-12">
+            <div className="relative z-10 w-full max-w-4xl px-6 py-12">
                 <div className="mb-8">
                     <button
                         onClick={() => navigate('/')}
-                        className="group flex items-center pl-0 hover:bg-transparent text-slate-500 hover:text-slate-800 transition-colors bg-transparent border-none cursor-pointer"
+                        className="group flex items-center pl-0 hover:bg-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors bg-transparent border-none cursor-pointer"
                     >
                         <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
                         Back to Home
@@ -28,11 +32,11 @@ export function PrivacyPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5 }}
-                    className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-8 md:p-12"
+                    className="glass-panel p-8 md:p-12 rounded-2xl border border-[hsl(var(--glass-border))] shadow-2xl backdrop-blur-xl bg-[hsl(var(--glass-bg))]"
                 >
-                    <div className="prose prose-slate max-w-none">
-                        <h1 className="text-3xl font-bold text-slate-900 mb-2">Privacy Policy</h1>
-                        <p className="text-slate-500 mb-8">Last Updated: January 20, 2026</p>
+                    <div className="prose prose-slate dark:prose-invert max-w-none">
+                        <h1 className="text-3xl font-bold text-[hsl(var(--foreground))] mb-2">Privacy Policy</h1>
+                        <p className="text-[hsl(var(--muted-foreground))] mb-8">Last Updated: January 20, 2026</p>
 
                         <h2>1. Introduction</h2>
                         <p>
@@ -130,7 +134,7 @@ export function PrivacyPage() {
 
                         <h2>9. Contact Us</h2>
                         <p>
-                            If you have questions about this Privacy Policy, please <a href="/contact" className="text-indigo-600 hover:text-indigo-800">Contact Us</a> or email us at: <strong>privacy@myjoe.app</strong>
+                            If you have questions about this Privacy Policy, please <a href="/contact" className="text-indigo-400 hover:text-indigo-300">Contact Us</a> or email us at: <strong>privacy@myjoe.app</strong>
                         </p>
                     </div>
                 </motion.div>
