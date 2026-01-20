@@ -18,6 +18,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ApiKeyProvider, useApiKeyContext } from './context/apiKeyContext';
 import { WelcomeModal } from './components/WelcomeModal';
 import { FeedbackWidget } from './components/FeedbackWidget';
+import { CookieConsent } from './components/CookieConsent';
 import { Gallery } from './pages/Gallery';
 import { SettingsProvider } from './context/settingsContext';
 
@@ -66,6 +67,7 @@ const AppContent: React.FC = () => {
         <>
             {showWelcome && <WelcomeModal />}
             {isAuthenticated && <FeedbackWidget />}
+            <CookieConsent />
             <Routes>
                 <Route path="/landing" element={<LandingPage />} />
                 <Route path="/waitlist" element={<WaitlistPage />} />
