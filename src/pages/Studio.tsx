@@ -462,6 +462,7 @@ const App: React.FC = () => {
       {
         style: project.visualStyle,
         audience: project.targetAudienceId,
+        complexity: project.complexity,
         heroName: project.characterDNA?.name
       }
     );

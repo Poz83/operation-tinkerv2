@@ -754,6 +754,11 @@ export const batchGenerate = async (
                             requiresText: pageSpec.requiresText,
                             projectId: project.id,
                             autoSave: true,
+                            referenceImage: sessionReferenceImage || undefined,
+                            // [CRITICAL FIX] Pass Character DNA for hero consistency
+                            heroDNA: project.characterDNA,
+                            // Pass style reference images for multimodal generation
+                            styleReferenceImages: request.styleReferenceImages,
                             signal,
                         },
                         {

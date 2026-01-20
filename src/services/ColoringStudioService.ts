@@ -570,12 +570,12 @@ ${context.heroName ? `PROTAGONIST: "${context.heroName}" should be the clear mai
         const systemInstruction = pageCount > 1
             ? `
 ROLE: Scene Description Writer for a ${pageCount}-page illustrated collection.
-TASK: Transform the user's theme into vivid scene descriptions.
+TASK: Transform the user's theme into ${pageCount} DISTINCT scene descriptions.
 
 ${contentGuidance}
 
 ═══════════════════════════════════════════════════════════════════════════════
-YOUR JOB: DESCRIBE SCENES ONLY
+YOUR JOB: SCENE DESCRIPTIONS ONLY
 ═══════════════════════════════════════════════════════════════════════════════
 
 OUTPUT: Pure visual descriptions of what appears in each scene.
@@ -596,12 +596,21 @@ OUTPUT: Pure visual descriptions of what appears in each scene.
 
 WORD LIMIT: ${wordLimits}
 
-VARIETY: Mix close-ups, medium shots, wide shots, and pattern compositions.
+VARIETY:
+- Ensure ${pageCount} UNIQUE scenes. Do not repeat the same composition.
+- Mix close-ups, medium shots, wide shots, and pattern compositions.
+- If the subject is a single character, vary their activity and setting on every page.
 
 OUTPUT FORMAT:
-"Page 1: [scene description]. Page 2: [scene description]. ..." etc.
+Return a numbered list from 1 to ${pageCount}.
+Example:
+1. [Scene description]
+2. [Scene description]
+...
+${pageCount}. [Scene description]
 
-Return ONLY the scene descriptions. No explanations. No style instructions.
+CRITICAL: You MUST generate EXACTLY ${pageCount} items.
+Return ONLY the numbered list. No intro. No outro.
 `.trim()
             : `
 ROLE: Scene Description Writer.
