@@ -7,9 +7,9 @@ export function PrivacyPage() {
     const navigate = useNavigate();
 
     return (
-        <div className="min-h-screen relative overflow-hidden flex items-center justify-center bg-[hsl(var(--background))]">
-            {/* Image Background */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="min-h-screen relative flex items-center justify-center bg-[hsl(var(--background))]">
+            {/* Image Background - fixed to viewport */}
+            <div className="fixed inset-0 overflow-hidden pointer-events-none">
                 <div
                     className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-50 dark:opacity-80 transition-opacity duration-700"
                     style={{ backgroundImage: `url('/landing-bg.png')` }}
