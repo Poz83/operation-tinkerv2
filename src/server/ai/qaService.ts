@@ -604,45 +604,45 @@ CRITICAL CHECKS (Must pass for publication)
 
 1. COLOR CHECK:
    □ Is the image ONLY pure black lines on pure white background?
-   □ Are there ANY grey tones, gradients, or shading? (FAIL if yes)
-   □ Are there any colors other than black and white? (FAIL if yes)
+   □ Are there ANY grey tones, gradients, or shading? (FAIL if yes, code: GREY_TONES_DETECTED)
+   □ Are there any colors other than black and white? (FAIL if yes, code: COLOR_DETECTED)
 
 2. TEXTURE CHECK (NO texture allowed for coloring books):
-   □ Is there STIPPLING (dots creating tonal effects)? (FAIL if yes)
-   □ Is there HATCHING (parallel lines for shading)? (FAIL if yes)
-   □ Is there CROSS-HATCHING? (FAIL if yes)
-   □ Are there decorative texture MARKS on surfaces (fur strokes, fabric lines, wood grain lines)? (FAIL if yes)
-   □ Texture should be represented by SHAPE OUTLINES only, not decorative strokes
+   □ Is there STIPPLING (dots creating tonal effects)? (FAIL if yes, code: STIPPLING_DETECTED)
+   □ Is there HATCHING (parallel lines for shading)? (FAIL if yes, code: HATCHING_DETECTED)
+   □ Is there CROSS-HATCHING? (FAIL if yes, code: CROSSHATCHING_DETECTED)
+   □ Are there decorative texture MARKS on surfaces (fur strokes, fabric lines, wood grain lines)? (FAIL if yes, code: DECORATIVE_TEXTURE_LINES)
+   □ Texture should be represented by SHAPE OUTLINES only, not decorative strokes (code: TEXTURE_MARKS_DETECTED)
 
 3. REGION CHECK:
-   □ Are ALL regions CLOSED (would hold paint without leaking)? 
-   □ Is WATER/WAVES depicted as enclosed shapes or just wavy lines? (FAIL if wavy lines)
-   □ Is HAIR depicted as enclosed sections or individual strands? (FAIL if strands)
-   □ Are there any SOLID BLACK FILLS (not just thick lines)? (FAIL if yes)
-   □ Are regions large enough to color?
+   □ Are ALL regions CLOSED (would hold paint without leaking)? (FAIL if gaps, code: UNCLOSED_REGIONS)
+   □ Is WATER/WAVES depicted as enclosed shapes or just wavy lines? (FAIL if wavy lines, code: UNCLOSED_WATER_REGIONS)
+   □ Is HAIR depicted as enclosed sections or individual strands? (FAIL if strands, code: UNCLOSED_HAIR_STRANDS)
+   □ Are there any SOLID BLACK FILLS (not just thick lines)? (FAIL if yes, code: SOLID_BLACK_FILLS)
+   □ Are regions large enough to color?2 (FAIL if too small, code: REGIONS_TOO_SMALL)
 
 4. COMPOSITION CHECK:
    □ Are there clear REST AREAS (white space zones)?
-   □ For ${complexityId}: ${complexitySpec.restAreaRule}
-   □ Is the entire canvas filled with detail (HORROR VACUI)? (FAIL if yes for Moderate or below)
+   □ For ${complexityId}: ${complexitySpec.restAreaRule} (FAIL if missing, code: NO_REST_AREAS or INSUFFICIENT_REST_AREAS)
+   □ Is the entire canvas filled with detail (HORROR VACUI)? (FAIL if yes for Moderate or below, code: HORROR_VACUI)
    □ What percentage is white space? (Should be at least 15% for Moderate)
 
 5. FORMAT CHECK:
-   □ Is this a MOCKUP showing paper/table/art supplies? (FAIL if yes)
-   □ Does it show MULTIPLE separate images/panels? (FAIL if yes)
-   □ Is there an unwanted FRAME or BORDER?
-   □ Is there TEXT when none was requested?
+   □ Is this a MOCKUP showing paper/table/art supplies? (FAIL if yes, code: MOCKUP_FORMAT_DETECTED)
+   □ Does it show MULTIPLE separate images/panels? (FAIL if yes, code: MULTIPLE_IMAGES_DETECTED)
+   □ Is there an unwanted FRAME or BORDER? (code: CONTAINS_FRAME_BORDER)
+   □ Is there TEXT when none was requested? (code: CONTAINS_TEXT)
 
 6. STYLE CHECK:
-   □ Does line weight match specification (${styleSpec.lineWeight})?
-   ${styleId === 'Geometric' ? '□ Are there ANY curved lines? (FAIL if yes - Geometric requires straight lines ONLY)' : ''}
-   ${styleId === 'Kawaii' ? '□ Are all corners rounded? (FAIL if sharp angles)' : ''}
-   ${styleId === 'Bold & Easy' ? '□ Are all lines thick (4mm+)? (FAIL if thin lines present)' : ''}
+   □ Does line weight match specification (${styleSpec.lineWeight})? (FAIL if wrong, code: LINE_WEIGHT_WRONG)
+   ${styleId === 'Geometric' ? '□ Are there ANY curved lines? (FAIL if yes, code: CURVES_IN_GEOMETRIC)' : ''}
+   ${styleId === 'Kawaii' ? '□ Are all corners rounded? (FAIL if sharp angles, code: SHARP_ANGLES_IN_KAWAII)' : ''}
+   ${styleId === 'Bold & Easy' ? '□ Are all lines thick (4mm+)? (FAIL if thin lines, code: THIN_LINES_IN_BOLD)' : ''}
 
 7. AUDIENCE CHECK:
-   □ Is content appropriate for ${audienceId}?
+   □ Is content appropriate for ${audienceId}? (FAIL if inappropriate, code: INAPPROPRIATE_CONTENT)
    □ Content guidance: ${audienceSpec.contentGuidance}
-   ${audienceId === 'toddlers' || audienceId === 'preschool' ? '□ Is everything friendly and non-scary?' : ''}
+   ${audienceId === 'toddlers' || audienceId === 'preschool' ? '□ Is everything friendly and non-scary? (FAIL if scary, code: SCARY_FOR_YOUNG)' : ''}
 
 ═══════════════════════════════════════════════════════════════════════════════
 OUTPUT FORMAT (JSON)
