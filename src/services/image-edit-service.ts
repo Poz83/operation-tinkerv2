@@ -117,17 +117,11 @@ const getStyleInstructions = (style?: StyleId): string => {
     if (!style) return '';
 
     const styleInstructions: Partial<Record<StyleId, string>> = {
-        'Cozy Hand-Drawn': `
+        'Cozy': `
 STYLE: Cozy Hand-Drawn
 - Use organic 0.5-1mm lines with hand-drawn charm
 - Allow slight wobble in lines
 - Maintain warm, inviting aesthetic
-    `,
-        'Hand Drawn Bold & Easy': `
-STYLE: Hand Drawn Bold & Easy
-- Use THICK 4mm+ uniform lines
-- NO fine details or thin lines
-- Simple, bold shapes only
     `,
         'Kawaii': `
 STYLE: Kawaii
@@ -455,7 +449,7 @@ export async function editAndValidate(
             {
                 imageUrl: editResult.imageUrl,
                 requestId: editResult.requestId,
-                styleId: options.style || 'Cozy Hand-Drawn',
+                styleId: options.style || 'Cozy',
                 complexityId: options.complexity || 'Moderate',
                 audienceId: options.audience || 'kids',
                 userPrompt: `Edit: ${options.editPrompt}`,

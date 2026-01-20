@@ -108,6 +108,15 @@ export const QA_ISSUE_CODES = {
     ARTIFACTS_PRESENT: 'ARTIFACTS_PRESENT',
     BLURRY_LINES: 'BLURRY_LINES',
     ANTI_ALIASING_GREY: 'ANTI_ALIASING_GREY',
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // SEMANTIC COHERENCE (Art Editor - Severity: MAJOR)
+    // ─────────────────────────────────────────────────────────────────────────────
+    REDUNDANT_OBJECTS: 'REDUNDANT_OBJECTS',
+    SPATIAL_VIOLATION: 'SPATIAL_VIOLATION',
+    CHARACTER_COUNT_MISMATCH: 'CHARACTER_COUNT_MISMATCH',
+    FACELESS_HUMAN: 'FACELESS_HUMAN',
+    NARRATIVE_INCOHERENCE: 'NARRATIVE_INCOHERENCE',
 } as const;
 
 export type QaIssueCode = typeof QA_ISSUE_CODES[keyof typeof QA_ISSUE_CODES];
@@ -513,6 +522,53 @@ export const ISSUE_DEFINITIONS: Record<QaIssueCode, IssueDefinition> = {
         autoRepairable: false,
         repairStrategy: 'Accept for screen, flag for print post-processing',
     },
+
+    // ─── SEMANTIC COHERENCE (Art Editor) ─────────────────────────────────────────
+    [QA_ISSUE_CODES.REDUNDANT_OBJECTS]: {
+        code: 'REDUNDANT_OBJECTS',
+        severity: 'major',
+        category: 'semantic',
+        description: 'Duplicate objects that break scene logic (e.g., cups in hands AND on table)',
+        detectionCriteria: 'Objects held by characters also appear on nearby surfaces without narrative reason',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with explicit instruction to avoid object duplication',
+    },
+    [QA_ISSUE_CODES.SPATIAL_VIOLATION]: {
+        code: 'SPATIAL_VIOLATION',
+        severity: 'critical',
+        category: 'semantic',
+        description: 'Elements escaping their logical boundaries (fire outside fireplace)',
+        detectionCriteria: 'Fire, water, or other contained elements extend beyond their containers',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with explicit containment instructions',
+    },
+    [QA_ISSUE_CODES.CHARACTER_COUNT_MISMATCH]: {
+        code: 'CHARACTER_COUNT_MISMATCH',
+        severity: 'major',
+        category: 'semantic',
+        description: 'Wrong number of characters (couple should be 2, family should be 3+)',
+        detectionCriteria: 'Prompt implies specific character count that doesn\'t match output',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with explicit character count in prompt',
+    },
+    [QA_ISSUE_CODES.FACELESS_HUMAN]: {
+        code: 'FACELESS_HUMAN',
+        severity: 'major',
+        category: 'semantic',
+        description: 'Human figures with blank or missing facial features',
+        detectionCriteria: 'Human figures lack eyes, mouth, or other expected facial features for audience',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with instruction to include visible facial features',
+    },
+    [QA_ISSUE_CODES.NARRATIVE_INCOHERENCE]: {
+        code: 'NARRATIVE_INCOHERENCE',
+        severity: 'major',
+        category: 'semantic',
+        description: 'Scene elements don\'t tell a coherent story',
+        detectionCriteria: 'Objects or characters don\'t make sense together in the scene',
+        autoRepairable: true,
+        repairStrategy: 'Regenerate with clearer scene description',
+    },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -644,6 +700,34 @@ CRITICAL CHECKS (Must pass for publication)
    □ Content guidance: ${audienceSpec.contentGuidance}
    ${audienceId === 'toddlers' || audienceId === 'preschool' ? '□ Is everything friendly and non-scary? (FAIL if scary, code: SCARY_FOR_YOUNG)' : ''}
 
+8. SEMANTIC COHERENCE CHECK (Artist Intelligence):
+   
+   FACIAL FEATURES:
+   ${['adults', 'teens', 'seniors'].includes(audienceId)
+            ? '□ Do ALL human figures have VISIBLE facial features? (eyes, mouth, nose line) (FAIL if blank/missing, code: FACELESS_HUMAN)'
+            : '□ Do human figures have simple, friendly faces? (dot eyes + smile = OK) (FAIL if completely blank, code: FACELESS_HUMAN)'}
+   
+   CHARACTER COUNT:
+   □ If the scene implies "couple" or "pair" → should show EXACTLY 2 people
+   □ If the scene implies "family" → should show 3+ people
+   □ Count the actual humans shown. Does it match expectation? (FAIL if mismatch, code: CHARACTER_COUNT_MISMATCH)
+   
+   OBJECT LOGIC:
+   ${['adults', 'teens', 'seniors'].includes(audienceId)
+            ? `□ If characters HOLD objects (cups, books, phones), are those SAME objects also on nearby surfaces?
+     □ This is illogical duplication for ${audienceId} audience (FAIL if yes, code: REDUNDANT_OBJECTS)`
+            : `□ For ${audienceId}: Objects with faces/personality are OK and expected
+     □ Only flag REDUNDANT_OBJECTS if identical plain objects appear both held AND on surfaces`}
+   
+   SPATIAL/PHYSICS LOGIC:
+   □ Is fire/flame contained INSIDE its source (fireplace, candle, campfire)? (FAIL if escaping, code: SPATIAL_VIOLATION)
+   □ Is water/liquid contained INSIDE cups/vessels? (FAIL if floating/spilling illogically, code: SPATIAL_VIOLATION)
+   □ Do objects respect gravity and rest on surfaces properly?
+
+   NARRATIVE COHERENCE:
+   □ Does every major element serve a purpose in the scene?
+   □ Are there random/unexplained objects that don't belong? (FAIL if yes, code: NARRATIVE_INCOHERENCE)
+
 ═══════════════════════════════════════════════════════════════════════════════
 OUTPUT FORMAT (JSON)
 ═══════════════════════════════════════════════════════════════════════════════
@@ -676,6 +760,9 @@ IMPORTANT: Be STRICT. A coloring book page that cannot be colored properly is wo
 - No rest areas for Moderate complexity = FAIL
 - Mockup format = FAIL
 - Multiple images = FAIL
+- Blank/missing faces on humans = FAIL (for adult audiences)
+- Fire escaping fireplace = FAIL
+- Illogical object duplication = FAIL (for realistic styles)
 
 Analyze the image now and provide your assessment.
 `.trim();
@@ -854,15 +941,15 @@ const buildSummary = (
     minor: number
 ): string => {
     if (passed && score >= 90) {
-        return `Excellent quality (${score}/100). Ready for publication.`;
+        return `Excellent quality(${ score } / 100).Ready for publication.`;
     }
     if (passed && score >= 70) {
-        return `Good quality (${score}/100). ${major} major and ${minor} minor issues found.`;
+        return `Good quality(${ score } / 100).${ major } major and ${ minor } minor issues found.`;
     }
     if (!passed && critical > 0) {
-        return `Failed QA (${score}/100). ${critical} critical issue(s) must be resolved.`;
+        return `Failed QA(${ score } / 100).${ critical } critical issue(s) must be resolved.`;
     }
-    return `Below threshold (${score}/100). ${major} major issues require attention.`;
+    return `Below threshold(${ score } / 100).${ major } major issues require attention.`;
 };
 
 /**
@@ -876,14 +963,14 @@ const createFailSafeResult = (requestId: string, errorMessage: string): QaResult
         code: 'ARTIFACTS_PRESENT' as QaIssueCode,
         severity: 'critical',
         category: 'technical',
-        message: `QA analysis failed: ${errorMessage}`,
+        message: `QA analysis failed: ${ errorMessage } `,
         confidence: 1,
         autoRepairable: false,
     }],
     criticalCount: 1,
     majorCount: 0,
     minorCount: 0,
-    summary: `QA analysis failed: ${errorMessage}`,
+    summary: `QA analysis failed: ${ errorMessage } `,
     analysisTimestamp: new Date().toISOString(),
     requestId,
     recommendations: ['Regenerate the image and retry QA'],
@@ -907,13 +994,13 @@ export const quickCheckForTexture = async (
         contents: {
             parts: [
                 {
-                    text: `Analyze this coloring book image. Does it contain ANY of the following texture techniques?
-1. STIPPLING (dots creating tonal effect)
-2. HATCHING (parallel lines for shading)
-3. CROSS-HATCHING (intersecting parallel lines)
-4. DECORATIVE TEXTURE MARKS (fur strokes, fabric lines, wood grain)
+                    text: `Analyze this coloring book image.Does it contain ANY of the following texture techniques ?
+        1. STIPPLING(dots creating tonal effect)
+    2. HATCHING(parallel lines for shading)
+        3. CROSS - HATCHING(intersecting parallel lines)
+    4. DECORATIVE TEXTURE MARKS(fur strokes, fabric lines, wood grain)
 
-Respond with JSON: {"hasTexture": true/false, "type": "stippling|hatching|crosshatching|decorative|none", "location": "where found"}`,
+Respond with JSON: { "hasTexture": true / false, "type": "stippling|hatching|crosshatching|decorative|none", "location": "where found" } `,
                 },
                 {
                     inlineData: {
@@ -951,10 +1038,10 @@ export const quickCheckForGrey = async (
         contents: {
             parts: [
                 {
-                    text: `Analyze this coloring book image. Does it contain ANY grey tones, gradients, or shading?
-A proper coloring book should have ONLY pure black lines on pure white background.
+                    text: `Analyze this coloring book image.Does it contain ANY grey tones, gradients, or shading ?
+        A proper coloring book should have ONLY pure black lines on pure white background.
 
-Respond with JSON: {"hasGrey": true/false, "severity": "none|minor|moderate|severe", "description": "what was found"}`,
+Respond with JSON: { "hasGrey": true / false, "severity": "none|minor|moderate|severe", "description": "what was found" } `,
                 },
                 {
                     inlineData: {
@@ -993,12 +1080,12 @@ export const quickCheckFormat = async (
             parts: [
                 {
                     text: `Analyze this image format:
-1. Is this a MOCKUP showing the coloring page on a table/desk with art supplies visible?
-2. Does this show MULTIPLE separate images/panels/pages in a grid or collage?
+    1. Is this a MOCKUP showing the coloring page on a table / desk with art supplies visible ?
+        2. Does this show MULTIPLE separate images / panels / pages in a grid or collage ?
 
-A valid output should be a SINGLE illustration filling the canvas, not a photo of paper or multiple images.
+            A valid output should be a SINGLE illustration filling the canvas, not a photo of paper or multiple images.
 
-Respond with JSON: {"isMockup": true/false, "isMultiple": true/false, "description": "what was detected"}`,
+Respond with JSON: { "isMockup": true / false, "isMultiple": true / false, "description": "what was detected" } `,
                 },
                 {
                     inlineData: {

@@ -41,7 +41,7 @@ export const NANO_BANANA_PRO = GEMINI_IMAGE_MODEL;
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export type StyleId =
-  | 'Therapeutic Flow'
+
   | 'Cozy'
   | 'Kawaii'
   | 'Whimsical'
@@ -140,17 +140,7 @@ interface StyleSpec {
 }
 
 const STYLE_SPECS: Record<StyleId, StyleSpec> = {
-  'Therapeutic Flow': {
-    styleKeyword: 'fractal-based therapeutic coloring page',
-    positiveDescription: 'biophilic design optimizing fractal fluency (D=1.4) with organic flow',
-    lineWeight: 'consistent flowing lines (1mm)',
-    visualRequirements: [
-      'Natural branching patterns',
-      'Organic self-similar geometry',
-      'Soothing repetitive flow',
-      'Soft curved intersections',
-    ],
-  },
+
   'Cozy': {
     styleKeyword: 'Hygge cottagecore coloring page, Scandinavian sanctuary, cozy reading nook',
     positiveDescription: 'Warm organic style with chunky cable-knit textures, overstuffed armchairs, and steaming mugs. Variable line weight ink illustration.',
@@ -257,6 +247,17 @@ const STYLE_SPECS: Record<StyleId, StyleSpec> = {
       'Stained glass window outlines',
       'Dramatic atmospheric composition',
       'Intricate pattern work as outlined shapes',
+    ],
+  },
+  'StainedGlass': {
+    styleKeyword: 'Tiffany style stained glass coloring page',
+    positiveDescription: 'thick leaded lines separating clear geometric and organic sections. bold segmented composition.',
+    lineWeight: 'thick bold uniform lines (simulating lead cames)',
+    visualRequirements: [
+      'Thick outlines (lead lines) for all shapes',
+      'Segmented composition (no gradients)',
+      'Closed shapes (no open lines)',
+      'High contrast black and white',
     ],
   },
   'Mandala': {

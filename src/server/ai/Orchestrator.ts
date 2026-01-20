@@ -48,6 +48,13 @@ import {
     RepairContext,
     RepairParameters,
 } from './repairs';
+
+import {
+    reviewAsEditor,
+    EditorReview,
+    EditorIssue,
+} from './ArtEditor';
+
 import { Logger } from '../../lib/logger';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -94,6 +101,8 @@ export interface PipelineConfig {
     onProgress?: (progress: PipelineProgress) => void;
     /** Attempt complete callback */
     onAttemptComplete?: (attempt: AttemptResult) => void;
+    /** Enable Art Editor review (semantic coherence check) */
+    enableArtEditor: boolean;
     /** Enable verbose logging */
     enableLogging: boolean;
 }
@@ -154,6 +163,7 @@ const DEFAULT_CONFIG: PipelineConfig = {
     qaMode: 'production',
     minimumPassScore: 70,
     allowParameterEscalation: true,
+    enableArtEditor: true,
     enableLogging: false,
 };
 
@@ -336,6 +346,80 @@ export const generateAndValidate = async (
             } catch (error: any) {
                 if (error.message === 'Aborted') throw error;
                 log(`QA failed: ${error.message}`);
+            }
+        }
+
+        // ─── Art Editor Review (Semantic Coherence) ─────────────────────────────────
+        let editorReview: EditorReview | null = null;
+
+        if (config.enableArtEditor && genResult.imageUrl) {
+            reportProgress('validating', `Art Editor review (attempt ${attempt})...`, basePercent + 18, attempt);
+
+            try {
+                // Convert image URL to base64 for Art Editor
+                const imageResponse = await fetch(genResult.imageUrl);
+                const imageBlob = await imageResponse.blob();
+                const imageBase64 = await new Promise<string>((resolve) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        const result = reader.result as string;
+                        resolve(result.split(',')[1] || result);
+                    };
+                    reader.readAsDataURL(imageBlob);
+                });
+
+                editorReview = await reviewAsEditor({
+                    imageBase64,
+                    originalPrompt: currentPrompt,
+                    audienceId,
+                    styleId: currentStyleId,
+                    complexityId: currentComplexityId,
+                    apiKey,
+                });
+
+                log(`Art Editor: ${editorReview.approved ? 'APPROVED' : 'REJECTED'} (${editorReview.confidence}% confidence, ${editorReview.issues.length} issues)`);
+
+                // Merge Art Editor issues into QA result if we have one
+                if (qaResult && editorReview.issues.length > 0) {
+                    // Convert EditorIssue severity to QaIssue severity
+                    const mapSeverity = (s: 'critical' | 'should-fix' | 'nitpick'): 'critical' | 'major' | 'minor' => {
+                        if (s === 'critical') return 'critical';
+                        if (s === 'should-fix') return 'major';
+                        return 'minor';
+                    };
+
+                    const editorQaIssues: QaIssue[] = editorReview.issues.map(issue => ({
+                        code: (issue.issueCode || 'NARRATIVE_INCOHERENCE') as QaIssueCode,
+                        severity: mapSeverity(issue.severity),
+                        category: 'semantic',
+                        message: issue.description,
+                        details: issue.reasoning,
+                        location: issue.location || '',
+                        confidence: editorReview.confidence / 100,
+                        autoRepairable: true,
+                    }));
+
+                    // Add Art Editor issues to QA issues
+                    qaResult.issues = [...qaResult.issues, ...editorQaIssues];
+
+                    // Recalculate counts
+                    qaResult.criticalCount = qaResult.issues.filter(i => i.severity === 'critical').length;
+                    qaResult.majorCount = qaResult.issues.filter(i => i.severity === 'major').length;
+                    qaResult.minorCount = qaResult.issues.filter(i => i.severity === 'minor').length;
+
+                    // If Art Editor rejected, mark QA as failed
+                    if (!editorReview.approved && editorReview.confidence >= 70) {
+                        qaResult.passed = false;
+                        qaResult.isPublishable = false;
+                        log(`Art Editor overrode QA: issues found with high confidence`);
+                    }
+
+                    lastQaResult = qaResult;
+                }
+
+            } catch (error: any) {
+                if (error.message === 'Aborted') throw error;
+                log(`Art Editor review failed: ${error.message}`);
             }
         }
 

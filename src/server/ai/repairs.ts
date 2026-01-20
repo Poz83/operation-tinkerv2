@@ -614,6 +614,62 @@ const REPAIR_STRATEGIES: Record<QaIssueCode, RepairStrategy> = {
         maxAttempts: 1,
         notes: 'Minor anti-aliasing is acceptable',
     },
+
+    // ─── SEMANTIC COHERENCE (Art Editor) ─────────────────────────────────────────
+    [QA_ISSUE_CODES.REDUNDANT_OBJECTS]: {
+        issueCode: 'REDUNDANT_OBJECTS',
+        priority: 2,
+        confidence: 80,
+        action: 'regenerate',
+        promptOverride: `[REPAIR] OBJECT LOGIC: If a character HOLDS an object (cup, book, phone), do NOT also place that same object on nearby surfaces. Choose ONE location per object. Think: "Why would this object be here?"`,
+        negativeBoost: ['duplicate objects', 'repeated items', 'redundant props'],
+        maxAttempts: 2,
+        notes: 'Object duplication breaks scene logic',
+    },
+
+    [QA_ISSUE_CODES.SPATIAL_VIOLATION]: {
+        issueCode: 'SPATIAL_VIOLATION',
+        priority: 1,
+        confidence: 90,
+        action: 'regenerate',
+        promptOverride: `[CRITICAL] SPATIAL LOGIC: Fire/flames must stay INSIDE their container (fireplace, candle, campfire). Water stays in cups/vessels. Smoke rises UP. Objects respect gravity and boundaries.`,
+        negativeBoost: ['fire escaping', 'physics violation', 'impossible'],
+        maxAttempts: 3,
+        notes: 'Spatial logic is critical for realistic scenes',
+    },
+
+    [QA_ISSUE_CODES.CHARACTER_COUNT_MISMATCH]: {
+        issueCode: 'CHARACTER_COUNT_MISMATCH',
+        priority: 2,
+        confidence: 85,
+        action: 'regenerate',
+        promptOverride: `[REPAIR] CHARACTER COUNT: If the prompt says "couple" = EXACTLY 2 people. If "family" = 3+ people. Ensure the correct number of characters as specified.`,
+        negativeBoost: ['single person', 'alone', 'solo'],
+        maxAttempts: 2,
+        notes: 'Character count must match prompt intent',
+    },
+
+    [QA_ISSUE_CODES.FACELESS_HUMAN]: {
+        issueCode: 'FACELESS_HUMAN',
+        priority: 2,
+        confidence: 85,
+        action: 'regenerate',
+        promptOverride: `[REPAIR] FACES: All human characters must have VISIBLE facial features. Draw simple but clear eyes, mouth, and nose. Faces should NOT be blank or featureless. For children's content, simple dot eyes and curved smile are fine.`,
+        negativeBoost: ['faceless', 'blank face', 'featureless', 'no face'],
+        maxAttempts: 2,
+        notes: 'Human figures need faces for emotional connection',
+    },
+
+    [QA_ISSUE_CODES.NARRATIVE_INCOHERENCE]: {
+        issueCode: 'NARRATIVE_INCOHERENCE',
+        priority: 3,
+        confidence: 70,
+        action: 'regenerate',
+        promptOverride: `[REPAIR] SCENE COHERENCE: Every element should belong in this scene and serve a purpose. Remove random or unexplained objects. The scene should tell a clear visual story.`,
+        negativeBoost: ['random objects', 'cluttered', 'confusing'],
+        maxAttempts: 2,
+        notes: 'Scene should tell a coherent story',
+    },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════

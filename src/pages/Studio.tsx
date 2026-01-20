@@ -613,14 +613,14 @@ const App: React.FC = () => {
           {/* Preview Area */}
 
 
-          <div className="flex-1 overflow-hidden relative bg-[hsl(var(--background))]">
-            <div className="absolute inset-0 z-0 opacity-100 pointer-events-none"
+          <div className="flex-1 overflow-hidden relative bg-transparent">
+            {/* <div className="absolute inset-0 z-0 opacity-100 pointer-events-none"
               style={{
                 backgroundImage: `url(${doodlePattern})`,
                 backgroundSize: '500px',
                 backgroundRepeat: 'repeat'
               }}
-            />
+            /> */}
             <Book
               pages={pages}
               activePage={generation.activePageNumber}

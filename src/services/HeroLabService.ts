@@ -531,7 +531,7 @@ RESPOND WITH JSON ONLY. No explanations.
             return 'Realistic';
         }
         if (description.includes('simple') || description.includes('bold')) {
-            return 'Hand Drawn Bold & Easy';
+            return 'Cozy';
         }
         if (description.includes('whimsical') || description.includes('fairy') || description.includes('magical')) {
             return 'Whimsical';

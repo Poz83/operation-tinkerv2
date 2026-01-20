@@ -192,7 +192,7 @@ export interface BatchGenerateRequest {
         prompt: string;
         pageIndex: number;
         requiresText?: boolean;
-        vectorMode?: 'organic' | 'geometric' | 'standard';
+        vectorMode?: 'organic' | 'geometric' | 'standard' | 'illustration';
     }>;
     /** Whether to use the first high-quality image as a reference for subsequent pages */
     autoConsistency?: boolean;
