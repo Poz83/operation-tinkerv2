@@ -25,7 +25,7 @@ const INITIAL_DNA: CharacterDNA = {
     body: '',
     signatureFeatures: '',
     outfitCanon: '',
-    styleLock: 'Bold & Easy'
+    styleLock: 'Hand Drawn Bold & Easy'
 };
 
 interface UseHeroProjectProps {

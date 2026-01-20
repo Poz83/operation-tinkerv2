@@ -707,7 +707,7 @@ function mapDbToSavedProject(record: any): SavedProject {
             ...baseProject,
             pageAmount: 1,
             pageSizeId: 'portrait',
-            visualStyle: heroData.dna?.styleLock || 'Bold & Easy',
+            visualStyle: heroData.dna?.styleLock || 'Hand Drawn Bold & Easy',
             complexity: 'Moderate', // Default for now
             targetAudienceId: 'kids',
             hasHeroRef: false,
@@ -726,7 +726,7 @@ function mapDbToSavedProject(record: any): SavedProject {
         ...baseProject,
         pageAmount: coloringData?.page_count || 1,
         pageSizeId: 'square',
-        visualStyle: coloringData?.style || 'Bold & Easy',
+        visualStyle: coloringData?.style || 'Hand Drawn Bold & Easy',
         complexity: coloringData?.complexity || 'Simple',
         targetAudienceId: coloringData?.audience || 'kids',
         hasHeroRef: false,

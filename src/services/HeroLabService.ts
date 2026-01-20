@@ -385,7 +385,7 @@ RESPOND WITH JSON ONLY. No explanations.
         }
 
         if (dna.styleLock === 'Fantasy' && audienceId === 'toddlers') {
-            suggestions.push('Fantasy style may need simplification for toddlers. Consider "Bold & Easy" with the character concept.');
+            suggestions.push('Fantasy style may need simplification for toddlers. Consider "Hand Drawn Bold & Easy" with the character concept.');
         }
 
         return {
@@ -531,7 +531,7 @@ RESPOND WITH JSON ONLY. No explanations.
             return 'Realistic';
         }
         if (description.includes('simple') || description.includes('bold')) {
-            return 'Bold & Easy';
+            return 'Hand Drawn Bold & Easy';
         }
         if (description.includes('whimsical') || description.includes('fairy') || description.includes('magical')) {
             return 'Whimsical';

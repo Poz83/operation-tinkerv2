@@ -12,8 +12,7 @@ export const PAGE_SIZES = [
 
 export const VISUAL_STYLES = [
   { id: 'Therapeutic Flow', label: 'Therapeutic Flow 🌿' },
-  { id: 'Cozy Hand-Drawn', label: 'Cozy Hand-Drawn ✨' },
-  { id: 'Bold & Easy', label: 'Bold & Easy' },
+  { id: 'Cozy', label: 'Cozy (Hygge) ☕' },
   { id: 'Kawaii', label: 'Kawaii (Cute Mascot)' },
   { id: 'Whimsical', label: 'Whimsical (Storybook)' },
   { id: 'Cartoon', label: 'Cartoon (Action)' },
@@ -21,10 +20,10 @@ export const VISUAL_STYLES = [
   { id: 'Mandala', label: 'Mandala (Geometric)' },
   { id: 'Zentangle', label: 'Zentangle (Meditative)' },
   { id: 'Fantasy', label: 'Fantasy (RPG/Epic)' },
-  { id: 'Gothic', label: 'Gothic (Stained Glass)' },
-  { id: 'Cozy', label: 'Cozy (Hygge)' },
+  { id: 'Gothic', label: 'Gothic (Woodcut)' },
+  { id: 'StainedGlass', label: 'Stained Glass (Mosaic)' },
   { id: 'Geometric', label: 'Geometric (Low Poly)' },
-  { id: 'Realistic', label: 'Realistic (Fine Art)' }
+  { id: 'Realistic', label: 'Realistic (Fine Art Engraving)' }
 ];
 
 export const COMPLEXITY_LEVELS = [

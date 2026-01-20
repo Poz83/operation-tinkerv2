@@ -42,8 +42,7 @@ export const NANO_BANANA_PRO = GEMINI_IMAGE_MODEL;
 
 export type StyleId =
   | 'Therapeutic Flow'
-  | 'Cozy Hand-Drawn'
-  | 'Bold & Easy'
+  | 'Cozy'
   | 'Kawaii'
   | 'Whimsical'
   | 'Cartoon'
@@ -52,6 +51,7 @@ export type StyleId =
   | 'Geometric'
   | 'Fantasy'
   | 'Gothic'
+  | 'StainedGlass'
   | 'Mandala'
   | 'Zentangle';
 
@@ -151,81 +151,78 @@ const STYLE_SPECS: Record<StyleId, StyleSpec> = {
       'Soft curved intersections',
     ],
   },
-  'Cozy Hand-Drawn': {
-    styleKeyword: 'Hygge cottagecore coloring page',
-    positiveDescription: 'warm organic style with smooth handmade charm and cluttercore details',
-    lineWeight: 'medium weight organic lines (0.8mm) with varying thickness',
+  'Cozy': {
+    styleKeyword: 'Hygge cottagecore coloring page, Scandinavian sanctuary, cozy reading nook',
+    positiveDescription: 'Warm organic style with chunky cable-knit textures, overstuffed armchairs, and steaming mugs. Variable line weight ink illustration.',
+    lineWeight: 'variable organic lines (0.8-2mm) mimicking hand-drawn ink',
     visualRequirements: [
-      'Clean organic outlines (ink sketch style)',
-      'Rounded friendly shapes',
-      'Inviting compositions with soft details',
-      'Hygge atmosphere',
-    ],
-  },
-  'Bold & Easy': {
-    styleKeyword: 'sticker art coloring page',
-    positiveDescription: 'extremely simple bold-line coloring page with marker style aesthetic',
-    lineWeight: 'very thick uniform lines (4mm minimum)',
-    visualRequirements: [
-      'Maximum 30 large colorable regions',
-      'Thick bold sticker-like outlines',
-      'Large simple shapes',
-      'Absolutely no fine details',
+      'Role: Scandinavian lifestyle illustrator',
+      'Geometry: Organic curves only, NO straight lines, soft rounded shapes',
+      'Textures: Stylized cable-knit loops, flowing wood grain, botanical accents',
+      'Subjects: Armchairs, blankets, candles, hot drinks, sleeping cats, plants',
+      'Negative: NO shading, NO grayscale, NO minimalist, NO industrial, NO cold',
+      'Light: Use negative space (white) to imply candlelight glow',
     ],
   },
   'Kawaii': {
-    styleKeyword: 'kawaii sticker sheet style',
-    positiveDescription: 'adorable kawaii style with chibi proportions and soft rounded shapes',
-    lineWeight: 'thick smooth lines (3mm)',
+    styleKeyword: 'Super Deformed Kawaii vector line art',
+    positiveDescription: 'Japanese mascot style (Yuru-chara) with Kindchenschema proportions. 2-head ratio (large head, small body). Low set features',
+    lineWeight: 'uniform monoline weight (thick marker style)',
     visualRequirements: [
-      'All corners rounded with no sharp angles',
-      'Large heads small bodies (chibi proportions)',
-      'Friendly smiling expressions',
-      'Floating filler elements (sparkles, hearts)',
+      'Chibi 2-head proportions (Head = 50% of height)',
+      'Low T-zone facial features (eyes/mouth on bottom 1/3)',
+      'NO NOSES. Tiny mouth. Large shimmering eyes with catchlights',
+      'Stubby nubs for limbs (NO elbows, NO knees, NO fingers)',
+      'Soft "Squircle" geometry (all corners rounded)',
+      'Floating filler elements (sparkles, hearts, stars)',
     ],
   },
   'Whimsical': {
-    styleKeyword: 'whimsical fairy tale coloring book illustration',
-    positiveDescription: 'dreamy whimsical style with flowing graceful lines and fairy-tale proportions',
-    lineWeight: 'variable flowing lines (0.5-1.5mm)',
+    styleKeyword: 'Whimsical storybook illustration, style of Arthur Rackham and Alphonse Mucha',
+    positiveDescription: 'Narrative surrealism with curvilinear organic geometry and scale distortion',
+    lineWeight: 'variable flowing lines (Art Nouveau influence)',
     visualRequirements: [
-      'Flowing curved lines',
-      'Elongated elegant proportions',
-      'Magical fairy-tale atmosphere',
-      'Sparkles as outlined star shapes not dots',
+      'Anthropomorphism (animals in clothes, active props)',
+      'Scale distortion (tiny subjects made large)',
+      'Curvilinear organic composition (no sharp angles)',
+      'Narrative density (floating books, keys, lanterns)',
+      'High contrast (pure black/white, no gray bleed)',
+      'Wide shot / Full body (NO cropping of heads/feet)',
+      'White background with subtle decorative framing',
     ],
   },
   'Cartoon': {
-    styleKeyword: 'cartoon coloring book page',
-    positiveDescription: 'clean dynamic cartoon style with bold outlines and expressive poses',
-    lineWeight: 'bold outlines (1.5-2mm) with thinner internal lines (0.5mm)',
+    styleKeyword: 'Western cartoon style, Saturday morning cartoon, Hanna-Barbera style',
+    positiveDescription: 'classic Western animation style with squash and stretch dynamics, clear silhouettes, and rubber hose influence',
+    lineWeight: 'thick uniform outlines (vector art style)',
     visualRequirements: [
-      'Clear silhouettes',
-      'Expressive character poses',
-      'Strong line hierarchy',
-      'Clean professional outlines',
+      'Clear silhouettes (squint test)',
+      'Rubbery "noodle" limbs (squash and stretch)',
+      '4 fingers per hand, simple bean-shaped heads',
+      'NO anime eyes, NO shading, NO realism',
     ],
   },
   'Botanical': {
-    styleKeyword: 'vintage botanical illustration',
-    positiveDescription: 'scientific botanical illustration style with woodcut influence',
-    lineWeight: 'fine precise lines (0.3-0.5mm)',
+    styleKeyword: 'Antique botanical illustration, scientific plate, Maria Sibylla Merian style',
+    positiveDescription: 'Scientifically accurate line art with Ligne Claire aesthetic. Isolated on white.',
+    lineWeight: 'fine 0.3mm technical pen lines',
     visualRequirements: [
-      'Accurate plant anatomy',
-      'Fine detailed linework (vintage engraving style)',
-      'Each petal and leaf is a closed shape',
-      'Clean scientific illustration style',
+      'Morphological accuracy (roots, seeds, leaves)',
+      'Ligne Claire (clean unbroken lines)',
+      'No cross-hatching or shading',
+      'White space layout (no horror vacui)',
     ],
   },
   'Realistic': {
-    styleKeyword: 'realistic line art coloring page Ligne Claire style',
-    positiveDescription: 'realistic proportions in clean uniform line art',
-    lineWeight: 'uniform lines throughout (0.6mm)',
+    styleKeyword: 'Scientific Illustration, 19th-century steel engraving, intaglio fine art',
+    positiveDescription: 'museum-quality academic drawing with precise cross-hatching texture (Dürer style). High-contrast black ink on white.',
+    lineWeight: 'variable width ink lines with crisp sharp edges',
     visualRequirements: [
-      'Accurate realistic proportions',
-      'Uniform line weight with no variation',
-      'Clean contour lines only',
-      'No sketchy or loose lines',
+      'Technique: Woodcut or Copperplate Engraving',
+      'Anatomy: Biologically accurate proportions (Scientific Illustration standards)',
+      'Texture: Defined by precise cross-hatching, NOT shading',
+      'Anti-Grayscale: NO gray washes, NO pencil smudges, NO smooth gradients',
+      'High-contrast binary black/white only',
     ],
   },
   'Geometric': {
@@ -240,14 +237,15 @@ const STYLE_SPECS: Record<StyleId, StyleSpec> = {
     ],
   },
   'Fantasy': {
-    styleKeyword: 'high fantasy concept art outline',
-    positiveDescription: 'epic fantasy illustration style with RPG character sketch aesthetic',
-    lineWeight: 'varied dramatic lines (0.5-2mm)',
+    styleKeyword: 'Fantasy RPG Concept Art, Dungeons & Dragons Style, Vector Line Art',
+    positiveDescription: 'Heroic proportions, dynamic action, clear silhouette. 70/30 Rule (30% focal detail, 70% open space).',
+    lineWeight: 'Variable line weight (bold outer contours, fine inner details)',
     visualRequirements: [
-      'Epic dramatic compositions',
-      'Detailed armor and texture elements',
-      'Clear outlined regions',
-      'Full body shots (no cropped heads)',
+      'Role: Professional Concept Artist',
+      'Anatomy: Heroic scaling (8-9 heads tall), dynamic poses',
+      'Detailing: 70/30 Rule - Intricate focal points (armor/faces), clean rest areas',
+      'Negative: NO shading, NO cinematic lighting, NO ambient occlusion, NO greyscale',
+      'Features: Distinct silhouette, knolling for inventory items',
     ],
   },
   'Gothic': {
@@ -262,32 +260,33 @@ const STYLE_SPECS: Record<StyleId, StyleSpec> = {
     ],
   },
   'Mandala': {
-    styleKeyword: 'complex mandala coloring page',
-    positiveDescription: 'circular symmetrical mandala with floral geometric fusion',
-    lineWeight: 'fine uniform lines (0.5mm)',
+    styleKeyword: 'Sacred Geometry Mandala, Kaleidoscopic Fractal Pattern, Stained Glass style',
+    positiveDescription: 'Mathematically perfect symmetry with closed-loop tessellation. Radial for patterns, Bilateral for animal totems.',
+    lineWeight: 'precise vector lines (Adobe Illustrator style)',
     visualRequirements: [
-      'Perfect radial symmetry',
-      'Repeating radial patterns',
-      'Uncropped centered composition',
-      'Meditative balanced design',
+      'Perfect Symmetry (Radial for patterns, Bilateral for subjects)',
+      'Closed-loop topology (no open shapes)',
+      'Fractal tessellation (self-similar geometry)',
+      'Center-focused composition with white margins',
+      'Stained glass style outlines (uncolored, black/white only)',
+      'Vector definition (no pixelation or sketch artifacts)',
+      'NO paper texture, NO noise, NO grunge',
+      'NO humans, NO faces (prevent pareidolia)',
     ],
   },
   'Zentangle': {
-    styleKeyword: 'zentangle pattern coloring page',
-    positiveDescription: 'zentangle-inspired art with structured repetitive patterns',
-    lineWeight: 'fine uniform lines (0.5mm)',
+    styleKeyword: 'Zentangle Inspired Art (ZIA), Certified Zentangle Teacher style, Micron 05 pen',
+    positiveDescription: 'Pattern-filled silhouette technique. Subject acts as a container divided into segmented strings. Each segment filled with a unique tangle pattern (Flux, Paradox, Tipple).',
+    lineWeight: 'Uniform monoline (Micron 05 style)',
     visualRequirements: [
-      'Structured repeating patterns',
-      'Defined pattern boundaries',
-      'Meditative repetitive elements',
-      'Clean precise linework',
+      'Subject = Container for patterns',
+      'Internal segmentation using "strings"',
+      'Horror Vacui (fear of empty space)',
+      'Specific Patterns: Teardrop leaves (Flux), Spiraling triangles (Paradox), Interlocking orbs (Tipple)',
+      'No shading, No graphite smudge, No gradients',
     ],
   },
 };
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// COMPLEXITY SPECIFICATIONS
-// ═══════════════════════════════════════════════════════════════════════════════
 
 interface ComplexitySpec {
   regionRange: string;
@@ -299,9 +298,9 @@ interface ComplexitySpec {
 const COMPLEXITY_SPECS: Record<ComplexityId, ComplexitySpec> = {
   'Very Simple': {
     regionRange: '3-8 large colorable regions',
-    backgroundRule: 'Pure white background with no background elements',
+    backgroundRule: 'Pure white background with ZERO background elements (isolated subject)',
     restAreaRule: 'Entire background is white space',
-    detailLevel: 'Single iconic subject. Minimum region size 10mm+. No tiny details.',
+    detailLevel: 'Single iconic subject. Minimum region size 10mm+. No tiny details. High semantic clarity.',
   },
   'Simple': {
     regionRange: '15-30 large colorable regions',
@@ -341,11 +340,11 @@ interface AudienceSpec {
 const AUDIENCE_SPECS: Record<AudienceId, AudienceSpec> = {
   'toddlers': {
     maxComplexity: 'Very Simple',
-    contentGuidance: 'Single friendly recognizable object, extremely simple, no scary elements',
+    contentGuidance: 'Single friendly recognizable object, high semantic clarity, zero background distraction, no scary elements',
   },
   'preschool': {
     maxComplexity: 'Simple',
-    contentGuidance: 'Friendly characters and simple scenes, educational themes welcome',
+    contentGuidance: 'Friendly characters, simple scenes, clear definition, educational themes welcome',
   },
   'kids': {
     maxComplexity: 'Moderate',
@@ -361,7 +360,7 @@ const AUDIENCE_SPECS: Record<AudienceId, AudienceSpec> = {
   },
   'seniors': {
     maxComplexity: 'Moderate',
-    contentGuidance: 'Clear visible designs, nostalgic themes, avoid tiny details',
+    contentGuidance: 'High clarity, distinct sections, nostalgic themes (vintage, classic), avoid tiny details for dexterity',
   },
 };
 
@@ -414,8 +413,27 @@ const buildPrompt = (
     framingGuidance = 'Square composition (1:1). Balanced height and width.';
   }
 
+  // Determine ROLE based on style
+  let roleDefinition = 'You are an expert digital illustrator.';
+  if (styleId === 'StainedGlass') {
+    roleDefinition = 'You are an expert stained glass artist designing a template for a leaded glass window.';
+  } else if (styleId === 'Gothic') {
+    roleDefinition = 'You are a master woodcut engraver from the Victorian era.';
+  } else if (styleId === 'Mandala') {
+    roleDefinition = 'You are a sacred geometry architect.';
+  } else if (styleId === 'Fantasy') {
+    roleDefinition = 'You are a professional fantasy concept artist and illustrator for a high-end RPG rulebook.';
+  } else if (styleId === 'Cozy') {
+    roleDefinition = 'You are a Scandinavian lifestyle illustrator creating a sanctuary of warmth and comfort.';
+  } else if (styleId === 'Geometric') {
+    roleDefinition = 'You are a professional vector illustrator obsessed with Euclidean geometry.';
+  } else if (styleId === 'Realistic') {
+    roleDefinition = 'Act as a scientific illustrator creating a museum-quality steel engraving.';
+  }
+
   const prompt = `
-A high-quality ${styleSpec.styleKeyword}, ${styleSpec.positiveDescription}. designed for ${audienceId} audience.
+ROLE: ${roleDefinition}
+TASK: Generate a high-quality ${styleSpec.styleKeyword}, ${styleSpec.positiveDescription}. designed for ${audienceId} audience.
 
 SCENE: ${userPrompt}
 
@@ -439,7 +457,7 @@ CRITICAL REQUIREMENTS - PROFESSIONAL DIGITAL VECTOR ART:
    NEGATIVE CONSTRAINTS: No cross-hatching. No stippling. No dithering. No 3D renders. No photorealism. No gradients.
 
 4. CLOSED SHAPES: Every element must be a closed loop for coloring.
-   NEGATIVE CONSTRAINTS: No gray shading. No gradients. No shadows. No 3D renders. No photorealism. No noise. No dithering. No sketchiness. No cross-hatching. No hairline gaps. No complex backgrounds (unless specified).
+   NEGATIVE CONSTRAINTS: No gray shading. No gradients. No shadows. No ambient occlusion. No 3D renders. No photorealism. No noise. No dithering. No sketchiness. No cross-hatching. No hairline gaps. No complex backgrounds (unless specified). No paper texture.
 
 6. SINGLE MAIN IMAGE: One unified illustration.
 `.trim();
@@ -503,8 +521,8 @@ export const generateColoringPage = async (
       config: {
         // Google recommends temperature 1.0 for Gemini 3
         temperature: 1.0,
-        // Image generation config
-        responseModalities: ['image', 'text'],
+        // Image generation config - must include IMAGE modality
+        responseModalities: ['IMAGE', 'TEXT'],
         // Safety: Prevent false positives on line art
         safetySettings: [
           {
@@ -524,10 +542,11 @@ export const generateColoringPage = async (
             threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
           },
         ],
-        // Image size (must be uppercase K)
-        ...(imageSize && { imageSize }),
-        // Aspect ratio (normalized for API support)
-        ...(apiAspectRatio && { aspectRatio: apiAspectRatio }),
+        // CRITICAL: Per Gemini API docs, aspectRatio and imageSize MUST be nested in imageConfig
+        imageConfig: {
+          ...(apiAspectRatio && { aspectRatio: apiAspectRatio }),
+          ...(imageSize && { imageSize }),
+        },
       },
     });
 

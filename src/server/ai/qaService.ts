@@ -403,8 +403,8 @@ export const ISSUE_DEFINITIONS: Record<QaIssueCode, IssueDefinition> = {
         code: 'THIN_LINES_IN_BOLD',
         severity: 'major',
         category: 'style',
-        description: 'Thin lines present in Bold & Easy style',
-        detectionCriteria: 'Lines thinner than 4mm in Bold & Easy style',
+        description: 'Thin lines present in Hand Drawn Bold & Easy style',
+        detectionCriteria: 'Lines thinner than 4mm in Hand Drawn Bold & Easy style',
         autoRepairable: true,
         repairStrategy: 'Regenerate with minimum line weight enforcement',
     },
@@ -521,7 +521,7 @@ export const ISSUE_DEFINITIONS: Record<QaIssueCode, IssueDefinition> = {
 
 export interface QaIssue {
     code: QaIssueCode;
-    severity: 'critical' | 'major' | 'minor';
+    severity: 'critical' | 'major' | 'minor' | 'high';
     category: string;
     message: string;
     details?: string;
@@ -637,7 +637,7 @@ CRITICAL CHECKS (Must pass for publication)
    □ Does line weight match specification (${styleSpec.lineWeight})? (FAIL if wrong, code: LINE_WEIGHT_WRONG)
    ${styleId === 'Geometric' ? '□ Are there ANY curved lines? (FAIL if yes, code: CURVES_IN_GEOMETRIC)' : ''}
    ${styleId === 'Kawaii' ? '□ Are all corners rounded? (FAIL if sharp angles, code: SHARP_ANGLES_IN_KAWAII)' : ''}
-   ${styleId === 'Bold & Easy' ? '□ Are all lines thick (4mm+)? (FAIL if thin lines, code: THIN_LINES_IN_BOLD)' : ''}
+   ${styleId === 'Hand Drawn Bold & Easy' ? '□ Are all lines thick (4mm+)? (FAIL if thin lines, code: THIN_LINES_IN_BOLD)' : ''}
 
 7. AUDIENCE CHECK:
    □ Is content appropriate for ${audienceId}? (FAIL if inappropriate, code: INAPPROPRIATE_CONTENT)

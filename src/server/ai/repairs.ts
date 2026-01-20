@@ -461,11 +461,13 @@ const REPAIR_STRATEGIES: Record<QaIssueCode, RepairStrategy> = {
         priority: 1,
         confidence: 85,
         action: 'regenerate',
-        promptOverride: `[CRITICAL] BOLD & EASY REQUIRES THICK 4mm LINES MINIMUM. NO thin lines, NO fine details.`,
-        negativeBoost: ['thin lines', 'fine lines', 'delicate', 'detailed', 'intricate'],
-        parameterSuggestions: { complexityId: 'Very Simple' },
-        maxAttempts: 3,
-        notes: 'Bold & Easy is for simple coloring',
+        promptOverride: '[CRITICAL] HAND DRAWN BOLD & EASY REQUIRES THICK 4mm LINES MINIMUM. NO thin lines, NO fine details.',
+        negativeBoost: ['thin lines', 'detailed', 'intricate', 'hatching', 'small shapes'],
+        parameterSuggestions: {
+            complexityId: 'simple'
+        },
+        maxAttempts: 2,
+        notes: 'Hand Drawn Bold & Easy is for simple coloring'
     },
 
     // ─── COMPLEXITY VIOLATIONS ────────────────────────────────────────────────────

@@ -11,49 +11,58 @@ export const STYLE_TIPS: Record<string, { title: string; tip: string }> = {
         title: 'Prompting Tip',
         tip: 'Mention specific small details (like "steam rising" or "scattered crumbs") to enhance the hand-drawn charm.'
     },
-    'Bold & Easy': {
+    'Hand Drawn Bold & Easy': {
         title: 'Less is More',
         tip: 'Keep your prompt simple! Single subjects without complex backgrounds work best with these thick lines.'
     },
     'Kawaii': {
-        title: 'Cuteness Overload',
-        tip: 'Add words like "chibi", "happy", "round", or "sparkles" to your prompt to maximize the cute factor.'
+        title: 'Everything is Alive',
+        tip: 'In Kawaii, everything has a soul! Put faces on inanimate objects like clouds, food, or furniture for maximum cuteness.'
     },
-    'Whimsical': {
-        title: 'Storytelling',
-        tip: 'Describe a mood or a story moment (e.g., "frog reading a book") rather than just listing objects.'
-    },
+
     'Cartoon': {
-        title: 'Action Poses',
-        tip: 'Use active verbs like "running", "jumping", or "flying" to get dynamic character poses.'
+        title: 'Make it Zany!',
+        tip: 'Think "Rubber Hose" animation! Use words like "wobble", "stretch", or "splat" to get that funny, flexible look.'
     },
     'Botanical': {
-        title: 'Scientific Detail',
-        tip: 'Using specific plant names (e.g., "Monstera Deliciosa" instead of "plant") yields much better results.'
+        title: 'Be Specific',
+        tip: 'Use Latin names (e.g., "Monstera deliciosa") and terms like "cross-section" or "rhizome" for true scientific accuracy.'
     },
     'Mandala': {
-        title: 'Thematic Focus',
-        tip: 'Symmetry is automatic. Focus your prompt on the *theme* (e.g., "Fire", "Ocean") to influence the shapes.'
+        title: 'Thematic Geometry',
+        tip: 'Don\'t just say "Mandala". Try "Celestial Mandala" or "Owl Mandala" to guide the geometry.'
     },
     'Zentangle': {
-        title: 'Abstract Concepts',
-        tip: 'Abstract prompts work great here. Try describing a feeling or sound, like "Jazz Music" or "Calm Waves".'
+        title: 'Zentangle Method (ZIA)',
+        tip: 'Think of your subject as a "Container". The AI will divide it into "Strings" and fill each with a unique pattern (tangle).'
     },
     'Fantasy': {
-        title: 'Texture cues',
-        tip: 'Mention materials like "plate armor", "dragon scales", or "rough stone" to get detailed line textures.'
+        title: 'The Grimoire',
+        tip: 'Use terms like "Heroic Proportions", "Knolling" (for inventory), or "Low Angle" to get that epic RPG look.'
     },
     'Gothic': {
-        title: 'Stained Glass',
-        tip: 'This style thrives on structure. Try prompting for "rose window" or "cathedral arch" frames.'
+        title: 'Architecture of Shadows',
+        tip: 'Use specific vocabulary like "Rib Vault", "Filigree", "Lace", or "Withered Roses" to guide the texture.'
+    },
+    'StainedGlass': {
+        title: 'Light & Lead',
+        tip: 'Focus on "Light" and "Color" slots. Mentions of "Sunlight" or "Cathedral High Windows" help the AI structure the mosaic.'
     },
     'Cozy': {
-        title: 'Hygge Creator',
-        tip: 'Focus on texture words in your prompt: "knitted", "wooden", "soft", or "wooly" help define the scene.'
+        title: 'The Sanctuary',
+        tip: 'Use texture words: "chunky cable-knit", "overstuffed armchair", "steaming cocoa". Avoid "modern" or "minimalist".'
+    },
+    'Whimsical': {
+        title: 'Scale Distortion',
+        tip: 'Play with size! Try "A mouse in a teacup" or "A giant mushroom house" to trigger that magical storybook look.'
     },
     'Geometric': {
         title: 'Low Poly',
         tip: 'Try combining organic subjects with this style. "Geometric Bear" or "Faceted Mountain" creates cool contrasts.'
+    },
+    'Realistic': {
+        title: "The Engraver's Art",
+        tip: "This style mimics 19th-century scientific illustrations. It replaces 'shading' with 'cross-hatching'. Describe texture and material (e.g., 'velvet', 'bark') clearly."
     },
     'Wildlife': {
         title: 'Habitat Context',
@@ -66,10 +75,6 @@ export const STYLE_TIPS: Record<string, { title: string; tip: string }> = {
     'Abstract': {
         title: 'Flow & Motion',
         tip: 'Focus on movement words. "Swirling", "Exploding", or "Meandering" give the best abstract compositions.'
-    },
-    'Realistic': {
-        title: 'Detail Level',
-        tip: 'Great for portraits. Mentioning "fine details" or "intricate background" pushes the AI to add more lines.'
     }
 };
 

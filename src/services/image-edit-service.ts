@@ -123,8 +123,8 @@ STYLE: Cozy Hand-Drawn
 - Allow slight wobble in lines
 - Maintain warm, inviting aesthetic
     `,
-        'Bold & Easy': `
-STYLE: Bold & Easy
+        'Hand Drawn Bold & Easy': `
+STYLE: Hand Drawn Bold & Easy
 - Use THICK 4mm+ uniform lines
 - NO fine details or thin lines
 - Simple, bold shapes only

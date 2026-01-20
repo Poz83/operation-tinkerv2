@@ -34,48 +34,42 @@ const STYLE_CHARACTERISTICS: Record<string, {
     lineDescription: string;
     bestFor: string;
     avoid: string;
-    vectorMode: 'organic' | 'geometric' | 'standard';
+    vectorMode: 'organic' | 'geometric' | 'standard' | 'illustration';
 }> = {
-    'Cozy Hand-Drawn': {
-        lineDescription: 'organic, wobbly 0.5-1mm lines with hand-drawn charm',
-        bestFor: 'domestic scenes, comfort objects, gentle subjects',
-        avoid: 'geometric precision, sharp angles',
+    'Cozy': {
+        lineDescription: 'Organic hand-drawn ink lines with variable weight',
+        bestFor: 'Reading nooks, Blankets, Cats, Hot drinks, Candles, Plants',
+        avoid: 'Straight lines, Industrial, Minimalist, Cold, Sterile',
         vectorMode: 'organic',
     },
-    'Bold & Easy': {
-        lineDescription: 'thick 4mm+ uniform lines, maximum simplicity',
-        bestFor: 'simple iconic subjects, sticker-style designs',
-        avoid: 'fine details, intricate patterns, small spaces',
-        vectorMode: 'standard',
-    },
     'Kawaii': {
-        lineDescription: 'thick 3mm smooth curves, all rounded corners',
-        bestFor: 'cute characters, chibi proportions, friendly subjects',
-        avoid: 'sharp angles, realistic proportions, mature themes',
+        lineDescription: 'uniform monoline weight (no variation), soft vector curves',
+        bestFor: 'mascots, anthropomorphic food, sweets, desserts, stickers, 2-head characters',
+        avoid: 'noses, elbows, knees, realism, sharp angles, variable line weight',
         vectorMode: 'organic',
     },
     'Whimsical': {
-        lineDescription: 'flowing variable-width lines suggesting movement',
-        bestFor: 'fairy tales, magical scenes, storybook illustrations',
-        avoid: 'rigid forms, realistic proportions, mundane subjects',
+        lineDescription: 'flowing Art Nouveau lines, organic variable weight',
+        bestFor: 'Storybook scenes, Anthropomorphic animals, Scale distortion, Magical realism',
+        avoid: '3d render, photorealism, shading, grayscale, straight lines, modern technology',
         vectorMode: 'organic',
     },
     'Cartoon': {
-        lineDescription: 'dynamic tapered lines with clear hierarchy',
-        bestFor: 'action scenes, expressive characters, dynamic poses',
-        avoid: 'static poses, ambiguous silhouettes',
+        lineDescription: 'thick vector outlines, rubber hose limbs',
+        bestFor: 'mascots, funny situations, anthropomorphic objects, dynamic action',
+        avoid: 'anime, manga, hatching, detailed hair, realism, static poses',
         vectorMode: 'standard',
     },
     'Botanical': {
-        lineDescription: 'fine 0.3-0.5mm precise lines',
-        bestFor: 'plants, flowers, scientific illustration subjects',
-        avoid: 'solid fills, dense rendering',
+        lineDescription: 'fine technical pen (Micron 005), precise vector lines',
+        bestFor: 'Scientific specimens, Florilegium plates, Latin named species, cross-sections',
+        avoid: 'photorealism, 3d render, octane render, shading, grayscale, blurry lines, text (unless Latin label)',
         vectorMode: 'organic',
     },
     'Realistic': {
-        lineDescription: 'uniform 0.6mm Ligne Claire contours',
-        bestFor: 'accurate anatomy, technical illustration',
-        avoid: 'line weight variation, hatching, stylization',
+        lineDescription: 'High-fidelity cross-hatching, academic precision, engraving style',
+        bestFor: 'Portraits, Animals, Architecture, Scientific Studies',
+        avoid: 'Cartoons, thick outlines, blurry shading, sketchy loose lines',
         vectorMode: 'standard',
     },
     'Geometric': {
@@ -85,27 +79,33 @@ const STYLE_CHARACTERISTICS: Record<string, {
         vectorMode: 'geometric',
     },
     'Fantasy': {
-        lineDescription: 'detailed ink work with dramatic line weight variation',
-        bestFor: 'epic scenes, mythical creatures, heroic characters',
-        avoid: 'modern elements, casual poses',
-        vectorMode: 'standard',
+        lineDescription: 'Heroic RPG concept art with variable line weight',
+        bestFor: 'RPG Characters, Monsters, Maps, Inventory Layouts',
+        avoid: 'Static Poses, Photorealism, Greyscale, Muddy details',
+        vectorMode: 'illustration',
     },
     'Gothic': {
-        lineDescription: 'fine to medium varied lines with ornate details',
-        bestFor: 'medieval themes, dramatic atmospheric compositions',
-        avoid: 'cheerful subjects, simple forms',
-        vectorMode: 'standard',
+        lineDescription: 'Woodcut/Engraving style with hatching textures',
+        bestFor: 'Architecture, Victorian Fashion, Macabre Nature, Dark Fantasy',
+        avoid: 'Cute/Kawaii, Cartoons, Modern clothing, Solid blacks, Grayscale',
+        vectorMode: 'illustration',
+    },
+    'StainedGlass': {
+        lineDescription: 'Bold leaded lines (Tiffany style) with mosaic segmentation',
+        bestFor: 'Mandalas, Religious themes, Floral patterns, Celestial bodies',
+        avoid: 'Thin lines, Sketching, Shading, Gradients, Realism',
+        vectorMode: 'geometric',
     },
     'Mandala': {
-        lineDescription: 'precise 0.5mm geometric lines with radial symmetry',
-        bestFor: 'meditative patterns, symmetrical designs',
-        avoid: 'asymmetry, organic variation',
+        lineDescription: 'mathematically precise vector lines, 0.5mm uniform',
+        bestFor: 'Meditation, Sacred Geometry, Fractals, Kaleidoscopes',
+        avoid: 'Asymmetry, sketching, shading, organic drift, broken lines, paper texture',
         vectorMode: 'geometric',
     },
     'Zentangle': {
-        lineDescription: 'consistent 0.5mm lines with pattern fills',
-        bestFor: 'abstract patterns, structured doodling',
-        avoid: 'representational imagery, tiny enclosed spaces',
+        lineDescription: 'Micron pen precision, high-contrast ZIA',
+        bestFor: 'Mindfulness, ZIA, Word Tangles, Pattern Studies',
+        avoid: 'Sketching, Graphite, Doodling (messy), Realism, Shading',
         vectorMode: 'geometric',
     },
 };
@@ -205,7 +205,7 @@ const AUDIENCE_CHARACTERISTICS: Record<string, {
 export interface BookPlanItem {
     pageNumber: number;
     prompt: string;
-    vectorMode: 'organic' | 'geometric' | 'standard';
+    vectorMode: 'organic' | 'geometric' | 'standard' | 'illustration';
     complexityDescription: string;
     requiresText: boolean;
     /** Scene type for variety tracking */
@@ -347,9 +347,17 @@ export class ColoringStudioService {
         const complexitySpec = COMPLEXITY_CHARACTERISTICS[effectiveComplexity] || COMPLEXITY_CHARACTERISTICS['Moderate'];
 
         // Build text control instruction
-        const textControlInstruction = includeText
+        let textControlInstruction = includeText
             ? `TEXT CONTROL: You MAY include text if the user's idea calls for it (e.g., 'birthday card'). Set requiresText=true for those pages only.`
             : `TEXT CONTROL: STRICTLY FORBIDDEN from suggesting text. Set requiresText=false for ALL pages. No words in scene descriptions.`;
+
+        if (includeText && style === 'Kawaii') {
+            textControlInstruction += `\n   - For Kawaii: You may strictly suggest cute sound effects (e.g., "Dokidoki", "Poof", "Sparkle") or simple greetings.`;
+        } else if (includeText && style === 'Botanical') {
+            textControlInstruction += `\n   - For Botanical: You MUST suggest the Latin binomial name (e.g., "Monstera deliciosa") in an elegant serif font.`;
+        } else if (includeText && style === 'Whimsical') {
+            textControlInstruction += `\n   - For Whimsical: You may suggest a storybook title (e.g., "Dream Big") integrated into clouds or banners.`;
+        }
 
         // Build hero instruction
         const heroInstruction = hasHeroRef
@@ -460,7 +468,7 @@ Generate the plan now.
                                 prompt: { type: Type.STRING },
                                 vectorMode: {
                                     type: Type.STRING,
-                                    enum: ['organic', 'geometric', 'standard']
+                                    enum: ['organic', 'geometric', 'standard', 'illustration']
                                 },
                                 complexityDescription: { type: Type.STRING },
                                 requiresText: { type: Type.BOOLEAN },
@@ -738,7 +746,7 @@ ANALYSIS GUIDELINES
    - Choose the closest match based on line characteristics
 
 6. TEMPERATURE:
-   - 0.6-0.7 for styles needing precision (Geometric, Realistic, Bold & Easy)
+   - 0.6-0.7 for styles needing precision (Geometric, Realistic, Hand Drawn Bold & Easy)
    - 0.8-0.9 for organic/hand-drawn styles
    - 1.0 for maximum creative freedom
 

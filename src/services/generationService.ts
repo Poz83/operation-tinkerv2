@@ -364,7 +364,7 @@ const mapQaToPageQa = (qaResult: QaResult): PageQa => ({
  * // Basic usage
  * const result = await generatePage({
  *   prompt: 'A cute dragon eating a taco',
- *   style: 'Bold & Easy',
+ *   style: 'Hand Drawn Bold & Easy',
  *   complexity: 'Simple',
  *   audience: 'preschool',
  *   aspectRatio: '3:4',
