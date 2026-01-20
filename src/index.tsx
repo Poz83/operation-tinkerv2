@@ -4,6 +4,7 @@
 */
 
 import React from 'react';
+import './main'; // Import secure console banner
 import ReactDOM from 'react-dom/client';
 import Router from './Router';
 import './styles.css';

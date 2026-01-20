@@ -9,7 +9,13 @@ const commitHash = execSync('git rev-parse --short HEAD').toString().trim();
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
+  const dropConsole = env.VITE_DROP_CONSOLE === 'true';
+
   return {
+    esbuild: {
+      drop: dropConsole ? ['debugger'] : [],
+      pure: dropConsole ? ['console.log', 'console.info', 'console.debug', 'console.trace'] : [],
+    },
     css: {
       postcss: {
         plugins: [
