@@ -23,6 +23,7 @@ import { useProject } from '../hooks/useProject';
 import { useGeneration } from '../hooks/useGeneration';
 import { DesignersTip } from '../components/DesignersTip';
 import { LogViewer } from '../components/debug/LogViewer';
+import doodlePattern from '../assets/doodle_pattern_final.png';
 
 const App: React.FC = () => {
   const { apiKey, hasApiKey } = useApiKeyContext();
@@ -610,7 +611,16 @@ const App: React.FC = () => {
           </div>
 
           {/* Preview Area */}
+
+
           <div className="flex-1 overflow-hidden relative bg-[hsl(var(--background))]">
+            <div className="absolute inset-0 z-0 opacity-100 pointer-events-none"
+              style={{
+                backgroundImage: `url(${doodlePattern})`,
+                backgroundSize: '500px',
+                backgroundRepeat: 'repeat'
+              }}
+            />
             <Book
               pages={pages}
               activePage={generation.activePageNumber}

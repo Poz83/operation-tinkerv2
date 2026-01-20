@@ -41,6 +41,7 @@ export const NANO_BANANA_PRO = GEMINI_IMAGE_MODEL;
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export type StyleId =
+  | 'Therapeutic Flow'
   | 'Cozy Hand-Drawn'
   | 'Bold & Easy'
   | 'Kawaii'
@@ -139,6 +140,17 @@ interface StyleSpec {
 }
 
 const STYLE_SPECS: Record<StyleId, StyleSpec> = {
+  'Therapeutic Flow': {
+    styleKeyword: 'fractal-based therapeutic coloring page',
+    positiveDescription: 'biophilic design optimizing fractal fluency (D=1.4) with organic flow',
+    lineWeight: 'consistent flowing lines (1mm)',
+    visualRequirements: [
+      'Natural branching patterns',
+      'Organic self-similar geometry',
+      'Soothing repetitive flow',
+      'Soft curved intersections',
+    ],
+  },
   'Cozy Hand-Drawn': {
     styleKeyword: 'Hygge cottagecore coloring page',
     positiveDescription: 'warm organic style with smooth handmade charm and cluttercore details',
@@ -289,31 +301,31 @@ const COMPLEXITY_SPECS: Record<ComplexityId, ComplexitySpec> = {
     regionRange: '3-8 large colorable regions',
     backgroundRule: 'Pure white background with no background elements',
     restAreaRule: 'Entire background is white space',
-    detailLevel: 'Single iconic subject with minimal internal detail',
+    detailLevel: 'Single iconic subject. Minimum region size 10mm+. No tiny details.',
   },
   'Simple': {
     regionRange: '15-30 large colorable regions',
     backgroundRule: 'Clear background with essential context only',
     restAreaRule: 'Balanced white space for visual clarity',
-    detailLevel: 'Focus on main subject with strong clear outlines',
+    detailLevel: 'Focus on main subject. Minimum region size 5mm. Strong clear outlines.',
   },
   'Moderate': {
     regionRange: '40-80 colorable regions',
     backgroundRule: 'Full scene with foreground midground and background',
     restAreaRule: 'Include 4-6 clear white space rest areas covering minimum 15% of image',
-    detailLevel: 'Complete scene with balanced detail distribution',
+    detailLevel: 'Complete scene. Minimum region size 3mm. Balanced detail distribution.',
   },
   'Intricate': {
     regionRange: '80-120 colorable regions',
     backgroundRule: 'Detailed environment throughout',
     restAreaRule: 'Include 2-4 rest areas covering minimum 10% of image',
-    detailLevel: 'Rich detailed scene with patterns as shapes',
+    detailLevel: 'Rich detailed scene. Minimum region size 2mm. Patterns as shapes.',
   },
   'Extreme Detail': {
     regionRange: '120-150+ colorable regions',
     backgroundRule: 'Maximum detail throughout',
     restAreaRule: 'Include 2-3 small rest areas for visual relief',
-    detailLevel: 'Expert-level complexity with shapes within shapes',
+    detailLevel: 'Expert-level complexity. Minimum region size 1mm. Shapes within shapes.',
   },
 };
 
@@ -370,7 +382,8 @@ const buildPrompt = (
   userPrompt: string,
   styleId: StyleId,
   complexityId: ComplexityId,
-  audienceId: AudienceId
+  audienceId: AudienceId,
+  aspectRatio: string = '1:1'
 ): { prompt: string; effectiveComplexity: ComplexityId } => {
 
   const styleSpec = STYLE_SPECS[styleId];
@@ -385,8 +398,16 @@ const buildPrompt = (
   const complexitySpec = COMPLEXITY_SPECS[effectiveComplexity];
 
   // Build the prompt with constraints at END (Gemini 3 requirement)
-  // Build the prompt with constraints at END (Gemini 3 requirement)
-  // FIX: Inject Audience Guidance and Aspect Ratio Layout
+  // FIX: Inject Audience Guidance, Aspect Ratio Layout, and specific framing
+
+  // Specific framing guidance based on aspect ratio
+  let framingGuidance = 'Full-bleed composition filling the entire canvas.';
+  if (aspectRatio === '17:22' || aspectRatio === '3:4' || aspectRatio === '210:297') {
+    framingGuidance = 'Vertical portrait composition. Tall aspect ratio. Fit full height.';
+  } else if (aspectRatio === '4:3' || aspectRatio === 'landscape') {
+    framingGuidance = 'Horizontal landscape composition. Wide aspect ratio.';
+  }
+
   const prompt = `
 A high-quality ${styleSpec.styleKeyword}, ${styleSpec.positiveDescription}. designed for ${audienceId} audience.
 
@@ -397,7 +418,7 @@ AUDIENCE GUIDANCE: ${audienceSpec.contentGuidance}
 STYLE: ${styleSpec.lineWeight}. ${styleSpec.visualRequirements.join('. ')}.
 
 COMPOSITION: ${complexitySpec.regionRange}. ${complexitySpec.backgroundRule}. ${complexitySpec.detailLevel}. 
-LAYOUT: Full-bleed composition filling the entire canvas. No borders. No frames. Direct 2D flat view.
+LAYOUT: ${framingGuidance} No borders. No frames. Direct 2D flat view.
 SUBJECT PLACEMENT: Keep all main characters and key details within the center 85% safe zone. Do NOT cut off heads, feet, or important elements at the edges.
 
 OUTPUT: A single high-contrast black and white coloring book page. Pure black lines on pure white background.
@@ -412,8 +433,7 @@ CRITICAL REQUIREMENTS - PROFESSIONAL DIGITAL VECTOR ART:
    NEGATIVE CONSTRAINTS: No cross-hatching. No stippling. No dithering. No 3D renders. No photorealism. No gradients.
 
 4. CLOSED SHAPES: Every element must be a closed loop for coloring.
-
-5. NO "MOCKUP" ARTIFACTS: Do NOT draw paper, pencils, tables, or shadows. This is the raw digital image file, not a photo of a drawing.
+   NEGATIVE CONSTRAINTS: No gray shading. No gradients. No shadows. No 3D renders. No photorealism. No noise. No dithering. No sketchiness. No cross-hatching. No hairline gaps. No complex backgrounds (unless specified).
 
 6. SINGLE MAIN IMAGE: One unified illustration.
 `.trim();
@@ -451,12 +471,19 @@ export const generateColoringPage = async (
     throw new Error('Aborted');
   }
 
-  // Build prompt
-  const { prompt, effectiveComplexity } = buildPrompt(userPrompt, styleId, complexityId, audienceId);
+  // Normalize aspect ratio for API (Imagen 3 supports specific ratios)
+  // We map non-standard print ratios to closest API-supported ratio
+  let apiAspectRatio = aspectRatio;
+  if (aspectRatio === '17:22' || aspectRatio === '210:297') {
+    apiAspectRatio = '3:4'; // Fallback for Letter and A4
+  }
+
+  // Build prompt (now with aspect ratio for layout context)
+  const { prompt, effectiveComplexity } = buildPrompt(userPrompt, styleId, complexityId, audienceId, aspectRatio);
 
   if (enableLogging) {
     Logger.info('AI', `[${requestId}] Generating with prompt (${prompt.length} chars)`);
-    Logger.debug('AI', `[${requestId}] Params`, { styleId, effectiveComplexity, imageSize });
+    Logger.debug('AI', `[${requestId}] Params`, { styleId, effectiveComplexity, imageSize, aspectRatio: apiAspectRatio, originalRatio: aspectRatio });
   }
 
   try {
@@ -493,6 +520,8 @@ export const generateColoringPage = async (
         ],
         // Image size (must be uppercase K)
         ...(imageSize && { imageSize }),
+        // Aspect ratio (normalized for API support)
+        ...(apiAspectRatio && { aspectRatio: apiAspectRatio }),
       },
     });
 
@@ -681,9 +710,10 @@ export const getPromptPreview = (
   userPrompt: string,
   styleId: StyleId,
   complexityId: ComplexityId,
-  audienceId: AudienceId
+  audienceId: AudienceId,
+  aspectRatio: string = '1:1'
 ): string => {
-  const { prompt } = buildPrompt(userPrompt, styleId, complexityId, audienceId);
+  const { prompt } = buildPrompt(userPrompt, styleId, complexityId, audienceId, aspectRatio);
   return prompt;
 };
 

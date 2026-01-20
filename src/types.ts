@@ -11,6 +11,7 @@ export const PAGE_SIZES = [
 ];
 
 export const VISUAL_STYLES = [
+  { id: 'Therapeutic Flow', label: 'Therapeutic Flow 🌿' },
   { id: 'Cozy Hand-Drawn', label: 'Cozy Hand-Drawn ✨' },
   { id: 'Bold & Easy', label: 'Bold & Easy' },
   { id: 'Kawaii', label: 'Kawaii (Cute Mascot)' },
