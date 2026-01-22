@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
- * GENERATION SERVICE v2.0 — Unified UI Service Layer
+ * GENERATION SERVICE v3.0 — Simplified UI Service Layer
  * myJoe Creative Suite - Coloring Book Studio
  * ═══════════════════════════════════════════════════════════════════════════════
  *
@@ -12,15 +12,12 @@
  * - Image caching via ImageCacheService
  * - Progress callbacks for React state
  * - Batch generation for book plans
- * - Cost estimation and usage tracking
+ * - Cost estimation
  *
- * v2.0 Changes:
- * - Integrated with Orchestrator v2.0 (Gemini 3 Pro Image optimized)
- * - Uses qaService v2.1 (enhanced texture/format detection)
- * - Uses repairs v2.1 (comprehensive repair strategies)
- * - Removed negative_prompt handling (deprecated in Gemini 3)
- * - Updated type imports for new service structure
- * - Aligned with prompts v5.0 specifications
+ * v3.0 Changes:
+ * - Simplified architecture: single-pass generation (no QA loop)
+ * - Removed qaService and repairs dependencies
+ * - Quality ensured by strong prompt constraints + client-side checks
  *
  * Architecture:
  *
@@ -31,9 +28,7 @@
  *       │
  *       ├─► Orchestrator.generateAndValidate()
  *       │       │
- *       │       ├─► gemini-client.ts v3.0
- *       │       ├─► qaService.ts v2.1
- *       │       └─► repairs.ts v2.1
+ *       │       └─► gemini-client.ts (single AI call)
  *       │
  *       ├─► projectsService.saveProject()
  *       │
@@ -45,23 +40,16 @@
 import {
     generateAndValidate,
     quickGenerate,
-    strictGenerate,
     previewPrompt,
     GenerateAndValidateRequest,
     GenerateAndValidateResult,
     PipelineConfig,
     PipelineProgress,
-    AttemptResult,
     StyleId,
     ComplexityId,
     AudienceId,
     ImageSize,
 } from '../server/ai/Orchestrator';
-
-import {
-    QaResult,
-    QaIssue,
-} from '../server/ai/qaService';
 
 import { Logger } from '../lib/logger';
 
@@ -77,9 +65,6 @@ import type {
     CharacterDNA,
     StyleDNA
 } from '../types';
-
-// StyleId, ComplexityId, AudienceId imported from Orchestrator above
-import type { PageQa, QaTag } from '../types';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TYPE DEFINITIONS
@@ -123,16 +108,12 @@ export interface GeneratePageRequest {
  * Configuration for page generation
  */
 export interface GeneratePageConfig {
-    /** Generation mode: 'quick' (no QA), 'standard', 'strict' (high QA) */
-    mode: 'quick' | 'standard' | 'strict';
-    /** Maximum retry attempts */
-    maxAttempts?: number;
+    /** Generation mode: 'quick' (no enhancement), 'standard' (with enhancement) */
+    mode: 'quick' | 'standard';
     /** Enable verbose logging */
     enableLogging?: boolean;
     /** Progress callback */
     onProgress?: (progress: GenerationProgress) => void;
-    /** Attempt complete callback */
-    onAttemptComplete?: (attempt: AttemptResult) => void;
 }
 
 /**
@@ -177,10 +158,6 @@ export interface GeneratePageResult {
     error?: string;
     /** Detailed result from orchestrator */
     orchestratorResult?: GenerateAndValidateResult;
-    /** Whether parameters were adjusted */
-    parametersAdjusted: boolean;
-    /** Parameter changes made */
-    parameterChanges: string[];
 }
 
 /**
@@ -294,64 +271,18 @@ const adaptProgress = (
         'initializing': 'preparing',
         'enhancing': 'enhancing',
         'generating': 'generating',
-        'validating': 'validating',
-        'repairing': 'validating', // UI handles 'validating' as generic QA check, can also add 'repairing' if UI supports it
         'complete': 'complete',
         'failed': 'failed',
     };
-
-    // If Orchestrator explicitly says 'repairing', we can keep it if we update UI types, 
-    // but for safety mapping to 'validating' ensures progress bar shows "Checking..." or similar.
-    // However, user requested "Refining Quality..."
-    // Let's rely on the message string from Orchestrator which usually says "Repairing: Issue..."
 
     return {
         phase: additionalPhase || phaseMap[orchestratorProgress.phase] || 'generating',
         message: orchestratorProgress.message,
         percent: orchestratorProgress.percentComplete,
-        attempt: orchestratorProgress.attemptNumber,
-        maxAttempts: orchestratorProgress.maxAttempts,
+        attempt: 1,
+        maxAttempts: 1,
     };
 };
-
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// QA MAPPERS
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Calculate score for a category based on issues
- */
-const calculateCategoryScore = (issues: QaIssue[], category: string): number => {
-    const categoryIssues = issues.filter(i => i.category === category);
-    if (categoryIssues.length === 0) return 100;
-
-    let deduction = 0;
-    for (const issue of categoryIssues) {
-        if (issue.severity === 'critical') deduction += 30;
-        else if (issue.severity === 'major') deduction += 15;
-        else deduction += 5;
-    }
-
-    return Math.max(0, 100 - deduction);
-};
-
-/**
- * Map Orchestrator QA result to UI PageQa format
- */
-const mapQaToPageQa = (qaResult: QaResult): PageQa => ({
-    score: qaResult.score,
-    hardFail: !qaResult.passed,
-    reasons: qaResult.issues.map(i => i.message),
-    tags: qaResult.issues.map(i => i.code as QaTag),
-    rubricBreakdown: {
-        printCleanliness: calculateCategoryScore(qaResult.issues, 'color') + calculateCategoryScore(qaResult.issues, 'texture'),
-        colorability: calculateCategoryScore(qaResult.issues, 'region'),
-        composition: calculateCategoryScore(qaResult.issues, 'composition'),
-        audienceAlignment: calculateCategoryScore(qaResult.issues, 'audience'),
-        consistency: calculateCategoryScore(qaResult.issues, 'style'),
-    }
-});
 
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -411,8 +342,6 @@ export const generatePage = async (
             durationMs: Date.now() - startTime,
             estimatedCost: 0,
             error: 'API Key not configured. Please add your key in Settings.',
-            parametersAdjusted: false,
-            parameterChanges: [],
         };
     }
 
@@ -421,8 +350,8 @@ export const generatePage = async (
         phase: 'preparing',
         message: 'Preparing generation request...',
         percent: 0,
-        attempt: 0,
-        maxAttempts: config.maxAttempts || 3,
+        attempt: 1,
+        maxAttempts: 1,
     });
 
     // Determine image size from complexity
@@ -451,9 +380,6 @@ export const generatePage = async (
             case 'quick':
                 orchestratorResult = await quickGenerate(orchestratorRequest);
                 break;
-            case 'strict':
-                orchestratorResult = await strictGenerate(orchestratorRequest);
-                break;
             default:
                 orchestratorResult = await generateAndValidate(orchestratorRequest);
         }
@@ -472,8 +398,6 @@ export const generatePage = async (
             durationMs: Date.now() - startTime,
             estimatedCost: 0,
             error: error.message || 'Generation failed',
-            parametersAdjusted: false,
-            parameterChanges: [],
         };
     }
 
@@ -487,9 +411,6 @@ export const generatePage = async (
             status: 'complete',
             isLoading: false,
             isCover: request.pageIndex === 0,
-            qa: orchestratorResult.finalQaResult
-                ? mapQaToPageQa(orchestratorResult.finalQaResult) as any
-                : undefined,
         }
         : null;
 
@@ -503,8 +424,8 @@ export const generatePage = async (
             phase: 'saving',
             message: 'Saving to project...',
             percent: 95,
-            attempt: orchestratorResult.totalAttempts,
-            maxAttempts: config.maxAttempts || 3,
+            attempt: 1,
+            maxAttempts: 1,
         });
 
         try {
@@ -532,8 +453,8 @@ export const generatePage = async (
         phase: orchestratorResult.success ? 'complete' : 'failed',
         message: orchestratorResult.summary,
         percent: 100,
-        attempt: orchestratorResult.totalAttempts,
-        maxAttempts: config.maxAttempts || 3,
+        attempt: 1,
+        maxAttempts: 1,
     });
 
     return {
@@ -547,8 +468,6 @@ export const generatePage = async (
         estimatedCost: estimateCost(request.complexity, orchestratorResult.totalAttempts),
         error: orchestratorResult.error,
         orchestratorResult,
-        parametersAdjusted: orchestratorResult.parametersWereModified,
-        parameterChanges: orchestratorResult.parameterChanges,
     };
 };
 
@@ -556,43 +475,13 @@ export const generatePage = async (
  * Build pipeline config from service config
  */
 const buildPipelineConfig = (config: GeneratePageConfig): Partial<PipelineConfig> => {
-    const baseConfig: Partial<PipelineConfig> = {
+    return {
         enableLogging: config.enableLogging,
+        enableEnhancement: config.mode !== 'quick',
         onProgress: config.onProgress
             ? (p) => config.onProgress!(adaptProgress(p))
             : undefined,
-        onAttemptComplete: config.onAttemptComplete,
     };
-
-    switch (config.mode) {
-        case 'quick':
-            return {
-                ...baseConfig,
-                maxAttempts: 1,
-                enableQa: false,
-                enableAutoRetry: false,
-            };
-        case 'strict':
-            return {
-                ...baseConfig,
-                maxAttempts: config.maxAttempts || 5,
-                enableQa: true,
-                enableAutoRetry: true,
-                qaMode: 'production',
-                minimumPassScore: 80,
-                allowParameterEscalation: true,
-            };
-        default:
-            return {
-                ...baseConfig,
-                maxAttempts: config.maxAttempts || 3,
-                enableQa: true,
-                enableAutoRetry: true,
-                qaMode: 'production',
-                minimumPassScore: 70,
-                allowParameterEscalation: true,
-            };
-    }
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -683,9 +572,7 @@ export const batchGenerate = async (
                 },
                 {
                     mode: config.mode,
-                    maxAttempts: config.maxAttempts,
                     enableLogging: config.enableLogging,
-                    onAttemptComplete: config.onAttemptComplete,
                     onProgress: config.onPageProgress
                         ? (p) => config.onPageProgress!(pageSpec.pageIndex, p)
                         : undefined
@@ -763,7 +650,6 @@ export const batchGenerate = async (
                         },
                         {
                             mode: config.mode,
-                            maxAttempts: config.maxAttempts,
                             enableLogging: config.enableLogging,
                             onProgress: config.onPageProgress
                                 ? (p) => config.onPageProgress!(pageSpec.pageIndex, p)
@@ -897,8 +783,6 @@ export const regeneratePage = async (
             durationMs: 0,
             estimatedCost: 0,
             error: 'Project not found',
-            parametersAdjusted: false,
-            parameterChanges: [],
         };
     }
 

@@ -58,6 +58,7 @@ interface ToolbarProps {
   setVisibility?: (v: 'private' | 'unlisted' | 'public') => void;
   styleReferences: StyleReference[];
   setStyleReferences: (v: StyleReference[]) => void;
+  onPreviewPrompt?: () => void;
 }
 
 export const Setup: React.FC<ToolbarProps> = (props) => {
@@ -572,114 +573,6 @@ export const Setup: React.FC<ToolbarProps> = (props) => {
             </div>
           </div>
 
-          <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
-
-          {/* Section: Style Reference Upload (NEW) */}
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <label className={labelClass + " mb-0"}>Style Reference</label>
-              <span className="text-[10px] text-[hsl(var(--muted-foreground))]">
-                {props.styleReferences.length}/{MAX_STYLE_REFERENCES} images
-              </span>
-            </div>
-            <p className="text-[10px] text-[hsl(var(--muted-foreground))] -mt-2">
-              Upload images to guide the AI's visual style.
-            </p>
-
-            {/* Upload Area */}
-            {props.styleReferences.length < MAX_STYLE_REFERENCES && (
-              <label className="block w-full cursor-pointer group">
-                <div className="w-full py-4 rounded-xl border border-dashed border-[hsl(var(--border))] hover:border-[hsl(var(--ring))] bg-[hsl(var(--card))]/30 flex flex-col items-center justify-center transition-all gap-2">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--foreground))] transition-colors">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                    <polyline points="17 8 12 3 7 8"></polyline>
-                    <line x1="12" y1="3" x2="12" y2="15"></line>
-                  </svg>
-                  <span className="text-xs font-medium text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--foreground))]">
-                    Add Style Reference
-                  </span>
-                  <span className="text-[10px] text-[hsl(var(--muted-foreground))]">
-                    PNG, JPG, or PDF only
-                  </span>
-                </div>
-                <input
-                  type="file"
-                  className="hidden"
-                  accept="image/png,image/jpeg,image/jpg,application/pdf"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-
-                    // Validate file type
-                    if (!ALLOWED_REFERENCE_TYPES.includes(file.type)) {
-                      if (props.showToast) {
-                        props.showToast('error', 'Only PNG, JPG, and PDF files are allowed.', '🚫');
-                      }
-                      return;
-                    }
-
-                    // Convert to base64
-                    const reader = new FileReader();
-                    reader.onloadend = () => {
-                      const result = reader.result as string;
-                      const match = result.match(/^data:(.+);base64,(.+)$/);
-                      if (match) {
-                        const newRef: StyleReference = {
-                          base64: match[2],
-                          mimeType: match[1],
-                          fileName: file.name
-                        };
-                        props.setStyleReferences([...props.styleReferences, newRef]);
-                        if (props.showToast) {
-                          props.showToast('success', `Added: ${file.name}`, '🎨');
-                        }
-                      }
-                    };
-                    reader.readAsDataURL(file);
-                    e.target.value = ''; // Reset input
-                  }}
-                />
-              </label>
-            )}
-
-            {/* Preview Grid */}
-            {props.styleReferences.length > 0 && (
-              <div className="grid grid-cols-5 gap-2">
-                {props.styleReferences.map((ref, idx) => (
-                  <div key={idx} className="relative group aspect-square rounded-lg overflow-hidden border border-[hsl(var(--border))]">
-                    {ref.mimeType === 'application/pdf' ? (
-                      <div className="w-full h-full bg-red-500/20 flex items-center justify-center">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-red-500">
-                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                          <polyline points="14 2 14 8 20 8"></polyline>
-                        </svg>
-                      </div>
-                    ) : (
-                      <img
-                        src={`data:${ref.mimeType};base64,${ref.base64}`}
-                        className="w-full h-full object-cover"
-                        alt={ref.fileName}
-                      />
-                    )}
-                    <button
-                      onClick={() => {
-                        props.setStyleReferences(props.styleReferences.filter((_, i) => i !== idx));
-                      }}
-                      className="absolute top-1 right-1 p-1 rounded-full bg-red-500/80 hover:bg-red-500 text-white transition-colors opacity-0 group-hover:opacity-100"
-                      title="Remove"
-                    >
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                        <path d="M18 6L6 18M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
-
           {/* Section: Advanced Options */}
           <div className="space-y-4">
             <button
@@ -693,10 +586,121 @@ export const Setup: React.FC<ToolbarProps> = (props) => {
                 <path d="M9 18l6-6-6-6" />
               </svg>
               Advanced Options
+              {(props.styleReferences.length > 0) && (
+                <span className="text-[10px] bg-purple-500/20 text-purple-300 px-1.5 py-0.5 rounded-full">
+                  {props.styleReferences.length} ref
+                </span>
+              )}
             </button>
 
             {showAdvanced && (
-              <div className="animate-in fade-in slide-in-from-top-2 duration-200 space-y-4 pl-4 border-l border-white/10">
+              <div className="animate-in fade-in slide-in-from-top-2 duration-200 space-y-6 pl-4 border-l border-white/10">
+
+                {/* Style Reference Upload */}
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <label className={labelClass + " mb-0"}>Style Reference</label>
+                    <span className="text-[10px] text-[hsl(var(--muted-foreground))]">
+                      {props.styleReferences.length}/{MAX_STYLE_REFERENCES} images
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-[hsl(var(--muted-foreground))] -mt-2">
+                    Upload images to guide the AI's visual style.
+                  </p>
+
+                  {/* Upload Area */}
+                  {props.styleReferences.length < MAX_STYLE_REFERENCES && (
+                    <label className="block w-full cursor-pointer group">
+                      <div className="w-full py-4 rounded-xl border border-dashed border-[hsl(var(--border))] hover:border-[hsl(var(--ring))] bg-[hsl(var(--card))]/30 flex flex-col items-center justify-center transition-all gap-2">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--foreground))] transition-colors">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                          <polyline points="17 8 12 3 7 8"></polyline>
+                          <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        <span className="text-xs font-medium text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--foreground))]">
+                          Add Style Reference
+                        </span>
+                        <span className="text-[10px] text-[hsl(var(--muted-foreground))]">
+                          PNG, JPG, or PDF only
+                        </span>
+                      </div>
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/png,image/jpeg,image/jpg,application/pdf"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+
+                          // Validate file type
+                          if (!ALLOWED_REFERENCE_TYPES.includes(file.type)) {
+                            if (props.showToast) {
+                              props.showToast('error', 'Only PNG, JPG, and PDF files are allowed.', '🚫');
+                            }
+                            return;
+                          }
+
+                          // Convert to base64
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            const result = reader.result as string;
+                            const match = result.match(/^data:(.+);base64,(.+)$/);
+                            if (match) {
+                              const newRef: StyleReference = {
+                                base64: match[2],
+                                mimeType: match[1],
+                                fileName: file.name
+                              };
+                              props.setStyleReferences([...props.styleReferences, newRef]);
+                              if (props.showToast) {
+                                props.showToast('success', `Added: ${file.name}`, '🎨');
+                              }
+                            }
+                          };
+                          reader.readAsDataURL(file);
+                          e.target.value = ''; // Reset input
+                        }}
+                      />
+                    </label>
+                  )}
+
+                  {/* Preview Grid */}
+                  {props.styleReferences.length > 0 && (
+                    <div className="grid grid-cols-5 gap-2">
+                      {props.styleReferences.map((ref, idx) => (
+                        <div key={idx} className="relative group aspect-square rounded-lg overflow-hidden border border-[hsl(var(--border))]">
+                          {ref.mimeType === 'application/pdf' ? (
+                            <div className="w-full h-full bg-red-500/20 flex items-center justify-center">
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-red-500">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                              </svg>
+                            </div>
+                          ) : (
+                            <img
+                              src={`data:${ref.mimeType};base64,${ref.base64}`}
+                              className="w-full h-full object-cover"
+                              alt={ref.fileName}
+                            />
+                          )}
+                          <button
+                            onClick={() => {
+                              props.setStyleReferences(props.styleReferences.filter((_, i) => i !== idx));
+                            }}
+                            className="absolute top-1 right-1 p-1 rounded-full bg-red-500/80 hover:bg-red-500 text-white transition-colors opacity-0 group-hover:opacity-100"
+                            title="Remove"
+                          >
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                              <path d="M18 6L6 18M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
                 {/* Creative Variation Toggle */}
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">

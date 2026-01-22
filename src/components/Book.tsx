@@ -17,10 +17,11 @@ interface BookProps {
     onImageSelect?: (imageUrl: string, pageIndex: number) => void;
     selectedImageIndex?: number | null;
     onDeletePage?: (pageIndex: number) => void;
-    isGenerating?: boolean; // New prop
+    onRegeneratePage?: (pageIndex: number) => void;
+    isGenerating?: boolean;
 }
 
-export const Book: React.FC<BookProps> = ({ pages, currentSheetIndex, onSheetClick, pageSizeId, onImageSelect, selectedImageIndex, onDeletePage, isGenerating }) => {
+export const Book: React.FC<BookProps> = ({ pages, currentSheetIndex, onSheetClick, pageSizeId, onImageSelect, selectedImageIndex, onDeletePage, onRegeneratePage, isGenerating }) => {
     // Determine aspect ratio from pageSizeId
     const sizeConfig = PAGE_SIZES.find(s => s.id === pageSizeId) || PAGE_SIZES[0];
     const aspectRatio = sizeConfig.width / sizeConfig.height;
@@ -210,6 +211,25 @@ export const Book: React.FC<BookProps> = ({ pages, currentSheetIndex, onSheetCli
                                 <path d="M3 6h18"></path>
                                 <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
                                 <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                            </svg>
+                        </button>
+                    )}
+
+                    {/* Regenerate Button - Below Delete */}
+                    {activePage && !activePage.isLoading && onRegeneratePage && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onRegeneratePage(activePage.pageIndex);
+                            }}
+                            className="absolute top-14 right-4 z-50 p-2 rounded-full bg-black/40 hover:bg-purple-500/80 text-white/70 hover:text-white backdrop-blur-md transition-all duration-200 opacity-0 group-hover:opacity-100"
+                            title="Regenerate Page"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21 2v6h-6"></path>
+                                <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
+                                <path d="M3 22v-6h6"></path>
+                                <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
                             </svg>
                         </button>
                     )}

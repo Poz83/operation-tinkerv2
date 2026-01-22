@@ -377,6 +377,8 @@ const AUDIENCE_SPECS: Record<AudienceId, AudienceSpec> = {
 /**
  * Build a prompt optimized for Gemini 3 Pro Image
  * 
+ * v3.0: Strengthened constraints for single-pass generation (no QA loop)
+ * 
  * STRUCTURE (per Google's Gemini 3 recommendations):
  * 1. Style keyword + positive description (what we want)
  * 2. Scene description (user content)
@@ -402,13 +404,10 @@ const buildPrompt = (
   const effectiveComplexity = requestedIdx > maxIdx ? audienceSpec.maxComplexity : complexityId;
   const complexitySpec = COMPLEXITY_SPECS[effectiveComplexity];
 
-  // Build the prompt with constraints at END (Gemini 3 requirement)
-  // FIX: Inject Audience Guidance, Aspect Ratio Layout, and specific framing
-
   // Specific framing guidance based on aspect ratio
   let framingGuidance = 'Full-bleed composition filling the entire canvas.';
   if (aspectRatio === '17:22' || aspectRatio === 'letter') {
-    framingGuidance = 'Vertical portrait composition (8.5" x 11"). Tall aspect ratio (17:22). Fit full height. 8.5x11 inches.';
+    framingGuidance = 'Vertical portrait composition (8.5" x 11"). Tall aspect ratio (17:22). Fit full height.';
   } else if (aspectRatio === '210:297' || aspectRatio === 'a4') {
     framingGuidance = 'Vertical portrait composition (A4). Tall aspect ratio. Fit full height.';
   } else if (aspectRatio === '3:4' || aspectRatio === 'portrait') {
@@ -428,9 +427,9 @@ const buildPrompt = (
   } else if (styleId === 'Mandala') {
     roleDefinition = 'You are a sacred geometry architect.';
   } else if (styleId === 'Fantasy') {
-    roleDefinition = 'You are a professional fantasy concept artist and illustrator for a high-end RPG rulebook.';
+    roleDefinition = 'You are a professional fantasy concept artist for a high-end RPG rulebook.';
   } else if (styleId === 'Cozy') {
-    roleDefinition = 'You are a Scandinavian lifestyle illustrator creating a sanctuary of warmth and comfort.';
+    roleDefinition = 'You are a Scandinavian lifestyle illustrator creating warmth and comfort.';
   } else if (styleId === 'Geometric') {
     roleDefinition = 'You are a professional vector illustrator obsessed with Euclidean geometry.';
   } else if (styleId === 'Realistic') {
@@ -439,33 +438,44 @@ const buildPrompt = (
 
   const prompt = `
 ROLE: ${roleDefinition}
-TASK: Generate a high-quality ${styleSpec.styleKeyword}, ${styleSpec.positiveDescription}. designed for ${audienceId} audience.
+TASK: Generate a high-quality ${styleSpec.styleKeyword}, ${styleSpec.positiveDescription}. Designed for ${audienceId} audience.
 
 SCENE: ${userPrompt}
 
-AUDIENCE GUIDANCE: ${audienceSpec.contentGuidance}
+AUDIENCE: ${audienceSpec.contentGuidance}
 
 STYLE: ${styleSpec.lineWeight}. ${styleSpec.visualRequirements.join('. ')}.
 
 COMPOSITION: ${complexitySpec.regionRange}. ${complexitySpec.backgroundRule}. ${complexitySpec.detailLevel}. 
 LAYOUT: ${framingGuidance} No borders. No frames. Direct 2D flat view.
-SUBJECT PLACEMENT: Keep all main characters and key details within the center 85% safe zone. Do NOT cut off heads, feet, or important elements at the edges.
+SUBJECT PLACEMENT: Keep all main characters within the center 85% safe zone. Do NOT cut off heads, feet, or important elements.
 
-OUTPUT: A single high-contrast black and white coloring book page. Pure black lines on pure white background.
+OUTPUT: A PRINTABLE BLACK-AND-WHITE COLORING BOOK PAGE for crayons and markers.
 
-CRITICAL REQUIREMENTS - PROFESSIONAL DIGITAL VECTOR ART:
+═══════════════════════════════════════════════════════════════════════════════
+CRITICAL: The following rules MUST be followed EXACTLY. No exceptions.
+═══════════════════════════════════════════════════════════════════════════════
 
-1. DIGITAL INK: Pure black (#000000) lines on pure white (#FFFFFF) background. Vector quality. Sharp edges. No pixelation.
+BINARY OUTPUT ONLY:
+- Pure black lines (#000000) on pure white background (#FFFFFF)
+- TWO VALUES ONLY: black or white. Nothing else.
+- If in doubt, use WHITE (empty space), not gray
 
-2. NO GREYSCALE: Zero shading. Zero gradients. Zero tints. Zero grey areas. This is strictly line art.
+ABSOLUTELY FORBIDDEN (instant failure if present):
+- NO gray, grey, silver, charcoal, or any shade between black and white
+- NO shading, shadows, gradients, tints, tones, or fills
+- NO pencil strokes, smudges, sketchy marks, or soft edges
+- NO textures, noise, grain, or paper texture
+- NO 3D rendering, photorealism, or cinematic lighting
+- NO cross-hatching, stippling, or halftone dots
+- NO colors whatsoever
 
-3. CLEAN LINES: Solid continuous lines. No sketching. No disconnects. No "hairline" gaps.
-   NEGATIVE CONSTRAINTS: No cross-hatching. No stippling. No dithering. No 3D renders. No photorealism. No gradients.
+LINE QUALITY:
+- Clean, continuous, closed-loop vector lines
+- Every shape must be fully enclosed (no gaps)
+- Sharp crisp edges suitable for coloring
 
-4. CLOSED SHAPES: Every element must be a closed loop for coloring.
-   NEGATIVE CONSTRAINTS: No gray shading. No gradients. No shadows. No ambient occlusion. No 3D renders. No photorealism. No noise. No dithering. No sketchiness. No cross-hatching. No hairline gaps. No complex backgrounds (unless specified). No paper texture.
-
-6. SINGLE MAIN IMAGE: One unified illustration.
+FINAL CHECK: Before outputting, verify EVERY pixel is either pure #000000 or pure #FFFFFF.
 `.trim();
 
   return { prompt, effectiveComplexity };

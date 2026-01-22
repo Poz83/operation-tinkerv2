@@ -74,25 +74,24 @@ export const useGeneration = ({
     const handleEnhancePrompt = useCallback(async (
         currentPrompt: string,
         pageCount: number,
-        context?: { style: string; audience: string; heroName?: string }
-    ) => {
+        context?: { style: string; audience: string; complexity: string; heroName?: string }
+    ): Promise<string | null> => {
         const hasKey = await validateApiKey();
-        if (!hasKey || !currentPrompt.trim()) return;
+        if (!hasKey || !currentPrompt.trim()) return null;
 
         setIsEnhancing(true);
         try {
             // Pass pageCount and context for context-aware enhancement
             const enhanced = await brainstormPrompt(currentPrompt, pageCount, context, apiKey || undefined);
-            if (enhanced) {
-                setUserPrompt(enhanced);
-            }
+            return enhanced || null;
         } catch (e) {
             console.error("Enhance failed", e);
             showToast('error', 'Failed to enhance prompt', '🪄');
+            return null;
         } finally {
             setIsEnhancing(false);
         }
-    }, [validateApiKey, setUserPrompt, showToast, apiKey]);
+    }, [validateApiKey, showToast, apiKey]);
 
     const handleCancel = useCallback(() => {
         console.log("User requested cancellation.");

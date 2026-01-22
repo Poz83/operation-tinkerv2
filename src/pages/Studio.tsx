@@ -23,6 +23,9 @@ import { useProject } from '../hooks/useProject';
 import { useGeneration } from '../hooks/useGeneration';
 import { DesignersTip } from '../components/DesignersTip';
 import { LogViewer } from '../components/debug/LogViewer';
+import { EnhancePreviewModal } from '../components/EnhancePreviewModal';
+import { FinalPromptPreviewModal } from '../components/FinalPromptPreviewModal';
+import { buildPromptPreview, PromptPreviewData } from '../utils/promptPreview';
 import doodlePattern from '../assets/doodle_pattern_final.png';
 
 const App: React.FC = () => {
@@ -189,6 +192,13 @@ const App: React.FC = () => {
   const [showSummaryCard, setShowSummaryCard] = useState(false);
   const [showStopConfirm, setShowStopConfirm] = useState(false);
   const [currentSheetIndex, setCurrentSheetIndex] = useState(0);
+
+  // --- Prompt Preview State ---
+  const [showEnhanceModal, setShowEnhanceModal] = useState(false);
+  const [pendingEnhancedPrompt, setPendingEnhancedPrompt] = useState('');
+  const [isEnhanceLoading, setIsEnhanceLoading] = useState(false);
+  const [showFinalPromptModal, setShowFinalPromptModal] = useState(false);
+  const [finalPromptData, setFinalPromptData] = useState<PromptPreviewData | null>(null);
   const [showExportModal, setShowExportModal] = useState(false);
 
   // Smart Export Handler
@@ -455,8 +465,8 @@ const App: React.FC = () => {
     });
   };
 
-  const handleEnhance = () => {
-    generation.handleEnhancePrompt(
+  const handleEnhance = async () => {
+    const enhanced = await generation.handleEnhancePrompt(
       project.userPrompt,
       project.pageAmount,
       {
@@ -466,6 +476,56 @@ const App: React.FC = () => {
         heroName: project.characterDNA?.name
       }
     );
+    if (enhanced) {
+      setPendingEnhancedPrompt(enhanced);
+      setShowEnhanceModal(true);
+    }
+  };
+
+  // Handle accepting enhanced prompt
+  const handleAcceptEnhanced = (finalPrompt: string) => {
+    project.setUserPrompt(finalPrompt);
+    setShowEnhanceModal(false);
+    setPendingEnhancedPrompt('');
+    toast.success('Prompt updated!', '✨');
+  };
+
+  // Handle try again for enhancement
+  const handleTryAgainEnhance = async () => {
+    setIsEnhanceLoading(true);
+    const enhanced = await generation.handleEnhancePrompt(
+      project.userPrompt,
+      project.pageAmount,
+      {
+        style: project.visualStyle,
+        audience: project.targetAudienceId,
+        complexity: project.complexity,
+        heroName: project.characterDNA?.name
+      }
+    );
+    setIsEnhanceLoading(false);
+    if (enhanced) {
+      setPendingEnhancedPrompt(enhanced);
+    }
+  };
+
+  // Handle final prompt preview
+  const handlePreviewPrompt = () => {
+    const previewData = buildPromptPreview({
+      userPrompt: project.userPrompt,
+      styleId: project.visualStyle,
+      complexityId: project.complexity,
+      audienceId: project.targetAudienceId,
+      pageSizeId: project.pageSizeId,
+    });
+    setFinalPromptData(previewData);
+    setShowFinalPromptModal(true);
+  };
+
+  // Handle generate from preview modal
+  const handleGenerateFromPreview = () => {
+    setShowFinalPromptModal(false);
+    onGenerateClick();
   };
 
   // Keyboard Shortcuts
@@ -583,6 +643,7 @@ const App: React.FC = () => {
                 setVisibility={project.setVisibility}
                 styleReferences={project.styleReferences}
                 setStyleReferences={project.setStyleReferences}
+                onPreviewPrompt={handlePreviewPrompt}
               />
 
               <div className="px-6 pb-6">
@@ -600,15 +661,30 @@ const App: React.FC = () => {
                     Stop Creating
                   </button>
                 ) : (
-                  <button
-                    id="generate-btn"
-                    onClick={onGenerateClick}
-                    disabled={!project.userPrompt}
-                    className="w-full py-3 rounded-xl btn-primary text-white font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all flex items-center justify-center gap-2 group"
-                  >
-                    {!project.userPrompt ? 'Describe your idea first...' : '✨ Create Coloring Book'}
-                    {project.userPrompt && <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>}
-                  </button>
+                  <div className="flex gap-2">
+                    {/* Preview Button */}
+                    <button
+                      onClick={handlePreviewPrompt}
+                      disabled={!project.userPrompt}
+                      className="p-3 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--muted))]/20 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))]/40 hover:text-[hsl(var(--foreground))] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                      title="Preview full prompt"
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                    </button>
+                    {/* Generate Button */}
+                    <button
+                      id="generate-btn"
+                      onClick={onGenerateClick}
+                      disabled={!project.userPrompt}
+                      className="flex-1 py-3 rounded-xl btn-primary text-white font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all flex items-center justify-center gap-2 group"
+                    >
+                      {!project.userPrompt ? 'Describe your idea first...' : '✨ Create Coloring Book'}
+                      {project.userPrompt && <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>}
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -870,6 +946,27 @@ const App: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Enhance Preview Modal */}
+        <EnhancePreviewModal
+          isOpen={showEnhanceModal}
+          enhancedPrompt={pendingEnhancedPrompt}
+          onAccept={handleAcceptEnhanced}
+          onTryAgain={handleTryAgainEnhance}
+          onCancel={() => {
+            setShowEnhanceModal(false);
+            setPendingEnhancedPrompt('');
+          }}
+          isLoading={isEnhanceLoading}
+        />
+
+        {/* Final Prompt Preview Modal */}
+        <FinalPromptPreviewModal
+          isOpen={showFinalPromptModal}
+          promptData={finalPromptData}
+          onConfirm={handleGenerateFromPreview}
+          onCancel={() => setShowFinalPromptModal(false)}
+        />
       </div>
     </MotionConfig>
   );
