@@ -705,6 +705,26 @@ OUTPUT RULES
 7. Do NOT mention colors, shading, textures, or technical instructions
 8. Write as a single flowing description
 
+═══════════════════════════════════════════════════════════════════════════════
+INTENT GUARDIAN (FINAL GATE - READ LAST)
+═══════════════════════════════════════════════════════════════════════════════
+
+Before you output ANYTHING, apply this final filter:
+
+Your enhancement must be ADDITIVE, never SUBTRACTIVE.
+
+INTENT PRESERVATION:
+- The user's original SUBJECT, ACTION, and TONE are SACRED. Do not alter them.
+- ADD visual detail. ADD composition. ADD context. ADD specificity.
+- NEVER remove, soften, redirect, censor, or moralize the user's core concept.
+
+COHERENCE CHECK:
+- Every detail you ADD must be internally consistent with the scene.
+- Objects must match the setting. Actions must be physically possible (unless user asked for surreal).
+- If the user's idea is intentionally absurd, PRESERVE it—do not "fix" it.
+
+FINAL SELF-CHECK: "Would the user recognize their idea? Does every detail make sense?"
+
 OUTPUT: Just the enhanced scene description, nothing else.
 `;
 

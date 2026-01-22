@@ -421,3 +421,262 @@ export const quickCheck = async (
         criticalIssueCount,
     };
 };
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SELLABLE AUDIT — Professional Quality Gate
+// Based on: what-makes-a-sellable-coloring-page.md
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface SellableAuditResult {
+    /** Overall score 0-100 (based on rubric) */
+    score: number;
+    /** Publish decision */
+    decision: 'reject' | 'minimum' | 'strong' | 'premium';
+    /** Breakdown by category */
+    breakdown: {
+        printCleanliness: number;    // Out of 30
+        colorability: number;        // Out of 20
+        composition: number;         // Out of 20
+        audienceAlignment: number;   // Out of 15
+        seriesConsistency: number;   // Out of 15
+    };
+    /** Pass/fail checklist results */
+    passFailChecklist: {
+        lineQuality: boolean;
+        lineWeight: boolean;
+        backgroundPurity: boolean;
+        printReadability: boolean;
+    };
+    /** Specific failures */
+    failures: string[];
+    /** What's good */
+    strengths: string[];
+    /** Archetype match */
+    matchedArchetype: 'CuteCharacter' | 'Mandala' | 'SimpleKids' | 'DetailedScene' | 'Zentangle' | 'Unknown';
+    /** Improvement suggestions */
+    improvements: string[];
+}
+
+const SELLABLE_AUDIT_PROMPT = `
+You are a professional coloring book quality auditor for Amazon KDP and Etsy.
+Your job is to score this image against STRICT publishable standards.
+
+═══════════════════════════════════════════════════════════════════════════════
+PASS/FAIL CHECKLIST (Any fail = page likely needs rework)
+═══════════════════════════════════════════════════════════════════════════════
+
+LINE QUALITY:
+- [ ] Lines are clean and smooth (no fuzz, jitter, grainy texture)
+- [ ] Outlines are closed where appropriate (colorable regions bounded)
+- [ ] No stray marks, speckles, or sketch artifacts
+- [ ] Curves look natural (no stair-stepping jaggies)
+
+LINE WEIGHT:
+- [ ] Line thickness is consistent and intentional
+- [ ] No hairline-thin strokes that risk disappearing
+- [ ] No overly thick strokes that muddy detail
+- [ ] If varying, follows readable rule (foreground thicker)
+
+BACKGROUND PURITY:
+- [ ] Background is PURE WHITE (no blotches, gray tint, banding)
+- [ ] No compression artifacts (blockiness, haloing)
+- [ ] No unintended texture (paper grain, AI noise, shading)
+
+PRINT READABILITY:
+- [ ] Looks crisp at actual print size
+- [ ] Important details remain readable
+- [ ] Shapes are not so tiny they become clutter
+
+═══════════════════════════════════════════════════════════════════════════════
+SCORING RUBRIC (0-100)
+═══════════════════════════════════════════════════════════════════════════════
+
+PRINT CLEANLINESS (30 points):
+- Crisp lines, no artifacts, pure white background, printable line weight
+
+COLORABILITY (20 points):
+- Regions are usable, enjoyable density, good balance of rest/detail
+
+COMPOSITION (20 points):
+- Clear focal point, strong hierarchy, readable depth, pleasing layout
+
+AUDIENCE ALIGNMENT (15 points):
+- Difficulty and theme match target user; shapes sized appropriately
+
+SERIES CONSISTENCY (15 points):
+- Matches style system, line weight norms, thematic cohesion
+
+THRESHOLDS:
+- 0-59: REJECT (too many issues)
+- 60-74: MINIMUM PUBLISHABLE (passable but not premium)
+- 75-89: STRONG/COMPETITIVE (professional, satisfying)
+- 90-100: PREMIUM (exceptional, showcase-worthy)
+
+═══════════════════════════════════════════════════════════════════════════════
+OUTPUT FORMAT (JSON)
+═══════════════════════════════════════════════════════════════════════════════
+
+{
+  "score": 0-100,
+  "decision": "reject|minimum|strong|premium",
+  "breakdown": {
+    "printCleanliness": 0-30,
+    "colorability": 0-20,
+    "composition": 0-20,
+    "audienceAlignment": 0-15,
+    "seriesConsistency": 0-15
+  },
+  "passFailChecklist": {
+    "lineQuality": true/false,
+    "lineWeight": true/false,
+    "backgroundPurity": true/false,
+    "printReadability": true/false
+  },
+  "failures": ["Specific failed criteria"],
+  "strengths": ["What's done well"],
+  "matchedArchetype": "CuteCharacter|Mandala|SimpleKids|DetailedScene|Zentangle|Unknown",
+  "improvements": ["Specific, actionable improvements"]
+}
+
+Be STRICT. This is for commercial publication.
+`;
+
+/**
+ * Run a professional sellable audit on an image
+ * Uses the rubric from what-makes-a-sellable-coloring-page.md
+ */
+export const runSellableAudit = async (
+    imageBase64: string,
+    apiKey: string,
+    audienceId: AudienceId = 'adults',
+    styleId: StyleId = 'Whimsical',
+    signal?: AbortSignal
+): Promise<SellableAuditResult> => {
+    if (signal?.aborted) {
+        throw new Error('Aborted');
+    }
+
+    const contextPrompt = `
+${SELLABLE_AUDIT_PROMPT}
+
+CONTEXT:
+- Target Audience: ${audienceId}
+- Visual Style: ${styleId}
+
+Audit this coloring page image:
+`;
+
+    try {
+        const ai = new GoogleGenAI({ apiKey });
+
+        const response = await ai.models.generateContent({
+            model: GEMINI_TEXT_MODEL,
+            contents: {
+                parts: [
+                    { text: contextPrompt },
+                    {
+                        inlineData: {
+                            data: imageBase64,
+                            mimeType: 'image/png',
+                        },
+                    },
+                ],
+            },
+            config: {
+                responseMimeType: 'application/json',
+                temperature: 0.2, // Very consistent
+            },
+        });
+
+        if (signal?.aborted) {
+            throw new Error('Aborted');
+        }
+
+        const resultText = response.text || '{}';
+        let result: Partial<SellableAuditResult>;
+
+        try {
+            result = JSON.parse(resultText);
+        } catch (parseError) {
+            console.error('Failed to parse SellableAudit response:', resultText);
+            return createDefaultAuditResult('Failed to parse audit response');
+        }
+
+        // Normalize and validate
+        const score = Math.min(100, Math.max(0, result.score || 0));
+        let decision: SellableAuditResult['decision'] = 'reject';
+        if (score >= 90) decision = 'premium';
+        else if (score >= 75) decision = 'strong';
+        else if (score >= 60) decision = 'minimum';
+
+        return {
+            score,
+            decision,
+            breakdown: {
+                printCleanliness: result.breakdown?.printCleanliness || 0,
+                colorability: result.breakdown?.colorability || 0,
+                composition: result.breakdown?.composition || 0,
+                audienceAlignment: result.breakdown?.audienceAlignment || 0,
+                seriesConsistency: result.breakdown?.seriesConsistency || 0,
+            },
+            passFailChecklist: {
+                lineQuality: result.passFailChecklist?.lineQuality ?? false,
+                lineWeight: result.passFailChecklist?.lineWeight ?? false,
+                backgroundPurity: result.passFailChecklist?.backgroundPurity ?? false,
+                printReadability: result.passFailChecklist?.printReadability ?? false,
+            },
+            failures: result.failures || [],
+            strengths: result.strengths || [],
+            matchedArchetype: result.matchedArchetype || 'Unknown',
+            improvements: result.improvements || [],
+        };
+
+    } catch (error: any) {
+        if (error.message === 'Aborted') {
+            throw error;
+        }
+        console.error('SellableAudit failed:', error.message);
+        return createDefaultAuditResult(error.message);
+    }
+};
+
+/**
+ * Create a default audit result when the audit fails
+ */
+const createDefaultAuditResult = (reason: string): SellableAuditResult => ({
+    score: 50,
+    decision: 'minimum',
+    breakdown: {
+        printCleanliness: 15,
+        colorability: 10,
+        composition: 10,
+        audienceAlignment: 8,
+        seriesConsistency: 7,
+    },
+    passFailChecklist: {
+        lineQuality: true,
+        lineWeight: true,
+        backgroundPurity: true,
+        printReadability: true,
+    },
+    failures: [`Audit incomplete: ${reason}`],
+    strengths: [],
+    matchedArchetype: 'Unknown',
+    improvements: ['Manual review recommended'],
+});
+
+/**
+ * Quick sellable check - returns just pass/fail and score
+ */
+export const quickSellableCheck = async (
+    imageBase64: string,
+    apiKey: string,
+    minimumScore: number = 60
+): Promise<{ passed: boolean; score: number; decision: string }> => {
+    const result = await runSellableAudit(imageBase64, apiKey);
+    return {
+        passed: result.score >= minimumScore,
+        score: result.score,
+        decision: result.decision,
+    };
+};
