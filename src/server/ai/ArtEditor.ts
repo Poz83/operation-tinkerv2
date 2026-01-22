@@ -243,7 +243,15 @@ Look at this coloring page and review it as a professional illustrator:
    - Objects resting properly (not floating)?
    - Elements staying within their logical boundaries?
 
-5. STYLE COHERENCE
+5. SCENE CONTEXT (NEW - Critical for coherence!)
+   - Identify the SETTING from the prompt (indoor/outdoor, beach/forest/room, etc.)
+   - Do ALL objects belong in this setting?
+   - Indoor items (cats in baskets, candles, mugs, books, furniture) appearing in outdoor scenes = ERROR
+   - Beach scenes should NOT have cozy indoor props scattered around
+   - Objects should match the environment described, not the "style vibes"
+   - If Cozy style on a beach: apply WARM FEELING, but NOT indoor objects
+
+6. STYLE COHERENCE
    - Does it match the ${styleId} style?
    - Appropriate complexity for ${complexityId}?
 
