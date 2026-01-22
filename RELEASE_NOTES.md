@@ -1,5 +1,15 @@
 # Release Notes
 
+## [5.1.0] - The Velocity Engine (Pipeline 3.0)
+- **70-85% Faster Generation**: Removed the legacy QA/Repair loop. The new "One-Shot" pipeline gets it right the first time, reducing API calls from ~5 to 1 per page.
+- **Flash Planning**: Book layout planning now uses the Flash model, cutting planning time from 3s to ~0.5s.
+- **Gemini 3 Prompts**: Refactored all prompts to enforce "Binary Output" natively (pure #000/#FFF), eliminating the need for post-correction.
+- **Client-Side Quality Check**: A new browser-based engine instantly scans generated images for grayscale/shading artifacts, replacing the heavy server-side checker.
+- **UI Streamlining**:
+  - **Quick Regenerate**: Added a "Regenerate" button to every page for instant retries.
+  - **Advanced Toggles**: Cleaned up the Setup sidebar by grouping complexity/style references under "Advanced Options".
+  - **Auto-Consistency**: Enabled by default to ensure style matching across all pages in a book.
+
 ## [5.0.1] - Performance & Stability
 - **Turbo Dashboard**: Optimized the main projects query from 5.8s to **~36ms** (160x speedup) by implementing perfect covering indexes.
 - **Autosave Fixed**: Resolved a critical race condition where the autosave system would create duplicate project copies instead of updating the existing one.
