@@ -203,7 +203,13 @@ export const useProject = (
                         console.log('Project not found, treating as new:', urlProjectId);
                         // [Fix]: Ensure we don't carry over old state if project doesn't exist yet
                         handleClear();
-                        setCurrentProjectId(urlProjectId);
+                        // [Fix]: Only set currentProjectId if it's a valid public ID (CB/HL prefix)
+                        // Otherwise, leave it null so saveProject creates a proper new ID
+                        const isValidPublicId = urlProjectId!.startsWith('CB') || urlProjectId!.startsWith('HL');
+                        if (isValidPublicId) {
+                            setCurrentProjectId(urlProjectId!);
+                        }
+                        // If invalid ID, currentProjectId stays null, and first save will create proper CB/HL ID
                     }
                 } catch (err) {
                     console.error('Failed to load project:', err);
