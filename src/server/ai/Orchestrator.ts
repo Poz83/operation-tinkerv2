@@ -5,9 +5,9 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  *
  * This orchestrator coordinates the complete generation pipeline:
- * 1. Prompt enhancement (Gemini 1.5 Pro)
+ * 1. Prompt enhancement (Gemini 2.0 Flash)
  * 2. Image generation (Gemini 3 Pro Image / Nano Banana Pro)
- * 3. QA validation (Gemini 1.5 Pro vision)
+ * 3. QA validation (Gemini 2.0 Flash vision)
  * 4. Auto-repair and retry (if QA fails)
  *
  * KEY CHANGES IN v2:

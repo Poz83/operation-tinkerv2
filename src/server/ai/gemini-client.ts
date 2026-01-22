@@ -651,7 +651,7 @@ STYLE REFERENCE: Study the uploaded reference image(s) carefully. Match their ex
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// PROMPT ENHANCEMENT (Using Gemini 1.5 Pro)
+// PROMPT ENHANCEMENT (Using Gemini 2.0 Flash)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const ENHANCER_SYSTEM_PROMPT = `
@@ -670,7 +670,7 @@ OUTPUT: Just the enhanced scene description, nothing else.
 `;
 
 /**
- * Enhance a user's basic prompt using Gemini 1.5 Pro
+ * Enhance a user's basic prompt using Gemini 2.0 Flash
  */
 export const enhancePrompt = async (
   request: EnhancePromptRequest
