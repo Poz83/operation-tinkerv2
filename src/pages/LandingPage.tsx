@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/settingsContext';
 import { BrandLogo } from '../components/BrandLogo';
@@ -15,6 +15,10 @@ const LandingPage: React.FC = () => {
     const { sendMagicLink, isAuthenticated, debugLogin } = useAuth();
     const { settings, toggleTheme } = useSettings();
     const navigate = useNavigate();
+    const location = useLocation();
+    
+    // Get intended destination from location state (set by ProtectedRoute)
+    const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
 
     // If authenticated, redirect to dashboard
     React.useEffect(() => {
@@ -29,7 +33,7 @@ const LandingPage: React.FC = () => {
         setErrorMessage('');
 
         try {
-            const result = await sendMagicLink(email);
+            const result = await sendMagicLink(email, from);
             if (result.success) {
                 setStatus('success');
                 // User needs to check their email - don't auto-redirect

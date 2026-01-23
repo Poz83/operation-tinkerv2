@@ -58,15 +58,17 @@ export const getCurrentSession = async () => {
 
 /**
  * Sign in with magic link (passwordless email)
+ * @param email - User's email address
+ * @param redirectTo - Optional path to redirect to after auth (default: /dashboard)
  */
-export const signInWithMagicLink = async (email: string) => {
+export const signInWithMagicLink = async (email: string, redirectTo: string = '/dashboard') => {
     // Use VITE_APP_URL for redirects (supports both localhost and production domain)
     const appUrl = import.meta.env.VITE_APP_URL || window.location.origin;
 
     const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-            emailRedirectTo: `${appUrl}/auth/callback`,
+            emailRedirectTo: `${appUrl}/auth/callback?next=${encodeURIComponent(redirectTo)}`,
         },
     });
 

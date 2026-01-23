@@ -15,11 +15,12 @@ interface AuthContextType {
     user: User | null;
     userEmail: string | null;
     isLoading: boolean;
+    isUserDetailsLoading: boolean; // True while fetching whitelist/admin status
     isWhitelisted: boolean;
     isAdmin: boolean;
     avatarUrl: string | null;
     displayName: string | null;
-    sendMagicLink: (email: string) => Promise<{ success: boolean; error?: string }>;
+    sendMagicLink: (email: string, redirectTo?: string) => Promise<{ success: boolean; error?: string }>;
     logout: () => Promise<void>;
     debugLogin: () => Promise<void>; // DEV ONLY
     updateProfile: (updates: { avatarUrl?: string; displayName?: string }) => Promise<void>;
@@ -32,6 +33,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [session, setSession] = useState<Session | null>(null);
     const [userDetails, setUserDetails] = useState<{ isWhitelisted: boolean; isAdmin: boolean; avatarUrl: string | null; displayName: string | null } | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(true);
+    const [isUserDetailsLoading, setIsUserDetailsLoading] = useState<boolean>(false);
 
     const fetchUserDetails = async (userId: string) => {
         try {
@@ -80,7 +82,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 setUser(initialSession?.user ?? null);
 
                 if (initialSession?.user) {
-                    fetchUserDetails(initialSession.user.id).then(details => setUserDetails(details));
+                    setIsUserDetailsLoading(true);
+                    fetchUserDetails(initialSession.user.id).then(details => {
+                        setUserDetails(details);
+                        setIsUserDetailsLoading(false);
+                    });
                 }
             } catch (error) {
                 Logger.error('SYSTEM', 'Error getting initial session', error);
@@ -99,10 +105,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 setUser(currentSession?.user ?? null);
 
                 if (currentSession?.user) {
-                    // Fire and forget - don't block UI
-                    fetchUserDetails(currentSession.user.id).then(details => setUserDetails(details));
+                    setIsUserDetailsLoading(true);
+                    fetchUserDetails(currentSession.user.id).then(details => {
+                        setUserDetails(details);
+                        setIsUserDetailsLoading(false);
+                    });
                 } else {
                     setUserDetails(null);
+                    setIsUserDetailsLoading(false);
                 }
 
                 setIsLoading(false);
@@ -126,7 +136,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const avatarUrl = userDetails?.avatarUrl ?? null;
     const displayName = userDetails?.displayName ?? null;
 
-    const sendMagicLink = async (email: string): Promise<{ success: boolean; error?: string }> => {
+    const sendMagicLink = async (email: string, redirectTo?: string): Promise<{ success: boolean; error?: string }> => {
         // We now allow sending magic links to anyone, and check whitelist status AFTER login.
         // This is necessary because we can't easily check the DB for 'is_whitelisted' 
         // by email for a user that might not exist or without compromising privacy 
@@ -134,7 +144,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // For the 'Add to whitelist' feature to work for new users, they need to be able to sign up (or sign in to create the account).
 
         try {
-            await signInWithMagicLink(email);
+            await signInWithMagicLink(email, redirectTo);
             return { success: true };
         } catch (error) {
             Logger.error('SYSTEM', 'Error sending magic link', error);
@@ -222,6 +232,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             user,
             userEmail,
             isLoading,
+            isUserDetailsLoading,
             isWhitelisted,
             isAdmin,
             avatarUrl,

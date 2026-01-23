@@ -58,6 +58,54 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     return <>{children}</>;
 };
 
+// Wrapper that also checks whitelist status (for beta access control)
+const WhitelistedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const { isAuthenticated, isLoading, isUserDetailsLoading, isWhitelisted } = useAuth();
+    const location = useLocation();
+
+    // Auth still loading
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen bg-deep-onyx">
+                <div className="w-8 h-8 border-2 border-aurora-blue border-t-transparent rounded-full animate-spin" />
+            </div>
+        );
+    }
+
+    // Not authenticated
+    if (!isAuthenticated) {
+        return <Navigate to="/landing" state={{ from: location }} replace />;
+    }
+
+    // Checking whitelist status
+    if (isUserDetailsLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen bg-deep-onyx text-white">
+                <div className="w-8 h-8 border-2 border-aurora-blue border-t-transparent rounded-full animate-spin mb-4" />
+                <p className="text-sm opacity-70">Verifying access...</p>
+            </div>
+        );
+    }
+
+    // Not whitelisted
+    if (!isWhitelisted) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen bg-deep-onyx text-white p-8">
+                <div className="glass-card p-8 max-w-md text-center">
+                    <div className="text-4xl mb-4">🔐</div>
+                    <h2 className="text-xl font-bold mb-2">Private Beta</h2>
+                    <p className="text-sm opacity-70 mb-6">
+                        Myjoe is currently invite-only. You're on the waitlist and we'll notify you when access opens up!
+                    </p>
+                    <a href="/landing" className="btn-secondary">← Back to Login</a>
+                </div>
+            </div>
+        );
+    }
+
+    return <>{children}</>;
+};
+
 // Inner app component that has access to all contexts
 const AppContent: React.FC = () => {
     const { isFirstLogin, isLoading: apiKeyLoading } = useApiKeyContext();
@@ -82,11 +130,11 @@ const AppContent: React.FC = () => {
                 {/* Public route redirect */}
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-                {/* Protected Routes */}
+                {/* Protected Routes (require auth + whitelist for beta) */}
                 <Route path="/dashboard" element={
-                    <ProtectedRoute>
+                    <WhitelistedRoute>
                         <Dashboard />
-                    </ProtectedRoute>
+                    </WhitelistedRoute>
                 } />
                 <Route path="/studio" element={
                     <ProtectedRoute>
