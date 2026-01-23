@@ -25,6 +25,7 @@ import { DesignersTip } from '../components/DesignersTip';
 import { LogViewer } from '../components/debug/LogViewer';
 import { EnhancePreviewModal } from '../components/EnhancePreviewModal';
 import { FinalPromptPreviewModal } from '../components/FinalPromptPreviewModal';
+import { CreativeDirectorPanel } from '../components/CreativeDirectorPanel';
 import { buildPromptPreview, PromptPreviewData } from '../utils/promptPreview';
 import doodlePattern from '../assets/doodle_pattern_final.png';
 
@@ -200,6 +201,7 @@ const App: React.FC = () => {
   const [showFinalPromptModal, setShowFinalPromptModal] = useState(false);
   const [finalPromptData, setFinalPromptData] = useState<PromptPreviewData | null>(null);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showCreativeDirector, setShowCreativeDirector] = useState(false);
 
   // Smart Export Handler
   const handleExport = useCallback(async (format: 'png' | 'pdf') => {
@@ -528,6 +530,41 @@ const App: React.FC = () => {
     onGenerateClick();
   };
 
+  // Handle Creative Director completion - batch generate all prompts
+  const handleCreativeDirectorComplete = useCallback((prompts: { pageNumber: number; prompt: string; title: string }[]) => {
+    setShowCreativeDirector(false);
+    
+    // Set the first prompt as the main "concept" for the project
+    if (prompts.length > 0) {
+      project.setUserPrompt(prompts.map(p => p.title).join(', '));
+    }
+    
+    // Start batch generation with all the prompts
+    generation.startBatchGeneration({
+      prompts: prompts.map(p => ({
+        pageNumber: p.pageNumber,
+        prompt: p.prompt,
+        title: p.title
+      })),
+      projectName: project.projectName || 'Creative Director Book',
+      pageSizeId: project.pageSizeId,
+      visualStyle: project.visualStyle,
+      complexity: project.complexity,
+      targetAudienceId: project.targetAudienceId,
+      hasHeroRef: project.hasHeroRef,
+      heroImage: project.heroImage,
+      includeText: project.includeText,
+      autoConsistency: project.autoConsistency,
+      creativeVariation: project.creativeVariation,
+      characterDNA: project.characterDNA,
+      heroPresence: project.heroPresence,
+      cinematics: project.cinematics,
+      styleReferences: project.styleReferences
+    });
+    
+    toast.success(`Starting generation of ${prompts.length} pages!`, '🚀');
+  }, [generation, project, toast]);
+
   // Keyboard Shortcuts
   useEffect(() => {
     if (!settings.enableKeyboardShortcuts) return;
@@ -662,6 +699,16 @@ const App: React.FC = () => {
                   </button>
                 ) : (
                   <div className="flex gap-2">
+                    {/* Magic Mode Button */}
+                    <button
+                      onClick={() => setShowCreativeDirector(true)}
+                      className="p-3 rounded-xl bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-500/30 text-purple-300 hover:from-purple-500/30 hover:to-pink-500/30 transition-all"
+                      title="Launch Creative Director"
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                      </svg>
+                    </button>
                     {/* Preview Button */}
                     <button
                       onClick={handlePreviewPrompt}
@@ -711,6 +758,23 @@ const App: React.FC = () => {
               setCurrentSheetIndex={setCurrentSheetIndex}
               onDeletePage={handleDeletePage}
             />
+
+            {/* Creative Director Modal */}
+            {showCreativeDirector && (
+              <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-8 animate-in fade-in duration-200">
+                <div className="glass-panel p-8 rounded-2xl max-w-lg w-full shadow-2xl animate-in zoom-in-95 duration-200 border border-purple-500/30 max-h-[90vh] overflow-y-auto">
+                  <CreativeDirectorPanel
+                    pageCount={project.pageAmount}
+                    audienceId={project.targetAudienceId as any}
+                    complexityId={project.complexity as any}
+                    styleId={project.visualStyle as any}
+                    onComplete={handleCreativeDirectorComplete}
+                    onCancel={() => setShowCreativeDirector(false)}
+                    showToast={showToast}
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Stop Confirmation Modal */}
             {showStopConfirm && (

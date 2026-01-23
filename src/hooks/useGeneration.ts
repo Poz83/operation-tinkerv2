@@ -342,6 +342,169 @@ export const useGeneration = ({
         }
     }, [apiKey, setPages, settings.enableCelebrations, showToast]);
 
+    /**
+     * Start batch generation with pre-generated prompts (from Creative Director)
+     * Skips the planning phase since prompts are already generated.
+     */
+    const startBatchGeneration = useCallback(async (params: {
+        prompts: { pageNumber: number; prompt: string; title: string }[];
+        projectName: string;
+        pageSizeId: string;
+        visualStyle: string;
+        complexity: string;
+        targetAudienceId: string;
+        hasHeroRef: boolean;
+        heroImage: { base64: string; mimeType: string } | null;
+        includeText: boolean;
+        creativeVariation: CreativeVariation;
+        characterDNA?: CharacterDNA | null;
+        autoConsistency?: boolean;
+        heroPresence?: number;
+        cinematics?: string;
+        styleReferences?: StyleReference[];
+    }) => {
+        if (!apiKey) return;
+
+        // Reset previous controller
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
+        setIsGenerating(true);
+        setGenerationPhase('generating'); // Skip planning phase
+        setProgress(0);
+        setPages([]);
+        setCurrentSheetIndex(0);
+
+        try {
+            // Create pages from pre-generated prompts
+            const newPages: ColoringPage[] = params.prompts.map((item) => ({
+                id: `page-${item.pageNumber}`,
+                prompt: item.prompt,
+                isLoading: true,
+                pageIndex: item.pageNumber - 1,
+                status: 'queued',
+                statusMessage: item.title || 'Queued'
+            }));
+            setPages(newPages);
+
+            // Prepare pages request with cinematics
+            const pagesRequest = params.prompts.map(item => {
+                let selectedAngle = '';
+                if (params.cinematics && params.cinematics !== 'dynamic') {
+                    selectedAngle = params.cinematics.replace(/-/g, ' ');
+                } else {
+                    selectedAngle = pickRandom(DYNAMIC_ANGLES);
+                }
+                const cinematicPrompt = selectedAngle ? ` [CAMERA: ${selectedAngle} view]` : '';
+                
+                return {
+                    prompt: item.prompt + cinematicPrompt,
+                    pageIndex: item.pageNumber - 1,
+                    requiresText: params.includeText,
+                    vectorMode: 'standard' as const
+                };
+            });
+
+            // Execute Batch Generation
+            await batchGenerate(
+                {
+                    project: {
+                        ...params,
+                        userPrompt: params.prompts.map(p => p.title).join(', '),
+                        pageAmount: params.prompts.length,
+                        id: 'creative-director-project',
+                        createdAt: Date.now(),
+                        updatedAt: Date.now(),
+                        toolType: 'coloring_studio',
+                        characterDNA: params.characterDNA || undefined,
+                        heroImage: params.heroImage,
+                    } as any,
+                    pages: pagesRequest,
+                    autoConsistency: params.autoConsistency,
+                    sessionReferenceImage: (params.autoConsistency && !params.hasHeroRef)
+                        ? undefined
+                        : (params.hasHeroRef && params.heroImage) ? params.heroImage : undefined,
+                    signal: controller.signal,
+                    styleReferenceImages: params.styleReferences?.map(ref => ({
+                        base64: ref.base64,
+                        mimeType: ref.mimeType
+                    }))
+                },
+                {
+                    mode: 'standard',
+                    concurrency: 1,
+                    delayBetweenPages: 2000,
+                    enableLogging: true,
+                    onPageProgress: (pageIndex, p) => {
+                        let statusMessage = p.message;
+                        let status: any = 'generating';
+
+                        if (p.phase === 'validating') {
+                            status = 'qa_checking';
+                            statusMessage = p.message || 'Checking quality...';
+                        } else if (p.phase === 'saving') {
+                            status = 'complete';
+                            statusMessage = 'Saving...';
+                        } else if (p.phase === 'failed') {
+                            status = 'error';
+                        }
+
+                        setPages(prev => prev.map(page =>
+                            page.pageIndex === pageIndex
+                                ? { ...page, status, statusMessage }
+                                : page
+                        ));
+
+                        if (p.phase === 'generating' || p.phase === 'preparing') {
+                            setActivePageNumber(pageIndex + 1);
+                        }
+                    },
+                    onPageComplete: (pageIndex, result) => {
+                        setPages(prev => prev.map(page =>
+                            page.pageIndex === pageIndex
+                                ? {
+                                    ...page,
+                                    status: result.success ? 'complete' : 'error',
+                                    statusMessage: result.success ? 'Done' : (result.error || 'Failed'),
+                                    imageUrl: result.imageUrl || undefined,
+                                    isLoading: false,
+                                    qa: result.page?.qa
+                                }
+                                : page
+                        ));
+                    },
+                    onBatchProgress: (completed, total) => {
+                        const p = Math.round((completed / total) * 100);
+                        setProgress(p);
+                    }
+                }
+            );
+
+        } catch (e: any) {
+            if (e.message === 'Aborted') {
+                console.log("Generation cancelled by user.");
+            } else {
+                console.error("Batch generation failed", e);
+                showToast('error', 'Generation failed unexpectedly.', '⚠️');
+            }
+        } finally {
+            setIsGenerating(false);
+            setGenerationPhase('complete');
+            abortControllerRef.current = null;
+
+            if (settings.enableCelebrations && !abortControllerRef.current) {
+                confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+            }
+        }
+    }, [apiKey, setPages, settings.enableCelebrations, showToast]);
+
     // --- Downloads ---
 
     const downloadPDF = useCallback(async (pages: ColoringPage[], projectMeta: any) => {
@@ -408,6 +571,7 @@ export const useGeneration = ({
         setCurrentSheetIndex,
 
         startGeneration,
+        startBatchGeneration,
         handleCancel,
         handleEnhancePrompt,
         downloadPDF,
