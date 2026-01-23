@@ -32,10 +32,16 @@ export function useAutosave({ project, onSave, interval = 1500, enabled = true }
     const lastSavedProjectJson = useRef<string>(JSON.stringify(project));
     // Retry queue for offline recovery
     const pendingSaveRef = useRef<boolean>(false);
+    // CRITICAL: Preserve saved ID to prevent duplicate project creation
+    const savedIdRef = useRef<string | null>(project.id || null);
 
-    // Update ref when project changes
+    // Update ref when project changes, but preserve the saved ID
     useEffect(() => {
         projectRef.current = project;
+        // If project already has an ID (e.g., loaded from URL), track it
+        if (project.id && (project.id.startsWith('CB') || project.id.startsWith('HL'))) {
+            savedIdRef.current = project.id;
+        }
     }, [project]);
 
     // Online/Offline detection (Canva-style)
@@ -71,15 +77,21 @@ export function useAutosave({ project, onSave, interval = 1500, enabled = true }
             return null;
         }
 
-        // Skip if project has no meaningful content (Canva saves even without ID)
+        // Skip if project has no meaningful content
         const proj = projectRef.current;
         const hasMeaningfulContent = !!(proj.projectName || proj.userPrompt || (proj.pages && proj.pages.length > 0));
         if (!hasMeaningfulContent && !force) {
             return null;
         }
 
-        // Check if actually changed (dirty detection)
-        const currentJson = JSON.stringify(projectRef.current);
+        // CRITICAL: Inject saved ID to ensure we UPDATE, not CREATE
+        const projectToSave: SavedProject = {
+            ...proj,
+            id: savedIdRef.current || proj.id || ''
+        };
+
+        // Check if actually changed (dirty detection) - use projectToSave for consistent comparison
+        const currentJson = JSON.stringify(projectToSave);
         if (currentJson === lastSavedProjectJson.current && !force) {
             setStatus('saved');
             return null;
@@ -90,9 +102,14 @@ export function useAutosave({ project, onSave, interval = 1500, enabled = true }
             setError(null);
             pendingSaveRef.current = false;
 
-            const saved = await onSave(projectRef.current);
+            const saved = await onSave(projectToSave);
 
-            // Update ref to match saved project (prevents ID-change false positives)
+            // CRITICAL: Preserve the returned ID for all future saves
+            if (saved.id && saved.id !== savedIdRef.current) {
+                savedIdRef.current = saved.id;
+            }
+
+            // Update ref to match saved project
             projectRef.current = saved;
             lastSavedProjectJson.current = JSON.stringify(saved);
             
