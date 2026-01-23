@@ -1,5 +1,21 @@
 # Release Notes
 
+## [5.3.0] - Creative Director & Quality Tiers
+
+- **Creative Director v1.0**: A 6-phase human-like planning system that creates
+  40 unique coloring page concepts:
+  1. **Research Brief** — Market analysis and niche positioning
+  2. **Buyer Persona** — Target audience profile with personality
+  3. **Combinatorial Matrix** — Settings × Characters × Actions grid
+  4. **Narrative Arc** — Book flow (opening → peak → finale)
+  5. **Bulk Generation** — 40 unique prompts from the matrix
+  6. **Self-Critique** — AI reviews and curates its own work
+- **Quality Tiers**: Two pricing tiers for different needs:
+  - **Swift ⚡** (1 token/image): Gemini 2.5 Flash Image — Fast & affordable
+  - **Studio 🎯** (3 tokens/image): Gemini 3 Pro Image — Premium quality
+- **Powered by Gemini 3 Flash**: All planning uses the latest "frontier
+  intelligence" model.
+
 ## [5.2.0] - The 10x Creative Partner
 
 - **Blue Ocean Idea Expansion**: The new `IdeaExpander` service turns a simple
