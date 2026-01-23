@@ -265,7 +265,7 @@ export const useGeneration = ({
                 {
                     mode: 'standard',
                     concurrency: 1, // Sequential for better consistency logic
-                    delayBetweenPages: 2000,
+                    delayBetweenPages: 3000, // Cooldown to prevent API caching
                     enableLogging: true,
                     // Handle Page Progress
                     onPageProgress: (pageIndex, p) => {
@@ -437,7 +437,7 @@ export const useGeneration = ({
                 {
                     mode: 'standard',
                     concurrency: 1,
-                    delayBetweenPages: 2000,
+                    delayBetweenPages: 3000, // Cooldown to prevent API caching
                     enableLogging: true,
                     onPageProgress: (pageIndex, p) => {
                         let statusMessage = p.message;

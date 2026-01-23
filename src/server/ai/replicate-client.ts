@@ -326,9 +326,11 @@ export const generateColoringPage = async (
     // Build prompt with trigger word and optional CharacterDNA
     const prompt = buildPrompt(userPrompt, styleId, complexityId, audienceId, request.characterDNA);
 
+    // ALWAYS log prompt for debugging misalignment issues
+    Logger.info('AI', `[${requestId}] 🎯 FLUX PROMPT: "${prompt.substring(0, 120)}..."`);
+    
     if (enableLogging) {
-        Logger.info('AI', `[${requestId}] Replicate: Generating with Flux Coloring Book LoRA`);
-        Logger.debug('AI', `[${requestId}] Prompt (${prompt.length} chars)`, { styleId, complexityId });
+        Logger.debug('AI', `[${requestId}] Full prompt (${prompt.length} chars)`, { prompt, styleId, complexityId });
     }
 
     try {
@@ -345,6 +347,7 @@ export const generateColoringPage = async (
                 'Authorization': `Bearer ${replicateApiToken}`,
                 'Content-Type': 'application/json',
                 'Prefer': 'wait', // Wait for result instead of polling
+                'X-Request-ID': requestId, // Trace ID for debugging
             },
             body: JSON.stringify({
                 model: REPLICATE_MODEL,
@@ -355,9 +358,9 @@ export const generateColoringPage = async (
                     aspect_ratio: replicateAspectRatio,
                     output_format: 'png',
                     num_outputs: 1,
-                    guidance_scale: 4.0,                // High prompt adherence for clean lines
-                    num_inference_steps: 28,            // Quality/speed balance
-                    go_fast: true,                      // Replicate's fp8 optimization (2x speed)
+                    guidance_scale: 8.5,                // TUNED: Strict prompt adherence (was 4.0)
+                    num_inference_steps: 35,            // TUNED: More steps for quality (was 28)
+                    go_fast: false,                     // TUNED: Disabled for accuracy over speed
                     // CONSISTENCY: Lock diffusion seed for same visual "world" across pages
                     ...(request.seed && { seed: request.seed }),
                 },
