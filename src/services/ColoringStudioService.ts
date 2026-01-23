@@ -345,18 +345,51 @@ export class ColoringStudioService {
             ? `\nHero character: "${heroName}" should appear in ~${heroPresence}% of pages.`
             : '';
 
-        const prompt = `You are planning a ${pageCount}-page coloring book about: "${userIdea}"
+        const prompt = `You are planning a ${pageCount}-page coloring book.
 
-Style: ${style}, Audience: ${audience}, Complexity: ${complexity}
-${audienceSpec.toneAdjustment}
+═══════════════════════════════════════════════════════════════════════════════
+USER'S VISION (PRESERVE THIS EXACTLY)
+═══════════════════════════════════════════════════════════════════════════════
+"${userIdea}"
+
+This is the user's creative intent. Every page MUST capture this theme/tone.
 ${heroInstruction}
 
-Generate ${pageCount} creative one-line scene descriptions.
+═══════════════════════════════════════════════════════════════════════════════
+SETTINGS
+═══════════════════════════════════════════════════════════════════════════════
+Style: ${style} | Audience: ${audience} | Complexity: ${complexity}
+${audienceSpec.toneAdjustment}
+
+═══════════════════════════════════════════════════════════════════════════════
+SCENE DESCRIPTION RULES
+═══════════════════════════════════════════════════════════════════════════════
+Each scene must be a SPECIFIC VISUAL MOMENT, not a vague concept:
+
+✅ GOOD: "A man pokes a wasp nest with a stick while standing on a wobbly ladder, grinning obliviously"
+❌ BAD: "The man stares intently as danger approaches"
+
+✅ GOOD: "A chef tastes soup from a ladle, not noticing the fire engulfing his hat"  
+❌ BAD: "The chef's eyes widen in shock"
+
+For HUMOR themes: Capture the SETUP, not the punchline. Show the ironic moment BEFORE disaster.
+For ACTION themes: Freeze the peak moment of movement.
+For CALM themes: Show the serene environment with clear focal point.
+
+MAKE IT VISUAL:
+- What is the character DOING? (specific action, not "staring")
+- What objects are in the scene? (name them specifically)
+- What makes this scene FUNNY/INTERESTING/BEAUTIFUL?
+
 Vary compositions: close-ups, wide shots, action scenes, calm moments.
 ${includeText ? 'Text is allowed if it fits the scene.' : 'No text on pages.'}
 
-Return ONLY the descriptions, one per line, numbered 1-${pageCount}.
-Example format:
+═══════════════════════════════════════════════════════════════════════════════
+OUTPUT
+═══════════════════════════════════════════════════════════════════════════════
+Return ONLY ${pageCount} numbered scene descriptions, one per line.
+Each description: 20-40 words, SPECIFIC and VISUAL.
+
 1. [Scene description]
 2. [Scene description]`;
 
