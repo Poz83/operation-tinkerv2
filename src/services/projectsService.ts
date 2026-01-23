@@ -9,6 +9,7 @@ import { supabase } from '../lib/supabase';
 import type { SavedProject, ColoringPage } from '../types';
 import { uploadProjectImage, getSignedUrl, getSignedUrls } from './storageService';
 import { cacheProject, getCachedProject, cacheProjectList, getCachedProjectList, deleteCachedProject, deleteCachedProjects } from './offlineStore';
+import { Logger } from '../lib/logger';
 
 /**
  * Helper to remove invalid URLs (blob:) from project before caching.
@@ -112,7 +113,7 @@ function generatePublicId(toolType?: string): string {
 export async function fetchUserProjects(strategy: 'network-only' | 'cache-first' = 'network-only'): Promise<SavedProject[]> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-        console.warn('No authenticated user');
+        Logger.warn('NETWORK', 'No authenticated user');
         return [];
     }
 
@@ -125,7 +126,7 @@ export async function fetchUserProjects(strategy: 'network-only' | 'cache-first'
             // Caller is responsible for triggering a refresh if needed, 
             // or we could fire a promise that resolves later... but that's complex without observables.
             // Let's do: Return cache, but ALSO fire the network request to update cache for NEXT time.
-            fetchUserProjectsNetwork(user.id).catch(console.error);
+            fetchUserProjectsNetwork(user.id).catch(e => Logger.error('NETWORK', 'Background project fetch failed', e));
             return cached;
         }
     }
@@ -157,7 +158,7 @@ async function fetchUserProjectsNetwork(userId: string): Promise<SavedProject[]>
         .order('updated_at', { ascending: false });
 
     if (error) {
-        console.error('Error fetching projects:', error);
+        Logger.error('NETWORK', 'Error fetching projects', error);
         throw error;
     }
 
@@ -182,7 +183,7 @@ export async function fetchProject(publicId: string, strategy: 'network-only' | 
         const cached = await getCachedProject(publicId);
         if (cached) {
             // Background revalidate
-            fetchProjectNetwork(publicId).catch(console.error);
+            fetchProjectNetwork(publicId).catch(e => Logger.error('NETWORK', 'Background single project fetch failed', e));
             return cached;
         }
     }
@@ -225,7 +226,7 @@ async function fetchProjectNetwork(publicId: string): Promise<SavedProject | nul
 
     if (error) {
         if (error.code === 'PGRST116') return null; // Not found
-        console.error('Error fetching project:', error);
+        Logger.error('NETWORK', 'Error fetching project', error);
         throw error;
     }
 
@@ -237,7 +238,7 @@ async function fetchProjectNetwork(publicId: string): Promise<SavedProject | nul
         .eq('type', 'page');
 
     if (imagesError) {
-        console.error('Error fetching project images:', imagesError);
+        Logger.error('NETWORK', 'Error fetching project images', imagesError);
         // Fallback: return project without pages
         return mapDbToSavedProject(projectData as unknown as ProjectWithColoringData);
     }
@@ -348,7 +349,7 @@ export async function saveProject(project: SavedProject): Promise<SavedProject> 
                         profile_sheet_url: (project as any).profileSheetUrl,
                         seed: (project as any).seed
                     });
-                if (heroError) console.error('Hero data upsert error:', heroError);
+                if (heroError) Logger.error('NETWORK', 'Hero data upsert error', heroError);
             } else {
                 const { error: coloringError } = await supabase
                     .from('coloring_studio_data')
@@ -359,7 +360,7 @@ export async function saveProject(project: SavedProject): Promise<SavedProject> 
                         complexity: project.complexity,
                         page_count: project.pageAmount
                     });
-                if (coloringError) console.error('Coloring data upsert error:', coloringError);
+                if (coloringError) Logger.error('NETWORK', 'Coloring data upsert error', coloringError);
             }
         }
 
@@ -394,7 +395,7 @@ export async function saveProject(project: SavedProject): Promise<SavedProject> 
 
                     return result.key;
                 } catch (err) {
-                    console.error(`Failed to upload ${type}:`, err);
+                    Logger.error('NETWORK', `Failed to upload ${type}`, err);
                     return dataUrl; // Keep original on failure
                 }
             }
@@ -541,7 +542,7 @@ async function persistProjectImages(projectId: string, pages: ColoringPage[]): P
             });
 
             if (dbError) {
-                console.error('Failed to save image metadata:', dbError);
+                Logger.error('NETWORK', 'Failed to save image metadata', dbError);
                 return;
             }
 
@@ -559,7 +560,7 @@ async function persistProjectImages(projectId: string, pages: ColoringPage[]): P
             }
 
         } catch (err) {
-            console.error('Failed to persist image:', err);
+            Logger.error('NETWORK', 'Failed to persist image', err);
         }
     }));
 
@@ -582,7 +583,7 @@ export async function deleteProject(publicId: string): Promise<void> {
         .eq('user_id', user.id);
 
     if (error) {
-        console.error('Error deleting project:', error);
+        Logger.error('NETWORK', 'Error deleting project', error);
         throw error;
     }
 
@@ -604,7 +605,7 @@ export async function deleteProjects(publicIds: string[]): Promise<void> {
         .eq('user_id', user.id);
 
     if (error) {
-        console.error('Error deleting projects:', error);
+        Logger.error('NETWORK', 'Error deleting projects', error);
         throw error;
     }
 
@@ -641,7 +642,7 @@ export async function fetchUserReferences(): Promise<ReferenceImage[]> {
         .in('type', ['hero_base', 'reference']);
 
     if (error) {
-        console.error('Error fetching references:', error);
+        Logger.error('NETWORK', 'Error fetching references', error);
         return [];
     }
 
