@@ -780,6 +780,7 @@ const App: React.FC = () => {
             /> */}
             <Book
               pages={pages}
+              pageSizeId={project.pageSizeId}
               activePage={generation.activePageNumber}
               onSheetClick={setCurrentSheetIndex}
               onImageSelect={handleImageSelect}

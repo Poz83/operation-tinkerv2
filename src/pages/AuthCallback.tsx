@@ -2,8 +2,8 @@
  * Auth Callback Page
  * 
  * Handles the redirect after a user clicks a magic link in their email.
- * Supabase client with detectSessionInUrl: true automatically processes the code.
- * We just wait for the session to be established and redirect.
+ * With polling-based flow: attempts to close this tab since the original tab
+ * will auto-redirect via session polling.
  */
 
 import React, { useEffect, useState } from 'react';
@@ -13,40 +13,51 @@ import { supabase } from '../lib/supabase';
 const AuthCallback: React.FC = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const [error, setError] = useState<string | null>(null);
-    const [status, setStatus] = useState<string>('Verifying your login...');
+    const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying');
+    const [errorMessage, setErrorMessage] = useState<string>('');
 
     useEffect(() => {
         const next = searchParams.get('next') || '/dashboard';
         let timeoutId: NodeJS.Timeout;
 
         // Supabase client with detectSessionInUrl: true automatically processes the code
-        // We just need to wait for it to complete and redirect
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
             if (event === 'SIGNED_IN' && session) {
                 clearTimeout(timeoutId);
-                setStatus('Success! Redirecting...');
-                // Small delay to show success message
+                setStatus('success');
+
+                // Try to close this tab - original tab will redirect via polling
+                // If close fails (not opened by script), redirect as fallback
                 setTimeout(() => {
-                    navigate(next, { replace: true });
-                }, 500);
+                    try {
+                        window.close();
+                    } catch {
+                        // Ignore
+                    }
+                    // If we're still here after 500ms, the close didn't work - redirect
+                    setTimeout(() => {
+                        navigate(next, { replace: true });
+                    }, 500);
+                }, 1500);
             }
         });
 
-        // Also check if we already have a session (in case event fired before subscription)
+        // Also check if we already have a session
         const checkExistingSession = async () => {
             const { data: { session } } = await supabase.auth.getSession();
             if (session) {
                 clearTimeout(timeoutId);
-                navigate(next, { replace: true });
+                setStatus('success');
+                setTimeout(() => navigate(next, { replace: true }), 1000);
             }
         };
         checkExistingSession();
 
-        // Safety timeout - if nothing happens in 10 seconds, show error
+        // Safety timeout
         timeoutId = setTimeout(() => {
-            setError('Sign-in timed out. Please request a new magic link.');
-        }, 10000);
+            setStatus('error');
+            setErrorMessage('Sign-in timed out. Please request a new magic link.');
+        }, 15000);
 
         return () => {
             clearTimeout(timeoutId);
@@ -54,7 +65,7 @@ const AuthCallback: React.FC = () => {
         };
     }, [navigate, searchParams]);
 
-    if (error) {
+    if (status === 'error') {
         return (
             <div style={{
                 minHeight: '100vh',
@@ -79,7 +90,7 @@ const AuthCallback: React.FC = () => {
                         Sign-In Failed
                     </h2>
                     <p style={{ marginBottom: '1.5rem', opacity: 0.8 }}>
-                        {error}
+                        {errorMessage}
                     </p>
                     <button
                         onClick={() => navigate('/landing', { replace: true })}
@@ -97,6 +108,30 @@ const AuthCallback: React.FC = () => {
                         Try Again
                     </button>
                 </div>
+            </div>
+        );
+    }
+
+    if (status === 'success') {
+        return (
+            <div style={{
+                minHeight: '100vh',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%)',
+                color: '#fff',
+                fontFamily: 'Outfit, sans-serif',
+                textAlign: 'center'
+            }}>
+                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✨</div>
+                <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', color: '#4ade80' }}>
+                    You're signed in!
+                </h2>
+                <p style={{ opacity: 0.7 }}>
+                    You can close this tab and return to the original window.
+                </p>
             </div>
         );
     }
@@ -121,7 +156,7 @@ const AuthCallback: React.FC = () => {
                 animation: 'spin 1s linear infinite'
             }} />
             <p style={{ marginTop: '1.5rem', opacity: 0.7 }}>
-                {status}
+                Verifying your login...
             </p>
             <style>{`
                 @keyframes spin {

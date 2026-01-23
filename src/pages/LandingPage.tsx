@@ -5,6 +5,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/settingsContext';
 import { BrandLogo } from '../components/BrandLogo';
+import { supabase } from '../lib/supabase';
 
 // Import floating assets
 
@@ -21,13 +22,33 @@ const LandingPage: React.FC = () => {
     const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
 
     // Only redirect on INITIAL LOAD if already authenticated
-    // Don't react to background auth changes - let the callback tab handle the redirect
     React.useEffect(() => {
         if (isAuthenticated && !isLoading) {
             navigate('/dashboard', { replace: true });
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []); // Empty deps = only run on mount
+
+    // Poll for session after magic link sent - enables original tab to auto-redirect
+    React.useEffect(() => {
+        if (status !== 'success') return;
+
+        const pollInterval = setInterval(async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                clearInterval(pollInterval);
+                navigate(from, { replace: true });
+            }
+        }, 2000); // Poll every 2 seconds
+
+        // Stop polling after 5 minutes
+        const timeout = setTimeout(() => clearInterval(pollInterval), 5 * 60 * 1000);
+
+        return () => {
+            clearInterval(pollInterval);
+            clearTimeout(timeout);
+        };
+    }, [status, from, navigate]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -102,9 +123,10 @@ const LandingPage: React.FC = () => {
                                 </div>
                                 <h3 className="text-xl font-medium text-[hsl(var(--foreground))] mb-2">Check your email</h3>
                                 <p className="text-[hsl(var(--muted-foreground))] text-sm">We've sent a magic link to {email}</p>
-                                <p className="text-[hsl(var(--muted-foreground))]/70 text-xs mt-6">
-                                    Click the link in your email to sign in.
-                                </p>
+                                <div className="flex items-center justify-center gap-2 mt-6 text-[hsl(var(--muted-foreground))]/70 text-xs">
+                                    <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                                    Waiting for you to click the link...
+                                </div>
                             </motion.div>
                         ) : (
                             <motion.form
