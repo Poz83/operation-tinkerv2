@@ -302,11 +302,17 @@ export const Setup: React.FC<ToolbarProps> = (props) => {
                   </div>
                 )}
               </div>
-              <div>
+              <div className="relative group">
                 <label className={labelClass}>Detail Level</label>
                 <select value={props.complexity} onChange={(e) => props.setComplexity(e.target.value)} className="glass-select">
-                  {COMPLEXITY_LEVELS.map(c => <option key={c} value={c} className="bg-[hsl(var(--card))] text-[hsl(var(--foreground))]">{c}</option>)}
+                  {COMPLEXITY_LEVELS.map(c => <option key={c.id} value={c.id} className="bg-[hsl(var(--card))] text-[hsl(var(--foreground))]">{c.label}</option>)}
                 </select>
+                {/* Tooltip on hover */}
+                <div className="absolute left-0 right-0 -bottom-1 translate-y-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
+                  <div className="bg-zinc-900 text-zinc-200 text-[10px] px-2 py-1.5 rounded-lg shadow-lg border border-zinc-700 mt-1">
+                    {COMPLEXITY_LEVELS.find(c => c.id === props.complexity)?.tooltip}
+                  </div>
+                </div>
               </div>
             </div>
           </div>

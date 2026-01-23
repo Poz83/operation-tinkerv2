@@ -11,6 +11,7 @@ import { ColoringPage, PAGE_SIZES, VISUAL_STYLES, TARGET_AUDIENCES, COMPLEXITY_L
 import { Setup } from '../components/Setup';
 import { Book } from '../components/Book';
 import { useApiKeyContext } from '../context/apiKeyContext';
+import { useAuth } from '../context/AuthContext';
 import { ApiKeyDialog } from '../components/ApiKeyDialog';
 import { Navigation } from '../components/Navigation';
 import { ToastContainer } from '../components/Toast';
@@ -31,6 +32,7 @@ import doodlePattern from '../assets/doodle_pattern_final.png';
 
 const App: React.FC = () => {
   const { apiKey, hasApiKey } = useApiKeyContext();
+  const { userEmail } = useAuth();
   const [showApiKeyDialog, setShowApiKeyDialog] = useState(false);
   const toast = useToast();
   const { settings, toggleTheme } = useSettings();
@@ -768,6 +770,7 @@ const App: React.FC = () => {
                     audienceId={project.targetAudienceId as any}
                     complexityId={project.complexity as any}
                     styleId={project.visualStyle as any}
+                    userEmail={userEmail || undefined}
                     onComplete={handleCreativeDirectorComplete}
                     onCancel={() => setShowCreativeDirector(false)}
                     showToast={showToast}

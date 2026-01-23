@@ -20,12 +20,15 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export type QualityTier = 'swift' | 'studio';
+export type ImageProvider = 'gemini' | 'replicate';
 
 export interface TierConfig {
     /** Display name */
     name: string;
     /** Emoji icon */
     emoji: string;
+    /** AI provider for image generation */
+    provider: ImageProvider;
     /** Model for image generation */
     imageModel: string;
     /** Model for text/planning */
@@ -50,24 +53,26 @@ export const QUALITY_TIERS: Record<QualityTier, TierConfig> = {
     swift: {
         name: 'Swift',
         emoji: '⚡',
-        imageModel: 'gemini-2.5-flash-image',
+        provider: 'replicate',
+        imageModel: 'openai/gpt-image-1.5',
         textModel: 'gemini-3-flash-preview',
         tokenCostPerImage: 1,
         tokenCostForDirector: 2,
         description: 'Fast & affordable. Perfect for drafts and volume creators.',
         maxResolution: '1K',
-        estimatedCostPerImage: 0.039,
+        estimatedCostPerImage: 0.20,
     },
     studio: {
         name: 'Studio',
         emoji: '🎯',
+        provider: 'gemini',
         imageModel: 'gemini-3-pro-image-preview',
         textModel: 'gemini-3-flash-preview',
         tokenCostPerImage: 3,
         tokenCostForDirector: 2,
         description: 'Premium quality. Best for final, publishable books.',
         maxResolution: '2K',
-        estimatedCostPerImage: 0.134,
+        estimatedCostPerImage: 0.54,
     },
 };
 

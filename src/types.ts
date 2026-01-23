@@ -40,11 +40,31 @@ export const VISUAL_STYLES = [
 ];
 
 export const COMPLEXITY_LEVELS = [
-  'Very Simple',
-  'Simple',
-  'Moderate',
-  'Intricate',
-  'Extreme Detail'
+  { 
+    id: 'Very Simple', 
+    label: 'Very Simple',
+    tooltip: 'Ages 1-3. Bold thick outlines, 5-10 large shapes, perfect for toddlers learning to color.' 
+  },
+  { 
+    id: 'Simple', 
+    label: 'Simple',
+    tooltip: 'Ages 3-6. Clear outlines, 15-25 easy-to-color regions. Great for preschoolers.' 
+  },
+  { 
+    id: 'Moderate', 
+    label: 'Moderate',
+    tooltip: 'Ages 6-12. Balanced detail with medium complexity. Ideal for most coloring projects.' 
+  },
+  { 
+    id: 'Intricate', 
+    label: 'Intricate',
+    tooltip: 'Teens & Adults. Detailed pencil sketch style with 80-100 small sections. 4K resolution.' 
+  },
+  { 
+    id: 'Extreme Detail', 
+    label: 'Extreme Detail',
+    tooltip: 'Expert level. Ultra-fine linework, 120+ tiny details. For dedicated colorists. 4K resolution.' 
+  }
 ];
 
 // Creative Variation controls the AI's temperature setting

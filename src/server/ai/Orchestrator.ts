@@ -20,7 +20,7 @@
  */
 
 import {
-    generateColoringPage,
+    generateColoringPage as generateWithGemini,
     enhancePrompt,
     getPromptPreview,
     GEMINI_IMAGE_MODEL,
@@ -29,6 +29,14 @@ import {
     AudienceId,
     ImageSize,
 } from './gemini-client';
+
+import {
+    generateColoringPage as generateWithReplicate,
+    enhancePromptForFlux,
+    REPLICATE_MODEL,
+} from './replicate-client';
+
+import { getTierConfig, QualityTier } from './QualityTiers';
 
 import { Logger } from '../../lib/logger';
 
@@ -49,8 +57,14 @@ export interface GenerateAndValidateRequest {
     aspectRatio?: string;
     /** Image resolution */
     imageSize?: ImageSize;
-    /** API key */
+    /** Gemini API key */
     apiKey: string;
+    /** Replicate API token (required for Swift tier) */
+    replicateApiToken?: string;
+    /** Quality tier (determines which provider to use) */
+    tier?: QualityTier;
+    /** User email (for feature gating) */
+    userEmail?: string;
     /** Abort signal */
     signal?: AbortSignal;
     /** Pipeline configuration */
@@ -124,9 +138,18 @@ export const generateAndValidate = async (
         aspectRatio = '1:1',
         imageSize = '2K',
         apiKey,
+        replicateApiToken,
+        tier = 'studio',
+        userEmail,
         signal,
         styleReferenceImages,
     } = request;
+
+    // Determine provider based on tier
+    // FEATURE GATE: Only jamie@myjoe.app can use Replicate for now
+    const tierConfig = getTierConfig(tier);
+    const canUseReplicate = userEmail?.toLowerCase() === 'jamie@myjoe.app';
+    const useReplicate = tierConfig.provider === 'replicate' && canUseReplicate;
 
     let currentPrompt = userPrompt;
     let enhancedPrompt: string | undefined;
@@ -156,19 +179,36 @@ export const generateAndValidate = async (
 
     // ─────────────────────────────────────────────────────────────────────────────
     // STEP 1: Enhance prompt (optional)
+    // Use Flux-specific enhancer for Swift tier (shorter, subject-focused)
     // ─────────────────────────────────────────────────────────────────────────────
     if (config.enableEnhancement) {
         reportProgress('enhancing', 'Enhancing prompt...', 10);
 
         try {
-            const enhanceResult = await enhancePrompt({
-                userPrompt,
-                styleId,
-                complexityId,
-                audienceId,
-                apiKey,
-                signal,
-            });
+            let enhanceResult;
+            
+            if (useReplicate) {
+                // Flux LoRA: Use lightweight, subject-focused enhancer
+                log('Using Flux-optimized enhancer (concise output)');
+                enhanceResult = await enhancePromptForFlux({
+                    userPrompt,
+                    styleId,
+                    complexityId,
+                    audienceId,
+                    apiKey,
+                    signal,
+                });
+            } else {
+                // Gemini: Use full verbose enhancer
+                enhanceResult = await enhancePrompt({
+                    userPrompt,
+                    styleId,
+                    complexityId,
+                    audienceId,
+                    apiKey,
+                    signal,
+                });
+            }
 
             if (enhanceResult.success) {
                 enhancedPrompt = enhanceResult.enhancedPrompt;
@@ -188,20 +228,46 @@ export const generateAndValidate = async (
         throw new Error('Aborted');
     }
 
-    reportProgress('generating', 'Generating image...', 30);
+    reportProgress('generating', `Generating image via ${useReplicate ? 'Replicate' : 'Gemini'}...`, 30);
 
-    const genResult = await generateColoringPage({
-        userPrompt: currentPrompt,
-        styleId,
-        complexityId,
-        audienceId,
-        aspectRatio,
-        imageSize,
-        apiKey,
-        signal,
-        enableLogging: config.enableLogging,
-        styleReferenceImages,
-    });
+    // Route to appropriate provider based on tier
+    let genResult;
+    if (useReplicate && replicateApiToken) {
+        // Swift tier: Use Replicate (GPT Image 1.5)
+        log(`Using Replicate (Flux Coloring Book LoRA) for Swift tier`);
+        genResult = await generateWithReplicate(
+            {
+                userPrompt: currentPrompt,
+                styleId,
+                complexityId,
+                audienceId,
+                aspectRatio,
+                imageSize,
+                apiKey, // Not used by Replicate but required by interface
+                signal,
+                enableLogging: config.enableLogging,
+            },
+            replicateApiToken
+        );
+    } else {
+        // Studio tier (or fallback): Use Gemini
+        log(`Using Gemini for ${tier} tier`);
+        genResult = await generateWithGemini({
+            userPrompt: currentPrompt,
+            styleId,
+            complexityId,
+            audienceId,
+            aspectRatio,
+            imageSize,
+            apiKey,
+            signal,
+            enableLogging: config.enableLogging,
+            styleReferenceImages,
+        });
+    }
+
+    // Determine which model was used for metadata
+    const modelUsed = useReplicate && replicateApiToken ? REPLICATE_MODEL : GEMINI_IMAGE_MODEL;
 
     const totalDurationMs = Date.now() - startTime;
 
@@ -222,7 +288,7 @@ export const generateAndValidate = async (
             enhancedPrompt,
             metadata: {
                 requestId,
-                model: GEMINI_IMAGE_MODEL,
+                model: modelUsed,
                 imageSize,
             },
         };
@@ -243,7 +309,7 @@ export const generateAndValidate = async (
         enhancedPrompt,
         metadata: {
             requestId,
-            model: GEMINI_IMAGE_MODEL,
+            model: modelUsed,
             imageSize,
         },
     };

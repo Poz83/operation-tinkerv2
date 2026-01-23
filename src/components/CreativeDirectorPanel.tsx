@@ -21,6 +21,7 @@ interface CreativeDirectorPanelProps {
     audienceId: AudienceId;
     complexityId: ComplexityId;
     styleId: StyleId;
+    userEmail?: string;
     onComplete: (prompts: { pageNumber: number; prompt: string; title: string }[]) => void;
     onCancel: () => void;
     showToast?: (type: 'success' | 'error' | 'warning' | 'info', message: string, emoji?: string) => void;
@@ -31,12 +32,15 @@ export const CreativeDirectorPanel: React.FC<CreativeDirectorPanelProps> = ({
     audienceId,
     complexityId,
     styleId,
+    userEmail,
     onComplete,
     onCancel,
     showToast,
 }) => {
+    // Only jamie@myjoe.app can use Swift tier
+    const canUseSwift = userEmail?.toLowerCase() === 'jamie@myjoe.app';
     const [concept, setConcept] = useState('');
-    const [selectedTier, setSelectedTier] = useState<QualityTier>('swift');
+    const [selectedTier, setSelectedTier] = useState<QualityTier>(canUseSwift ? 'swift' : 'studio');
     const [step, setStep] = useState<'input' | 'planning' | 'review'>('input');
 
     const {
@@ -133,19 +137,26 @@ export const CreativeDirectorPanel: React.FC<CreativeDirectorPanelProps> = ({
                         {(['swift', 'studio'] as QualityTier[]).map((tier) => {
                             const config = QUALITY_TIERS[tier];
                             const isSelected = selectedTier === tier;
+                            const isDisabled = tier === 'swift' && !canUseSwift;
                             return (
                                 <button
                                     key={tier}
-                                    onClick={() => setSelectedTier(tier)}
+                                    onClick={() => !isDisabled && setSelectedTier(tier)}
+                                    disabled={isDisabled}
                                     className={`p-4 rounded-xl border-2 transition-all text-left ${
-                                        isSelected
-                                            ? 'border-purple-500 bg-purple-500/10'
-                                            : 'border-zinc-700 bg-zinc-900/50 hover:border-zinc-600'
+                                        isDisabled
+                                            ? 'border-zinc-800 bg-zinc-900/30 opacity-50 cursor-not-allowed'
+                                            : isSelected
+                                                ? 'border-purple-500 bg-purple-500/10'
+                                                : 'border-zinc-700 bg-zinc-900/50 hover:border-zinc-600'
                                     }`}
                                 >
                                     <div className="flex items-center gap-2 mb-2">
                                         <span className="text-2xl">{config.emoji}</span>
                                         <span className="font-bold text-white">{config.name}</span>
+                                        {isDisabled && (
+                                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-zinc-700 text-zinc-400">Coming Soon</span>
+                                        )}
                                     </div>
                                     <p className="text-xs text-zinc-400 mb-2">{config.description}</p>
                                     <div className="flex items-center justify-between text-xs">
@@ -168,6 +179,19 @@ export const CreativeDirectorPanel: React.FC<CreativeDirectorPanelProps> = ({
                         <div className="text-right">
                             <div className="text-xl font-bold text-emerald-400">${costEstimate.estimatedDollars.toFixed(2)}</div>
                             <div className="text-xs text-zinc-500">{costEstimate.tokens} tokens</div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Testing Notice */}
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30">
+                    <div className="flex items-start gap-2">
+                        <span className="text-amber-400 text-lg">🧪</span>
+                        <div>
+                            <div className="text-sm font-medium text-amber-300">Beta Tester Access</div>
+                            <p className="text-xs text-amber-200/70 mt-0.5">
+                                You won't be charged during testing! Pricing shown is for reference only.
+                            </p>
                         </div>
                     </div>
                 </div>
