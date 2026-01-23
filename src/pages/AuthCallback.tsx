@@ -2,7 +2,8 @@
  * Auth Callback Page
  * 
  * Handles the redirect after a user clicks a magic link in their email.
- * Uses PKCE flow - exchanges code for session, then redirects to app.
+ * Supabase client with detectSessionInUrl: true automatically processes the code.
+ * We just wait for the session to be established and redirect.
  */
 
 import React, { useEffect, useState } from 'react';
@@ -16,47 +17,41 @@ const AuthCallback: React.FC = () => {
     const [status, setStatus] = useState<string>('Verifying your login...');
 
     useEffect(() => {
-        const handleAuthCallback = async () => {
-            try {
-                const code = searchParams.get('code');
-                const next = searchParams.get('next') || '/dashboard';
+        const next = searchParams.get('next') || '/dashboard';
+        let timeoutId: NodeJS.Timeout;
 
-                if (!code) {
-                    // No code - check if already authenticated
-                    const { data: { session } } = await supabase.auth.getSession();
-                    if (session) {
-                        navigate(next, { replace: true });
-                    } else {
-                        navigate('/landing', { replace: true });
-                    }
-                    return;
-                }
-
-                // Exchange code for session (PKCE flow)
-                setStatus('Completing sign-in...');
-                const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-
-                if (exchangeError) {
-                    console.error('Code exchange failed:', exchangeError);
-                    setError('Sign-in link expired or invalid. Please request a new one.');
-                    return;
-                }
-
-                if (data.session) {
-                    // Success - redirect to dashboard (or original destination)
-                    setStatus('Success! Redirecting...');
+        // Supabase client with detectSessionInUrl: true automatically processes the code
+        // We just need to wait for it to complete and redirect
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_IN' && session) {
+                clearTimeout(timeoutId);
+                setStatus('Success! Redirecting...');
+                // Small delay to show success message
+                setTimeout(() => {
                     navigate(next, { replace: true });
-                } else {
-                    setError('Could not establish session. Please try again.');
-                }
+                }, 500);
+            }
+        });
 
-            } catch (err) {
-                console.error('Unexpected error during auth callback:', err);
-                setError('An unexpected error occurred. Please try again.');
+        // Also check if we already have a session (in case event fired before subscription)
+        const checkExistingSession = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                clearTimeout(timeoutId);
+                navigate(next, { replace: true });
             }
         };
+        checkExistingSession();
 
-        handleAuthCallback();
+        // Safety timeout - if nothing happens in 10 seconds, show error
+        timeoutId = setTimeout(() => {
+            setError('Sign-in timed out. Please request a new magic link.');
+        }, 10000);
+
+        return () => {
+            clearTimeout(timeoutId);
+            subscription.unsubscribe();
+        };
     }, [navigate, searchParams]);
 
     if (error) {
