@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { PAGE_SIZES, VISUAL_STYLES, TARGET_AUDIENCES, COMPLEXITY_LEVELS, CREATIVE_VARIATION_OPTIONS, CINEMATIC_OPTIONS, VISIBILITY_OPTIONS, CreativeVariation, StyleReference, ALLOWED_REFERENCE_TYPES, MAX_STYLE_REFERENCES } from '../types';
+import { QualityTier, QUALITY_TIERS } from '../server/ai/QualityTiers';
 import joeMascot from '../assets/joe-mascot.png';
 import magicWandIcon from '../assets/magic-wand.png';
 import saveIcon from '../assets/save-icon.png';
@@ -59,7 +60,9 @@ interface ToolbarProps {
   styleReferences: StyleReference[];
   setStyleReferences: (v: StyleReference[]) => void;
   onPreviewPrompt?: () => void;
-  onMagicMode?: () => void;
+  qualityTier: QualityTier;
+  setQualityTier: (v: QualityTier) => void;
+  userEmail?: string;
 }
 
 export const Setup: React.FC<ToolbarProps> = (props) => {
@@ -213,33 +216,7 @@ export const Setup: React.FC<ToolbarProps> = (props) => {
         {/* Main Content */}
         <div className={`flex-1 px-6 py-6 space-y-8 ${props.embeddedMode ? '' : 'overflow-y-auto no-scrollbar'}`}>
 
-          {/* Magic Mode - First Interaction Point */}
-          {props.onMagicMode && (
-            <div className="space-y-3">
-              <button
-                onClick={props.onMagicMode}
-                className="w-full py-4 rounded-2xl bg-gradient-to-r from-purple-500/20 to-pink-500/20 border-2 border-purple-500/40 hover:border-purple-500/60 hover:from-purple-500/30 hover:to-pink-500/30 transition-all group flex items-center justify-center gap-3"
-              >
-                <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-purple-400">
-                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-                  </svg>
-                </div>
-                <div className="text-left">
-                  <div className="font-semibold text-[hsl(var(--foreground))]">✨ Magic Mode</div>
-                  <div className="text-[10px] text-[hsl(var(--muted-foreground))]">AI plans your entire book in seconds</div>
-                </div>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-purple-400 group-hover:translate-x-1 transition-transform ml-auto">
-                  <path d="M5 12h14M12 5l7 7-7 7" />
-                </svg>
-              </button>
-              <div className="flex items-center gap-3">
-                <div className="flex-1 h-px bg-gradient-to-r from-transparent via-[hsl(var(--border))] to-transparent"></div>
-                <span className="text-[10px] text-[hsl(var(--muted-foreground))] uppercase tracking-wider">or configure manually</span>
-                <div className="flex-1 h-px bg-gradient-to-r from-transparent via-[hsl(var(--border))] to-transparent"></div>
-              </div>
-            </div>
-          )}
+
 
           {/* Section: Project */}
           <div className="space-y-4">
@@ -297,6 +274,43 @@ export const Setup: React.FC<ToolbarProps> = (props) => {
                 className="glass-slider"
               />
             </div>
+
+            {/* Quality Tier Toggle */}
+            {(() => {
+              const canUseSwift = props.userEmail?.toLowerCase() === 'jamie@myjoe.app';
+              return (
+                <div className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
+                  props.qualityTier === 'swift'
+                    ? 'bg-amber-500/10 border-amber-500/30'
+                    : 'bg-[hsl(var(--card))]/50 border-[hsl(var(--border))]'
+                }`}>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium flex items-center gap-2">
+                      {props.qualityTier === 'swift' ? '⚡ Swift Mode' : '🎯 Studio Mode'}
+                    </span>
+                    <span className="text-xs text-[hsl(var(--muted-foreground))]">
+                      {props.qualityTier === 'swift' ? 'Fast generation' : 'Premium quality'}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => canUseSwift && props.setQualityTier(props.qualityTier === 'swift' ? 'studio' : 'swift')}
+                    disabled={!canUseSwift}
+                    title={!canUseSwift ? 'Swift mode coming soon' : undefined}
+                    className={`relative w-11 h-6 transition-colors rounded-full ${
+                      !canUseSwift
+                        ? 'bg-[hsl(var(--muted))] opacity-50 cursor-not-allowed'
+                        : props.qualityTier === 'swift'
+                          ? 'bg-amber-500'
+                          : 'bg-[hsl(var(--muted))]'
+                    }`}
+                  >
+                    <span className={`absolute left-1 top-1 w-4 h-4 transition-transform rounded-full bg-white ${
+                      props.qualityTier === 'swift' ? 'translate-x-5' : 'translate-x-0'
+                    }`} />
+                  </button>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Section: Configuration (Moved FIRST for Wizard Flow) */}
