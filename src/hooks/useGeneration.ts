@@ -9,6 +9,7 @@ import { ColoringPage, PAGE_SIZES, VISUAL_STYLES, TARGET_AUDIENCES, CreativeVari
 import { brainstormPrompt } from '../services/geminiService';
 import { batchGenerate, GenerationProgress, GeneratePageResult } from '../services/generationService';
 import { ColoringStudioService, BookPlanItem } from '../services/ColoringStudioService';
+import { Logger } from '../lib/logger';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SMART PROMPT LOGIC (Cinematics & Hero Conflict)
@@ -85,7 +86,7 @@ export const useGeneration = ({
             const enhanced = await brainstormPrompt(currentPrompt, pageCount, context, apiKey || undefined);
             return enhanced || null;
         } catch (e) {
-            console.error("Enhance failed", e);
+            Logger.error('AI', 'Enhance failed', e);
             showToast('error', 'Failed to enhance prompt', '🪄');
             return null;
         } finally {
@@ -94,7 +95,7 @@ export const useGeneration = ({
     }, [validateApiKey, showToast, apiKey]);
 
     const handleCancel = useCallback(() => {
-        console.log("User requested cancellation.");
+        Logger.info('AI', 'User requested cancellation');
         setIsGenerating(false); // Immediate UI feedback
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
@@ -157,7 +158,7 @@ export const useGeneration = ({
 
             // Fallback plan if AI fails
             if (!plan || plan.length === 0) {
-                console.warn("Plan generation failed, using fallback.");
+                Logger.warn('AI', 'Plan generation failed, using fallback');
                 plan = Array.from({ length: params.pageAmount }).map((_, i) => ({
                     pageNumber: i + 1,
                     prompt: `${params.userPrompt} (Scene ${i + 1})`,
@@ -321,9 +322,9 @@ export const useGeneration = ({
 
         } catch (e: any) {
             if (e.message === 'Aborted') {
-                console.log("Generation cancelled by user.");
+                Logger.info('AI', 'Generation cancelled by user');
             } else {
-                console.error("Workflow failed", e);
+                Logger.error('AI', 'Workflow failed', e);
                 showToast('error', 'Generation failed unexpectedly.', '⚠️');
             }
         } finally {
@@ -485,9 +486,9 @@ export const useGeneration = ({
 
         } catch (e: any) {
             if (e.message === 'Aborted') {
-                console.log("Generation cancelled by user.");
+                Logger.info('AI', 'Generation cancelled by user');
             } else {
-                console.error("Batch generation failed", e);
+                Logger.error('AI', 'Batch generation failed', e);
                 showToast('error', 'Generation failed unexpectedly.', '⚠️');
             }
         } finally {

@@ -77,7 +77,7 @@ export const Setup: React.FC<ToolbarProps> = (props) => {
       if (saved) {
         setRecentPrompts(JSON.parse(saved));
       }
-    } catch (e) { console.error('Failed to load recent prompts', e); }
+    } catch (e) { /* skip - non-critical localStorage read */ }
   }, []);
   useEffect(() => {
     if (!settings.enableSmartDefaults || !props.userPrompt) return;
@@ -105,7 +105,7 @@ export const Setup: React.FC<ToolbarProps> = (props) => {
         setRecentPrompts(unique);
         localStorage.setItem('recent_prompts', JSON.stringify(unique));
       } catch (e) {
-        console.error('Failed to save recent prompt', e);
+        /* skip - non-critical localStorage write */
       }
     }
 

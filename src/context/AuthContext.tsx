@@ -8,6 +8,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
 import { supabase, signInWithMagicLink, signOut as supabaseSignOut } from '../lib/supabase';
+import { Logger } from '../lib/logger';
 
 interface AuthContextType {
     isAuthenticated: boolean;
@@ -47,7 +48,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 }
                 // Ignore if data is just missing (optional, but keep error for other cases)
                 if (!data) {
-                    console.error('Error fetching user details:', error);
+                    Logger.error('SYSTEM', 'Error fetching user details', error);
                     return null;
                 }
             }
@@ -65,7 +66,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             if (error.message?.includes('AbortError') || error.name === 'AbortError') {
                 return null;
             }
-            console.error('Error in fetchUserDetails:', error);
+            Logger.error('SYSTEM', 'Error in fetchUserDetails', error);
             return null;
         }
     };
@@ -82,7 +83,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     fetchUserDetails(initialSession.user.id).then(details => setUserDetails(details));
                 }
             } catch (error) {
-                console.error('Error getting initial session:', error);
+                Logger.error('SYSTEM', 'Error getting initial session', error);
             } finally {
                 setIsLoading(false);
             }
@@ -93,7 +94,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event: AuthChangeEvent, currentSession: Session | null) => {
-                console.log('Auth state changed:', event);
+                Logger.debug('SYSTEM', `Auth state changed: ${event}`);
                 setSession(currentSession);
                 setUser(currentSession?.user ?? null);
 
@@ -136,7 +137,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             await signInWithMagicLink(email);
             return { success: true };
         } catch (error) {
-            console.error('Error sending magic link:', error);
+            Logger.error('SYSTEM', 'Error sending magic link', error);
             return {
                 success: false,
                 error: error instanceof Error ? error.message : 'Failed to send magic link'
@@ -151,7 +152,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setSession(null);
             setUserDetails(null);
         } catch (error) {
-            console.error('Error signing out:', error);
+            Logger.error('SYSTEM', 'Error signing out', error);
         }
     };
 
@@ -178,7 +179,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             } : null);
 
         } catch (error) {
-            console.error('Error updating profile:', error);
+            Logger.error('SYSTEM', 'Error updating profile', error);
             throw error;
         }
     };

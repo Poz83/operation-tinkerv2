@@ -8,6 +8,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { PAGE_SIZES, VISUAL_STYLES, TARGET_AUDIENCES, COMPLEXITY_LEVELS, SavedProject, CreativeVariation, ColoringPage, CharacterDNA, StyleReference } from '../types';
 import { useAutosave } from './useAutosave';
 import { saveProject, fetchProject } from '../services/projectsService';
+import { Logger } from '../lib/logger';
 
 export const useProject = (
     pages: ColoringPage[],
@@ -83,7 +84,7 @@ export const useProject = (
             const saved = await saveProject(projectToSave);
 
             if (saved.id !== currentProjectId) {
-                console.log('Autosave: Project ID updated from', currentProjectId, 'to', saved.id);
+                Logger.debug('SYSTEM', `Autosave: Project ID updated from ${currentProjectId} to ${saved.id}`);
                 setCurrentProjectId(saved.id);
                 // Silent URL update
                 navigate(`/studio/project/${saved.id}`, { replace: true });
@@ -116,7 +117,7 @@ export const useProject = (
             }
             showToast("success", "Project saved to Vault!", "🔐");
         } catch (err) {
-            console.error('Failed to save project:', err);
+            Logger.error('NETWORK', 'Failed to save project', err);
             showToast("error", "Failed to save project.", "❌");
         }
     }, [currentProjectState, urlProjectId, navigate, showToast]);
@@ -200,7 +201,7 @@ export const useProject = (
                     if (proj) {
                         handleLoadProject(proj);
                     } else {
-                        console.log('Project not found, treating as new:', urlProjectId);
+                        Logger.debug('SYSTEM', `Project not found, treating as new: ${urlProjectId}`);
                         // [Fix]: Ensure we don't carry over old state if project doesn't exist yet
                         handleClear();
                         // [Fix]: Only set currentProjectId if it's a valid public ID (CB/HL prefix)
@@ -212,7 +213,7 @@ export const useProject = (
                         // If invalid ID, currentProjectId stays null, and first save will create proper CB/HL ID
                     }
                 } catch (err) {
-                    console.error('Failed to load project:', err);
+                    Logger.error('NETWORK', 'Failed to load project', err);
                     showToast("error", "Failed to load project", "⚠️");
                 }
             }

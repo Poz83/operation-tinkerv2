@@ -9,6 +9,7 @@
  */
 
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
+import { Logger } from '../lib/logger';
 
 interface CachedImage {
     id: string;           // Image UUID from DB
@@ -75,7 +76,7 @@ export async function getCachedImage(id: string): Promise<string | null> {
 
         return blobUrl;
     } catch (err) {
-        console.warn('ImageCache: Failed to get cached image', err);
+        Logger.warn('SYSTEM', 'ImageCache: Failed to get cached image', err);
         return null;
     }
 }
@@ -104,7 +105,7 @@ export async function cacheImage(
         // Check if we need to evict old entries
         await evictIfNeeded(db);
     } catch (err) {
-        console.warn('ImageCache: Failed to cache image', err);
+        Logger.warn('SYSTEM', 'ImageCache: Failed to cache image', err);
     }
 }
 
@@ -128,7 +129,7 @@ export async function cacheFromUrl(
         const blob = await response.blob();
         await cacheImage(id, blob, storagePath);
     } catch (err) {
-        console.warn('ImageCache: Failed to cache from URL', err);
+        Logger.warn('SYSTEM', 'ImageCache: Failed to cache from URL', err);
     }
 }
 
@@ -160,7 +161,7 @@ export async function invalidateImage(id: string): Promise<void> {
             activeBlobUrls.delete(id);
         }
     } catch (err) {
-        console.warn('ImageCache: Failed to invalidate', err);
+        Logger.warn('SYSTEM', 'ImageCache: Failed to invalidate', err);
     }
 }
 
@@ -176,9 +177,9 @@ export async function clearCache(): Promise<void> {
         activeBlobUrls.forEach(url => URL.revokeObjectURL(url));
         activeBlobUrls.clear();
 
-        console.log('ImageCache: Cleared');
+        Logger.info('SYSTEM', 'ImageCache: Cleared');
     } catch (err) {
-        console.warn('ImageCache: Failed to clear', err);
+        Logger.warn('SYSTEM', 'ImageCache: Failed to clear', err);
     }
 }
 
@@ -236,8 +237,8 @@ async function evictIfNeeded(db: IDBPDatabase<ImageCacheDB>): Promise<void> {
             }
         });
 
-        console.log(`ImageCache: Evicted ${toDelete.length} entries`);
+        Logger.info('SYSTEM', `ImageCache: Evicted ${toDelete.length} entries`);
     } catch (err) {
-        console.warn('ImageCache: Eviction failed', err);
+        Logger.warn('SYSTEM', 'ImageCache: Eviction failed', err);
     }
 }

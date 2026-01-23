@@ -9,6 +9,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import { encryptApiKey, decryptApiKey, maskApiKey, isValidApiKeyFormat } from '../lib/crypto';
 import { useAuth } from './AuthContext';
 import { supabase } from '../lib/supabase';
+import { Logger } from '../lib/logger';
 
 interface ApiKeyContextType {
     // State
@@ -54,7 +55,7 @@ export const ApiKeyProvider: React.FC<ApiKeyProviderProps> = ({ children }) => {
                         const decrypted = await decryptApiKey(encryptedKey);
                         setApiKeyState(decrypted);
                     } catch (e) {
-                        console.error("Failed to decrypt local key", e);
+                        Logger.error('SYSTEM', 'Failed to decrypt local key', e);
                     }
                 }
                 const isSetupDone = localStorage.getItem(SETUP_COMPLETE_KEY) === 'true';
@@ -73,7 +74,7 @@ export const ApiKeyProvider: React.FC<ApiKeyProviderProps> = ({ children }) => {
                         currentKey = await decryptApiKey(localEncryptedKey);
                         setApiKeyState(currentKey);
                     } catch (e) {
-                        console.warn('Local key corrupted', e);
+                        Logger.warn('SYSTEM', 'Local key corrupted', e);
                         localStorage.removeItem(STORAGE_KEY);
                     }
                 } else if (!currentKey && import.meta.env.VITE_GEMINI_API_KEY?.startsWith('AIza')) {
@@ -99,7 +100,7 @@ export const ApiKeyProvider: React.FC<ApiKeyProviderProps> = ({ children }) => {
                             // Sync to local
                             localStorage.setItem(STORAGE_KEY, data.gemini_api_key);
                         } catch (e) {
-                            console.error('Failed to decrypt cloud key', e);
+                            Logger.error('SYSTEM', 'Failed to decrypt cloud key', e);
                         }
                     }
                 } else if (!data?.gemini_api_key && localEncryptedKey) {
@@ -114,7 +115,7 @@ export const ApiKeyProvider: React.FC<ApiKeyProviderProps> = ({ children }) => {
                 setSetupComplete(isSetupDone);
 
             } catch (error) {
-                console.error('Failed to sync API key:', error);
+                Logger.error('SYSTEM', 'Failed to sync API key', error);
             } finally {
                 setIsLoading(false);
             }
@@ -155,14 +156,14 @@ export const ApiKeyProvider: React.FC<ApiKeyProviderProps> = ({ children }) => {
                     .eq('id', user.id);
 
                 if (error) {
-                    console.error("Failed to sync key to cloud", error);
+                    Logger.error('SYSTEM', 'Failed to sync key to cloud', error);
                     // We don't fail the operation because local worked, but we log it
                 }
             }
 
             return { success: true };
         } catch (error) {
-            console.error('Failed to save API key:', error);
+            Logger.error('SYSTEM', 'Failed to save API key', error);
             return { success: false, error: 'Failed to securely store API key' };
         }
     }, [user]);

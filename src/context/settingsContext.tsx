@@ -4,6 +4,7 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { Logger } from '../lib/logger';
 
 // Studio Enhancement Settings
 export interface StudioSettings {
@@ -61,7 +62,7 @@ function loadSettings(): StudioSettings {
             return { ...DEFAULT_SETTINGS, ...parsed };
         }
     } catch (e) {
-        console.warn('Failed to load settings, using defaults:', e);
+        Logger.warn('SYSTEM', 'Failed to load settings, using defaults', e);
     }
     return DEFAULT_SETTINGS;
 }
@@ -73,7 +74,7 @@ function saveSettings(settings: StudioSettings): void {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
     } catch (e) {
-        console.warn('Failed to save settings:', e);
+        Logger.warn('SYSTEM', 'Failed to save settings', e);
     }
 }
 
