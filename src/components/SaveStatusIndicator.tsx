@@ -95,11 +95,10 @@ export const SaveStatusIndicator: React.FC<SaveStatusIndicatorProps> = ({
 
     return (
         <div
-            className={`flex items-center gap-1.5 text-xs font-medium transition-all duration-300 ${config.className}`}
-            title={lastSavedAt ? `Last saved: ${lastSavedAt.toLocaleTimeString()}` : undefined}
+            className={`flex items-center gap-1.5 transition-all duration-300 ${config.className}`}
+            title={config.text} // Use the text config as the tooltip for all states
         >
             <span className="transition-transform duration-200">{config.icon}</span>
-            <span className="opacity-80">{config.text}</span>
         </div>
     );
 };

@@ -11,6 +11,7 @@ import { useHeroProject } from '../hooks/useHeroProject';
 import { HeroLabService } from '../services/HeroLabService';
 import { useHeroEditChat } from '../hooks/useHeroEditChat';
 import { HeroEditChatPanel } from '../components/HeroEditChatPanel';
+import { SaveStatusIndicator } from '../components/SaveStatusIndicator';
 
 /**
  * Build a profile sheet prompt from DNA
@@ -415,14 +416,14 @@ export const HeroLab: React.FC = () => {
                 </div>
             </div>
 
-            {/* Save Status Indicator */}
-            {project.saveStatus && project.saveStatus !== 'saved' && (
-                <div className="fixed bottom-4 right-24 px-3 py-1.5 rounded-full text-xs font-medium bg-[hsl(var(--card))]/80 backdrop-blur border border-[hsl(var(--border))] z-50">
-                    {/* Saving status hidden for silent autosave */}
-                    {project.saveStatus === 'unsaved' && '○ Unsaved changes'}
-                    {project.saveStatus === 'error' && '⚠️ Save failed'}
-                </div>
-            )}
+            {/* Save Status Indicator - Unified Component */}
+            <div className="fixed bottom-4 right-24 z-50">
+                <SaveStatusIndicator
+                    status={project.saveStatus}
+                    lastSavedAt={project.lastSavedAt}
+                    isOnline={true} // HeroLab doesn't track online state explicitly yet, default to true
+                />
+            </div>
 
             {/* Hero Edit Chat Panel */}
             {showHeroEditor && (
