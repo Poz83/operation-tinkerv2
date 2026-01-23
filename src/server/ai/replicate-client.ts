@@ -69,6 +69,7 @@ export const REPLICATE_MODEL = 'openai/gpt-image-1';
 const STYLE_DESCRIPTORS: Record<StyleId, string> = {
     'Cozy': 'Bold and Easy style with EXTREMELY THICK uniform black marker outlines (2-3mm), simple blob-like cute rounded characters with dot eyes, LOW complexity, LARGE open coloring areas, minimal details, NO textures',
     'HandDrawn': 'Hand-drawn hygge style with ULTRA-THICK organic felt-tip marker outlines (2-3mm), cozy domestic lifestyle scenes featuring warm empowering characters in peaceful settings, organic hand-drawn wobble NOT sterile vectors, minimal details, LARGE colorable areas',
+    'Intricate': 'Secret Garden style adult coloring art. ULTRA-FINE pen lines (0.1-0.5mm). Extremely detailed botanical patterns with individual leaf veins and flower stamens. VIGNETTE composition: concentrate dense detail in CENTER, fade to white edges. Pattern-within-pattern: recursive subdivision of forms. Include hidden seek-and-find elements (tiny keys, bees, butterflies). Minimum 150 enclosed colorable regions. Hand-drawn organic quality, NOT sterile vectors.',
     'Kawaii': 'Japanese kawaii style with chibi proportions (2-head ratio), large expressive eyes, stubby limbs, and soft "squircle" forms',
     'Whimsical': 'Fairy tale storybook illustration with curvilinear organic geometry and gentle flowing lines',
     'Cartoon': 'Classic Western animation style with squash-and-stretch dynamics, clear silhouettes, and rubber-hose limbs',
@@ -160,8 +161,8 @@ const buildCharacterFragment = (dna: CharacterDNAFragment): string => {
  * 
  * STRUCTURE:
  * 1. TASK - Clear directive of what to create
- * 2. SUBJECT - The scene description (enhanced prompt)
- * 3. STYLE - Artistic direction
+ * 2. SUBJECT - The scene description (enhanced prompt) with explicit adherence guard
+ * 3. STYLE - Artistic direction with optional style-specific boosts
  * 4. REQUIREMENTS - Hard constraints (treated as mandatory by GPT)
  * 5. FORBIDDEN - Explicit prohibitions (GPT respects these strongly)
  */
@@ -183,16 +184,46 @@ const buildPrompt = (
         subjectDescription = `${characterFragment}. Scene: ${userPrompt}`;
     }
 
-    // Build instruction-first prompt structure
+    // ═══════════════════════════════════════════════════════════════════════════
+    // STYLE-SPECIFIC BOOSTS (Intricate style needs special detail instructions)
+    // ═══════════════════════════════════════════════════════════════════════════
+    const intricateBoost = styleId === 'Intricate' ? `
+
+INTRICATE STYLE DIRECTIVES (FOLLOW PRECISELY):
+• VIGNETTE COMPOSITION: Concentrate highest detail density in the CENTER of the canvas. Gradually simplify and fade details toward the EDGES, leaving white space margins.
+• PATTERN-WITHIN-PATTERN: Every large shape (flowers, leaves, animals) must contain internal subdivision patterns. Do NOT leave large empty interior regions.
+• HIDDEN DETAILS: Include 3-5 tiny "seek-and-find" elements scattered throughout (small keys, bees, butterflies, birds, ladybugs).
+• RECURSIVE DETAIL: Render individual leaf veins, flower stamens, feather barbs, and petal textures. Each element should have interior linework.
+• SYMMETRY: Use radial or bilateral symmetry for wreath and mandala arrangements where appropriate.
+• LINE DENSITY: Lines should be as close as 0.5mm apart in the densest areas.` : '';
+
+    // Style-specific requirements additions
+    const intricateRequirements = styleId === 'Intricate' ? `
+• ULTRA-FINE line weight (equivalent to 0.1-0.5mm technical pen)
+• Minimum 150 enclosed colorable regions throughout the composition
+• Vignette fade: Highest density in center, simplifying toward edges with white margin
+• Every large shape must contain internal pattern subdivision` : '';
+
+    // Build instruction-first prompt structure with enhanced adherence
     return `TASK: Create a printable black-and-white coloring book page.
 
-SUBJECT: ${subjectDescription}
+═══════════════════════════════════════════════════════════════════════════════
+SUBJECT (CRITICAL - Draw EXACTLY this, do NOT substitute):
+═══════════════════════════════════════════════════════════════════════════════
+${subjectDescription}
+
+⚠️ SUBJECT ADHERENCE WARNING: You MUST draw the EXACT subject described above.
+- If the subject says "sloths" → Draw SLOTHS, not cats or dogs
+- If the subject says "forest" → Draw a FOREST, not a room
+- If the subject says "beach" → Draw a BEACH, not an indoor scene
+Do NOT replace, substitute, or "improve" the subject. Draw EXACTLY what is requested.
+═══════════════════════════════════════════════════════════════════════════════
 
 ARTISTIC STYLE: ${styleDescriptor}
 
 TARGET AUDIENCE: ${audienceSpec}
 
-COMPOSITION: ${complexitySpec.instruction}
+COMPOSITION: ${complexitySpec.instruction}${intricateBoost}
 
 ═══════════════════════════════════════════════════════════════════════════════
 REQUIREMENTS (MANDATORY - Follow these exactly):
@@ -202,7 +233,7 @@ REQUIREMENTS (MANDATORY - Follow these exactly):
 • Every shape must be fully enclosed and ready for coloring
 • Sharp crisp edges with consistent line weight
 • Centered composition with all main elements in the safe 85% zone
-• Do NOT crop heads, feet, or important elements at the edges
+• Do NOT crop heads, feet, or important elements at the edges${intricateRequirements}
 
 ═══════════════════════════════════════════════════════════════════════════════
 FORBIDDEN (Do NOT include any of the following):

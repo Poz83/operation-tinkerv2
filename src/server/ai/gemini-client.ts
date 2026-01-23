@@ -44,6 +44,7 @@ export type StyleId =
 
   | 'Cozy'
   | 'HandDrawn'
+  | 'Intricate'
   | 'Kawaii'
   | 'Whimsical'
   | 'Cartoon'
@@ -190,6 +191,25 @@ const STYLE_SPECS: Record<StyleId, StyleSpec> = {
       'Mood: Warm, calm, nurturing. "Moments of calm" aesthetic.',
       'Background: Keep SIMPLE with lots of white space. No busy patterns.',
       'Negative: NO thin lines, NO sharp angles, NO scary elements, NO complex patterns, NO shading, NO textures',
+      'CRITICAL: Draw EXACTLY what the user describes. Do NOT substitute subjects.',
+    ],
+  },
+  'Intricate': {
+    styleKeyword: 'Intricate adult coloring book page, Secret Garden style, ultra-fine detailed botanical line art',
+    positiveDescription: 'Extremely detailed line art with ultra-fine pen lines (0.1-0.5mm weight). Dense botanical patterns, hidden details, and hand-drawn organic quality. Vignette composition with central focal point fading to white edges.',
+    lineWeight: 'ULTRA-FINE variable lines (0.1-0.5mm), technical pen quality with organic hand-drawn feel',
+    visualRequirements: [
+      'Role: Expert botanical illustrator creating intricate adult coloring art in the style of Johanna Basford',
+      'Lines: ULTRA-FINE variable width lines (0.1-0.5mm). Hand-drawn organic quality with natural flow, NOT sterile vectors. Lines can be as close as 0.5mm apart in densest areas.',
+      'Complexity: HIGH - dense details. 150-300+ colorable regions. Pattern-within-pattern design.',
+      'Composition: VIGNETTE style - concentrate highest density in CENTER, gradually simplify toward EDGES, leaving white margin rest zones. OR circular wreath/mandala arrangement.',
+      'Subjects: Nature-centric - botanical elements (flowers, leaves, vines), woodland creatures, fantasy gardens, whimsical architecture.',
+      'Details: INTRICATE - individual leaf veins, flower stamens, feather barbs, petal textures. Every large shape must contain internal subdivision patterns.',
+      'Hidden Elements: Include 3-5 tiny "seek and find" objects scattered throughout (small keys, bees, butterflies, ladybugs, tiny birds).',
+      'Patterns: Repetitive organic patterns within larger shapes. Fractal-like subdivision of forms. Do NOT leave large empty interior regions.',
+      'Background: Vignette fade-to-white edges for rest zones, OR fully detailed environment.',
+      'Symmetry: Use bilateral or radial symmetry where appropriate for wreaths and mandalas.',
+      'Negative: NO thick bold lines, NO simple blob shapes, NO minimal designs, NO large empty regions, NO cartoon style',
       'CRITICAL: Draw EXACTLY what the user describes. Do NOT substitute subjects.',
     ],
   },

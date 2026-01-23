@@ -27,6 +27,7 @@ export const VISUAL_STYLES = [
 
   { id: 'Cozy', label: 'Cozy (Hygge) ☕' },
   { id: 'HandDrawn', label: 'Hand-Drawn (Lifestyle) ✏️' },
+  { id: 'Intricate', label: 'Intricate (Secret Garden) 🌿' },
   { id: 'Kawaii', label: 'Kawaii (Cute Mascot)' },
   { id: 'Whimsical', label: 'Whimsical (Storybook)' },
   { id: 'Cartoon', label: 'Cartoon (Action)' },

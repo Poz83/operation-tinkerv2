@@ -11,6 +11,28 @@ import { useAutosave } from './useAutosave';
 import { saveProject, fetchProject } from '../services/projectsService';
 import { Logger } from '../lib/logger';
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// STYLE → COMPLEXITY SMART DEFAULTS
+// Each style has an inherent complexity level. When user selects a style,
+// complexity auto-adjusts to the style's "ideal" level (user can still override).
+// ═══════════════════════════════════════════════════════════════════════════════
+const STYLE_COMPLEXITY_DEFAULTS: Record<string, string> = {
+    'Cozy': 'Simple',           // Bold & Easy = low complexity
+    'HandDrawn': 'Simple',      // Hygge = simple, relaxing
+    'Intricate': 'Intricate',   // Secret Garden = high detail
+    'Kawaii': 'Moderate',       // Chibi = moderate detail
+    'Whimsical': 'Moderate',    // Storybook = moderate
+    'Cartoon': 'Moderate',      // Animation = moderate
+    'Botanical': 'Moderate',    // Scientific = moderate-high
+    'Realistic': 'Intricate',   // Fine art = high detail
+    'Geometric': 'Moderate',    // Low-poly = moderate
+    'Fantasy': 'Intricate',     // RPG = detailed
+    'Gothic': 'Intricate',      // Woodcut = detailed
+    'StainedGlass': 'Moderate', // Bold segments = moderate
+    'Mandala': 'Intricate',     // Pattern-dense
+    'Zentangle': 'Extreme Detail', // Maximum pattern density
+};
+
 export const useProject = (
     pages: ColoringPage[],
     setPages: React.Dispatch<React.SetStateAction<ColoringPage[]>>,
@@ -36,6 +58,20 @@ export const useProject = (
     const [cinematics, setCinematics] = useState('dynamic');
     const [styleReferences, setStyleReferences] = useState<StyleReference[]>([]);
     const [qualityTier, setQualityTier] = useState<QualityTier>('studio'); // Default to Studio for quality
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SMART COMPLEXITY: Auto-set complexity when style changes
+    // ═══════════════════════════════════════════════════════════════════════════
+    useEffect(() => {
+        const defaultComplexity = STYLE_COMPLEXITY_DEFAULTS[visualStyle];
+        if (defaultComplexity) {
+            const complexityLevel = COMPLEXITY_LEVELS.find(c => c.id === defaultComplexity);
+            if (complexityLevel) {
+                setComplexity(complexityLevel);
+                Logger.debug('UI', `Style "${visualStyle}" → Auto-set complexity to "${defaultComplexity}"`);
+            }
+        }
+    }, [visualStyle]);
 
     // --- Persistence State ---
     const { projectId: urlProjectId } = useParams<{ projectId?: string }>();
