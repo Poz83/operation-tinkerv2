@@ -74,26 +74,41 @@ const GEMINI_FLASH_MODEL = 'gemini-2.0-flash';
  * System prompt for Flux LoRA enhancement
  * 
  * KEY DIFFERENCES from Gemini enhancer:
- * - MAX 30 words (LoRA prefers concise)
- * - Subject-focused only (LoRA handles style)
+ * - MAX 40 words (LoRA prefers concise but needs context)
+ * - Subject-focused with PHYSICAL REALISM
  * - No color words (coloring book)
  * - No style descriptors (LoRA is already trained)
+ * - Enforces anatomical accuracy and physics coherence
  */
-const FLUX_ENHANCER_SYSTEM_PROMPT = `You expand simple ideas into brief visual descriptions for a coloring book image generator.
+const FLUX_ENHANCER_SYSTEM_PROMPT = `You expand simple ideas into brief, PHYSICALLY ACCURATE visual descriptions for a coloring book.
 
-RULES:
-1. Output ONLY 20-30 words maximum
-2. Describe the SUBJECT and COMPOSITION only
-3. NO colors, NO shading words, NO style descriptors
-4. Focus on: pose, expression, setting, objects, spatial arrangement
-5. Keep it simple and specific
+PHYSICS & REALISM RULES:
+1. GRAVITY: Objects rest on surfaces. Characters stand on ground. Nothing floats without reason.
+2. SCALE: Maintain realistic size relationships (cat < dog < human < elephant < house).
+3. ANATOMY: Humans have 2 arms, 2 legs, 5 fingers per hand. Animals have species-correct limbs.
+4. ENVIRONMENT: Indoor objects stay indoors. Outdoor objects stay outdoors. Match props to setting.
+5. INTERACTION: Characters touching objects must grip them correctly. Eye contact where appropriate.
+
+OUTPUT RULES:
+1. Output ONLY 25-40 words maximum
+2. Describe SUBJECT + POSE + SETTING + KEY PROPS only
+3. NO colors, NO shading, NO style words
+4. Include: ground/surface, spatial relationships, anatomical details
+5. Keep props MINIMAL and scene-appropriate
+
+ANATOMY QUICK REFERENCE:
+- Humans: 2 arms, 2 legs, 5 fingers, proportional head/body
+- Cats/Dogs: 4 legs, tail, pointed/floppy ears, paws
+- Birds: 2 wings, 2 legs, beak, feathers
+- Fish: fins, tail, scales, no legs
+- Dragons: 4 legs, 2 wings, tail, horns (fantasy but consistent)
 
 Example:
-Input: "cat"
-Output: "fluffy cat sitting on a cushion, looking curious, tail curled, whiskers prominent, cozy living room background with window"
+Input: "cat playing"
+Output: "fluffy cat on wooden floor, front paws batting at yarn ball, tail raised, ears perked forward, cozy living room with window in background"
 
-Input: "dragon"
-Output: "fierce dragon with spread wings perched on mountain peak, long tail wrapped around rocks, clouds below"`;
+Input: "girl and dog in park"
+Output: "young girl kneeling on grass, both hands gently petting golden retriever sitting beside her, park bench and tree behind them, sunny day"`;
 
 /**
  * Enhance a prompt specifically for Flux Coloring Book LoRA
@@ -115,11 +130,11 @@ export const enhancePromptForFlux = async (
 
         const response = await ai.models.generateContent({
             model: GEMINI_FLASH_MODEL,
-            contents: `Expand this into a brief visual description (20-30 words max): "${userPrompt}"`,
+            contents: `Expand this into a PHYSICALLY ACCURATE visual description (25-40 words): "${userPrompt}"`,
             config: {
                 systemInstruction: FLUX_ENHANCER_SYSTEM_PROMPT,
                 temperature: 0.7,
-                maxOutputTokens: 100, // Keep it short
+                maxOutputTokens: 150, // Allow for detailed physics-aware descriptions
             } as any,
         });
 
