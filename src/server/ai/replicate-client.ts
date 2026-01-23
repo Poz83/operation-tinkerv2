@@ -207,6 +207,34 @@ const AUDIENCE_TREATMENT: Record<AudienceId, string> = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// CHARACTER DNA INJECTION (for cross-page visual consistency)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface CharacterDNAFragment {
+    name: string;
+    face: string;
+    eyes: string;
+    hair: string;
+    body: string;
+    outfitCanon: string;
+}
+
+/**
+ * Convert CharacterDNA to a prompt fragment that describes the character
+ * This ensures the same character looks consistent across all pages
+ */
+const buildCharacterFragment = (dna: CharacterDNAFragment): string => {
+    const parts = [];
+    if (dna.name) parts.push(`${dna.name}`);
+    if (dna.face) parts.push(`with ${dna.face}`);
+    if (dna.eyes) parts.push(`${dna.eyes} eyes`);
+    if (dna.hair) parts.push(`${dna.hair} hair`);
+    if (dna.body) parts.push(`${dna.body} build`);
+    if (dna.outfitCanon) parts.push(`wearing ${dna.outfitCanon}`);
+    return parts.join(', ');
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // PROMPT BUILDER (Research-Optimized for Flux + Coloring Book LoRA)
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -225,20 +253,30 @@ const AUDIENCE_TREATMENT: Record<AudienceId, string> = {
  * 3. "simple line art" vs "detailed pencil sketch" controls complexity
  * 4. Order: Subject → Action → Style → Complexity → Details
  * 5. 30-80 words is optimal length
+ * 6. CharacterDNA injection for consistent character across pages
  */
 const buildPrompt = (
     userPrompt: string,
     styleId: StyleId,
     complexityId: ComplexityId,
     audienceId: AudienceId,
+    characterDNA?: CharacterDNAFragment,
 ): string => {
     const styleDescriptor = STYLE_DESCRIPTORS[styleId] || '';
     const complexityArtStyle = COMPLEXITY_ART_STYLE[complexityId];
     const audienceTreatment = AUDIENCE_TREATMENT[audienceId];
 
+    // Inject character DNA if provided (for consistent character across pages)
+    let subjectDescription = userPrompt;
+    if (characterDNA && characterDNA.name) {
+        const characterFragment = buildCharacterFragment(characterDNA);
+        // Prepend character description to ensure consistency
+        subjectDescription = `${characterFragment}, ${userPrompt}`;
+    }
+
     // Build natural language sentence following official examples
     // Format: "Coloring Book, A black and white [art style] of [subject], [style], [audience], [technical]."
-    return `Coloring Book, A black and white ${complexityArtStyle} of ${userPrompt}, ${styleDescriptor}, ${audienceTreatment}, high contrast, white background, no shading, no grey tones, clean closed outlines ready for coloring.`;
+    return `Coloring Book, A black and white ${complexityArtStyle} of ${subjectDescription}, ${styleDescriptor}, ${audienceTreatment}, high contrast, white background, no shading, no grey tones, clean closed outlines ready for coloring.`;
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -270,8 +308,8 @@ export const generateColoringPage = async (
         throw new Error('Aborted');
     }
 
-    // Build prompt with trigger word
-    const prompt = buildPrompt(userPrompt, styleId, complexityId, audienceId);
+    // Build prompt with trigger word and optional CharacterDNA
+    const prompt = buildPrompt(userPrompt, styleId, complexityId, audienceId, request.characterDNA);
 
     if (enableLogging) {
         Logger.info('AI', `[${requestId}] Replicate: Generating with Flux Coloring Book LoRA`);
@@ -305,6 +343,8 @@ export const generateColoringPage = async (
                     guidance_scale: 4.0,                // High prompt adherence for clean lines
                     num_inference_steps: 28,            // Quality/speed balance
                     go_fast: true,                      // Replicate's fp8 optimization (2x speed)
+                    // CONSISTENCY: Lock diffusion seed for same visual "world" across pages
+                    ...(request.seed && { seed: request.seed }),
                 },
             }),
             signal,
@@ -360,7 +400,7 @@ export const generateColoringPage = async (
                 error: 'No image in response',
                 promptUsed: prompt,
                 durationMs: Date.now() - startTime,
-                metadata: { requestId, model: REPLICATE_MODEL, imageSize, aspectRatio },
+                metadata: { requestId, model: REPLICATE_MODEL, imageSize, aspectRatio, seed: request.seed },
             };
         }
 
@@ -386,7 +426,7 @@ export const generateColoringPage = async (
             imageUrl,
             promptUsed: prompt,
             durationMs: Date.now() - startTime,
-            metadata: { requestId, model: REPLICATE_MODEL, imageSize, aspectRatio },
+            metadata: { requestId, model: REPLICATE_MODEL, imageSize, aspectRatio, seed: request.seed },
         };
 
     } catch (error: any) {
@@ -406,7 +446,7 @@ export const generateColoringPage = async (
             error: errorMessage,
             promptUsed: prompt,
             durationMs: Date.now() - startTime,
-            metadata: { requestId, model: REPLICATE_MODEL, imageSize, aspectRatio },
+            metadata: { requestId, model: REPLICATE_MODEL, imageSize, aspectRatio, seed: request.seed },
         };
     }
 };

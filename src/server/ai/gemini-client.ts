@@ -93,6 +93,17 @@ export interface GenerateImageRequest {
   enableLogging?: boolean;
   /** Style reference images (multimodal input for style transfer) - max 5 */
   styleReferenceImages?: Array<{ base64: string; mimeType: string }>;
+  /** Fixed seed for visual consistency across pages (Flux only) */
+  seed?: number;
+  /** Character DNA for consistent character rendering */
+  characterDNA?: {
+    name: string;
+    face: string;
+    eyes: string;
+    hair: string;
+    body: string;
+    outfitCanon: string;
+  };
 }
 
 export interface GenerateImageResult {
@@ -106,6 +117,8 @@ export interface GenerateImageResult {
     model: string;
     imageSize: ImageSize;
     aspectRatio: string;
+    /** Seed used for generation (Flux only) - save for reproducibility */
+    seed?: number;
   };
 }
 

@@ -71,6 +71,17 @@ export interface GenerateAndValidateRequest {
     config?: Partial<PipelineConfig>;
     /** Style reference images for multimodal style transfer (max 5) */
     styleReferenceImages?: Array<{ base64: string; mimeType: string }>;
+    /** Fixed seed for visual consistency across pages (Flux/Swift tier) */
+    seed?: number;
+    /** Character DNA for consistent character rendering */
+    characterDNA?: {
+        name: string;
+        face: string;
+        eyes: string;
+        hair: string;
+        body: string;
+        outfitCanon: string;
+    };
 }
 
 export interface PipelineConfig {
@@ -143,6 +154,8 @@ export const generateAndValidate = async (
         userEmail,
         signal,
         styleReferenceImages,
+        seed,
+        characterDNA,
     } = request;
 
     // Determine provider based on tier
@@ -246,6 +259,9 @@ export const generateAndValidate = async (
                 apiKey, // Not used by Replicate but required by interface
                 signal,
                 enableLogging: config.enableLogging,
+                // CONSISTENCY: Pass seed and characterDNA for visual coherence
+                seed,
+                characterDNA,
             },
             replicateApiToken
         );
