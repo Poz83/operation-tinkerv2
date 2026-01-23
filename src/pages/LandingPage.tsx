@@ -12,7 +12,7 @@ const LandingPage: React.FC = () => {
     const [email, setEmail] = useState('');
     const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
     const [errorMessage, setErrorMessage] = useState('');
-    const { sendMagicLink, isAuthenticated, debugLogin } = useAuth();
+    const { sendMagicLink, isAuthenticated, isLoading, debugLogin } = useAuth();
     const { settings, toggleTheme } = useSettings();
     const navigate = useNavigate();
     const location = useLocation();
@@ -20,12 +20,14 @@ const LandingPage: React.FC = () => {
     // Get intended destination from location state (set by ProtectedRoute)
     const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
 
-    // If authenticated, redirect to dashboard
+    // Only redirect on INITIAL LOAD if already authenticated
+    // Don't react to background auth changes - let the callback tab handle the redirect
     React.useEffect(() => {
-        if (isAuthenticated) {
+        if (isAuthenticated && !isLoading) {
             navigate('/dashboard', { replace: true });
         }
-    }, [isAuthenticated, navigate]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Empty deps = only run on mount
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
