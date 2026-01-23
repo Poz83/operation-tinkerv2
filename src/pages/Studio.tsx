@@ -683,6 +683,7 @@ const App: React.FC = () => {
                 styleReferences={project.styleReferences}
                 setStyleReferences={project.setStyleReferences}
                 onPreviewPrompt={handlePreviewPrompt}
+                onMagicMode={() => setShowCreativeDirector(true)}
               />
 
               <div className="px-6 pb-6">
@@ -701,16 +702,6 @@ const App: React.FC = () => {
                   </button>
                 ) : (
                   <div className="flex gap-2">
-                    {/* Magic Mode Button */}
-                    <button
-                      onClick={() => setShowCreativeDirector(true)}
-                      className="p-3 rounded-xl bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-500/30 text-purple-300 hover:from-purple-500/30 hover:to-pink-500/30 transition-all"
-                      title="Launch Creative Director"
-                    >
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-                      </svg>
-                    </button>
                     {/* Preview Button */}
                     <button
                       onClick={handlePreviewPrompt}
