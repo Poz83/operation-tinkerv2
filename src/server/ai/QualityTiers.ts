@@ -54,7 +54,7 @@ export const QUALITY_TIERS: Record<QualityTier, TierConfig> = {
         name: 'Swift',
         emoji: '⚡',
         provider: 'replicate',
-        imageModel: 'openai/gpt-image-1.5',
+        imageModel: 'black-forest-labs/flux-dev-lora',
         textModel: 'gemini-3-flash-preview',
         tokenCostPerImage: 1,
         tokenCostForDirector: 2,

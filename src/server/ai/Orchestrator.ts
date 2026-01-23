@@ -233,7 +233,7 @@ export const generateAndValidate = async (
     // Route to appropriate provider based on tier
     let genResult;
     if (useReplicate && replicateApiToken) {
-        // Swift tier: Use Replicate (GPT Image 1.5)
+        // Swift tier: Use Replicate (Flux Coloring Book LoRA)
         log(`Using Replicate (Flux Coloring Book LoRA) for Swift tier`);
         genResult = await generateWithReplicate(
             {
