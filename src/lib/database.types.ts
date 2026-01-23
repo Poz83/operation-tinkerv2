@@ -152,6 +152,36 @@ export type Database = {
         }
         Relationships: []
       }
+      contact_messages: {
+        Row: {
+          id: string
+          created_at: string
+          full_name: string
+          email: string
+          subject: string
+          message: string
+          metadata: Json | null
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          full_name: string
+          email: string
+          subject: string
+          message: string
+          metadata?: Json | null
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          full_name?: string
+          email?: string
+          subject?: string
+          message?: string
+          metadata?: Json | null
+        }
+        Relationships: []
+      }
       coloring_studio_data: {
         Row: {
           audience: string | null

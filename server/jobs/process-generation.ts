@@ -109,11 +109,8 @@ export const processGeneration = async (
         imageSize: '2K', // Default quality
         apiKey: apiKey,
         config: {
-          enableQa: true,
-          enableAutoRetry: true,
-          maxAttempts: 3,
-          qaMode: 'production',
-          minimumPassScore: 70, // Reasonable threshold for background jobs
+          enableEnhancement: true,
+          enableLogging: false,
         }
       };
 
@@ -123,9 +120,6 @@ export const processGeneration = async (
         onPageComplete(item.pageNumber, result.imageUrl);
       } else {
         console.error(`Failed to generate page ${item.pageNumber}:`, result.error);
-        if (result.finalQaResult) {
-          console.warn(`QA Failure Reasons: ${result.finalQaResult.issues.map(i => i.message).join(' | ')}`);
-        }
       }
     } catch (error: any) {
       console.error(`Error generating page ${item.pageNumber}:`, error.message);

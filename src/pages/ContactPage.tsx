@@ -43,7 +43,6 @@ const ContactPage: React.FC = () => {
 
         try {
             // 2. Insert into Supabase
-            // @ts-ignore - Table created via migration, types not yet updated
             const { error } = await supabase
                 .from('contact_messages')
                 .insert({
