@@ -26,6 +26,7 @@ export const PAGE_SIZES = [
 export const VISUAL_STYLES = [
 
   { id: 'Cozy', label: 'Cozy (Hygge) ☕' },
+  { id: 'HandDrawn', label: 'Hand-Drawn (Lifestyle) ✏️' },
   { id: 'Kawaii', label: 'Kawaii (Cute Mascot)' },
   { id: 'Whimsical', label: 'Whimsical (Storybook)' },
   { id: 'Cartoon', label: 'Cartoon (Action)' },

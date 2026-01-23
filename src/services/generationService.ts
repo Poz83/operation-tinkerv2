@@ -102,7 +102,7 @@ export interface GeneratePageRequest {
     autoSave?: boolean;
     /** Abort signal */
     signal?: AbortSignal;
-    /** Fixed seed for visual consistency across pages (Flux/Swift tier) */
+    /** Fixed seed for visual consistency (not used by GPT Image 1.5) */
     seed?: number;
 }
 
@@ -183,7 +183,7 @@ export interface BatchGenerateRequest {
     styleReferenceImages?: Array<{ base64: string; mimeType: string }>;
     /** Abort signal */
     signal?: AbortSignal;
-    /** Fixed seed for Flux visual consistency (Swift tier) - if provided, used for all pages */
+    /** Session seed for visual consistency (legacy, not used by GPT Image 1.5) */
     sessionSeed?: number;
 }
 
@@ -374,8 +374,6 @@ export const generatePage = async (
         config: buildPipelineConfig(config),
         // Pass style reference images for multimodal generation
         styleReferenceImages: request.styleReferenceImages,
-        // CONSISTENCY: Pass seed and characterDNA for visual coherence
-        seed: request.seed,
         characterDNA: request.heroDNA ? {
             name: request.heroDNA.name,
             face: request.heroDNA.face,
@@ -553,14 +551,6 @@ export const batchGenerate = async (
 
     let sessionReferenceImage = request.sessionReferenceImage;
 
-    // FLUX CONSISTENCY: Generate a session seed if autoConsistency is enabled
-    // This seed will be reused for all pages to maintain visual coherence
-    let sessionSeed = request.sessionSeed;
-    if (autoConsistency && !sessionSeed) {
-        sessionSeed = Math.floor(Math.random() * 2147483647); // Max 32-bit signed int
-        Logger.info('AI', `🎲 Generated session seed for visual consistency: ${sessionSeed}`);
-    }
-
     // Process pages
     if (concurrency === 1) {
         // Sequential processing
@@ -590,8 +580,6 @@ export const batchGenerate = async (
                     // styleDNA: project.styleDNA, // Assuming SavedProject has styleDNA property, if not comment out
                     // Pass style reference images for multimodal generation
                     styleReferenceImages: request.styleReferenceImages,
-                    // FLUX CONSISTENCY: Use locked seed across all pages
-                    seed: sessionSeed,
                     signal,
                 },
                 {
@@ -670,8 +658,6 @@ export const batchGenerate = async (
                             heroDNA: project.characterDNA,
                             // Pass style reference images for multimodal generation
                             styleReferenceImages: request.styleReferenceImages,
-                            // FLUX CONSISTENCY: Use locked seed across all pages
-                            seed: sessionSeed,
                             signal,
                         },
                         {

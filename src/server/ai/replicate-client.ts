@@ -1,28 +1,26 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
- * REPLICATE CLIENT — Flux Coloring Book LoRA Integration
+ * REPLICATE CLIENT — GPT Image 1.5 Integration
  * myJoe Creative Suite - Coloring Book Studio
  * ═══════════════════════════════════════════════════════════════════════════════
  *
  * PURPOSE:
- * Generate coloring book pages using Flux Dev + Coloring Book LoRA via Replicate.
- * Used for the Swift tier (faster, purpose-built for coloring pages).
+ * Generate coloring book pages using OpenAI GPT Image 1.5 via Replicate.
+ * Used for the Swift tier (superior instruction-following for coloring pages).
  *
- * MODEL: black-forest-labs/flux-dev-lora + prithivMLmods/Coloring-Book-Flux-LoRA
- * COST: ~$0.025/image
+ * MODEL: openai/gpt-image-1 (via Replicate pass-through)
+ * COST: ~$0.02-0.07/image (billed to OpenAI account)
  *
- * OPTIMIZATION NOTES:
- * - lora_scale 0.9: Strong coloring book style enforcement
- * - guidance_scale 4.0: High prompt adherence for clean lines
- * - go_fast: true: Replicate's fp8 quantization for 2x speed
- * - Trigger word "c0l0ringb00k" activates the LoRA style
- * - Explicit "white background" prevents grey artifacts
+ * KEY ADVANTAGES OF GPT IMAGE 1.5:
+ * - Exceptional instruction following (treats REQUIREMENTS as hard constraints)
+ * - Native text rendering accuracy
+ * - No trigger words needed - responds to clear directives
+ * - Multimodal input support for style references
  *
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
 import { Logger } from '../../lib/logger';
-import { GoogleGenAI } from '@google/genai';
 import type { 
     StyleId, 
     ComplexityId, 
@@ -30,8 +28,6 @@ import type {
     ImageSize,
     GenerateImageRequest,
     GenerateImageResult,
-    EnhancePromptRequest,
-    EnhancePromptResult,
 } from './gemini-client';
 
 // Re-export types for convenience
@@ -60,165 +56,69 @@ interface ReplicateErrorResponse {
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export const REPLICATE_MODEL = 'black-forest-labs/flux-dev-lora';
-export const COLORING_BOOK_LORA = 'prithivMLmods/Coloring-Book-Flux-LoRA';
-
-// Gemini Flash model for enhancement
-const GEMINI_FLASH_MODEL = 'gemini-2.0-flash';
+export const REPLICATE_MODEL = 'openai/gpt-image-1';
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// FLUX-OPTIMIZED PROMPT ENHANCER
+// STYLE MAPPINGS (Instruction-Optimized for GPT Image 1.5)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * System prompt for Flux LoRA enhancement
- * 
- * KEY DIFFERENCES from Gemini enhancer:
- * - MAX 40 words (LoRA prefers concise but needs context)
- * - Subject-focused with PHYSICAL REALISM
- * - No color words (coloring book)
- * - No style descriptors (LoRA is already trained)
- * - Enforces anatomical accuracy and physics coherence
- */
-const FLUX_ENHANCER_SYSTEM_PROMPT = `You expand simple ideas into brief, PHYSICALLY ACCURATE visual descriptions for a coloring book.
-
-PHYSICS & REALISM RULES:
-1. GRAVITY: Objects rest on surfaces. Characters stand on ground. Nothing floats without reason.
-2. SCALE: Maintain realistic size relationships (cat < dog < human < elephant < house).
-3. ANATOMY: Humans have 2 arms, 2 legs, 5 fingers per hand. Animals have species-correct limbs.
-4. ENVIRONMENT: Indoor objects stay indoors. Outdoor objects stay outdoors. Match props to setting.
-5. INTERACTION: Characters touching objects must grip them correctly. Eye contact where appropriate.
-
-OUTPUT RULES:
-1. Output ONLY 25-40 words maximum
-2. Describe SUBJECT + POSE + SETTING + KEY PROPS only
-3. NO colors, NO shading, NO style words
-4. Include: ground/surface, spatial relationships, anatomical details
-5. Keep props MINIMAL and scene-appropriate
-
-ANATOMY QUICK REFERENCE:
-- Humans: 2 arms, 2 legs, 5 fingers, proportional head/body
-- Cats/Dogs: 4 legs, tail, pointed/floppy ears, paws
-- Birds: 2 wings, 2 legs, beak, feathers
-- Fish: fins, tail, scales, no legs
-- Dragons: 4 legs, 2 wings, tail, horns (fantasy but consistent)
-
-Example:
-Input: "cat playing"
-Output: "fluffy cat on wooden floor, front paws batting at yarn ball, tail raised, ears perked forward, cozy living room with window in background"
-
-Input: "girl and dog in park"
-Output: "young girl kneeling on grass, both hands gently petting golden retriever sitting beside her, park bench and tree behind them, sunny day"`;
-
-/**
- * Enhance a prompt specifically for Flux Coloring Book LoRA
- * 
- * Lightweight enhancement that expands subject detail without
- * adding style verbosity that conflicts with the LoRA training.
- */
-export const enhancePromptForFlux = async (
-    request: EnhancePromptRequest
-): Promise<EnhancePromptResult> => {
-    const { userPrompt, apiKey, signal } = request;
-
-    if (signal?.aborted) {
-        throw new Error('Aborted');
-    }
-
-    try {
-        const ai = new GoogleGenAI({ apiKey });
-
-        const response = await ai.models.generateContent({
-            model: GEMINI_FLASH_MODEL,
-            contents: `Expand this into a PHYSICALLY ACCURATE visual description (25-40 words): "${userPrompt}"`,
-            config: {
-                systemInstruction: FLUX_ENHANCER_SYSTEM_PROMPT,
-                temperature: 0.7,
-                maxOutputTokens: 150, // Allow for detailed physics-aware descriptions
-            } as any,
-        });
-
-        if (signal?.aborted) {
-            throw new Error('Aborted');
-        }
-
-        let enhancedPrompt = response.text?.trim() || userPrompt;
-
-        // Strip any color words that slipped through
-        const colorBlocklist = /\b(red|blue|green|yellow|purple|orange|pink|brown|colored|colorful|shading|shaded|gradient|vibrant|bright|dark|light)\b/gi;
-        enhancedPrompt = enhancedPrompt.replace(colorBlocklist, '').replace(/\s+/g, ' ').trim();
-
-        // Enforce max length (~40 words as safety)
-        const words = enhancedPrompt.split(/\s+/);
-        if (words.length > 40) {
-            enhancedPrompt = words.slice(0, 40).join(' ');
-        }
-
-        return {
-            success: true,
-            enhancedPrompt,
-        };
-
-    } catch (error: any) {
-        if (error.message === 'Aborted') {
-            throw error;
-        }
-
-        return {
-            success: false,
-            enhancedPrompt: userPrompt, // Fallback to original
-            error: error.message,
-        };
-    }
-};
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// STYLE MAPPING (Natural language for Flux - matches subject matter)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Style keywords describe the SUBJECT'S artistic treatment, not "coloring book style"
- * (the LoRA handles that). These add character/mood to the drawing.
+ * Style descriptors optimized for GPT's instruction-following capability.
+ * These are embedded as clear artistic direction, not trigger keywords.
  */
 const STYLE_DESCRIPTORS: Record<StyleId, string> = {
-    'Cozy': 'cozy and warm with soft rounded shapes',
-    'Kawaii': 'cute Japanese kawaii style with large expressive eyes and small body',
-    'Whimsical': 'whimsical fairy tale illustration style',
-    'Cartoon': 'classic cartoon style with exaggerated features',
-    'Botanical': 'precise botanical scientific illustration',
-    'Realistic': 'realistic proportions with fine engraving-style linework',
-    'Geometric': 'geometric low-poly faceted design',
-    'Fantasy': 'epic fantasy style with heroic dramatic pose',
-    'Gothic': 'ornate gothic style with architectural flourishes',
-    'StainedGlass': 'stained glass design with bold dividing lines',
-    'Mandala': 'symmetrical mandala pattern with sacred geometry',
-    'Zentangle': 'zentangle pattern-filled silhouette',
+    'Cozy': 'Bold and Easy style with EXTREMELY THICK uniform black marker outlines (2-3mm), simple blob-like cute rounded characters with dot eyes, LOW complexity, LARGE open coloring areas, minimal details, NO textures',
+    'HandDrawn': 'Hand-drawn hygge style with ULTRA-THICK organic felt-tip marker outlines (2-3mm), cozy domestic lifestyle scenes featuring warm empowering characters in peaceful settings, organic hand-drawn wobble NOT sterile vectors, minimal details, LARGE colorable areas',
+    'Kawaii': 'Japanese kawaii style with chibi proportions (2-head ratio), large expressive eyes, stubby limbs, and soft "squircle" forms',
+    'Whimsical': 'Fairy tale storybook illustration with curvilinear organic geometry and gentle flowing lines',
+    'Cartoon': 'Classic Western animation style with squash-and-stretch dynamics, clear silhouettes, and rubber-hose limbs',
+    'Botanical': 'Scientific botanical illustration with precise morphological accuracy and fine technical pen lines',
+    'Realistic': 'Museum-quality steel engraving style with precise cross-hatching textures and anatomically accurate proportions',
+    'Geometric': 'Low-poly geometric abstraction using ONLY straight lines, faceted crystalline forms, and polygon shapes',
+    'Fantasy': 'Epic fantasy RPG concept art with heroic proportions (8-9 heads tall), dynamic poses, and 70/30 detail distribution',
+    'Gothic': 'Ornate gothic style with stained glass motifs, architectural flourishes, and macabre elegance',
+    'StainedGlass': 'Tiffany-style stained glass design with thick bold lead lines separating segmented colorable sections',
+    'Mandala': 'Sacred geometry mandala with mathematically perfect radial symmetry and fractal tessellation patterns',
+    'Zentangle': 'Zentangle-inspired art where the subject is a container filled with intricate tangle patterns (Flux, Paradox, Tipple)',
 };
 
 /**
- * Complexity controls the LINE ART STYLE - this is what the LoRA responds to
- * Based on official HuggingFace examples:
- * - "simple line art" for simple
- * - "detailed pencil sketch" for complex
+ * Complexity maps to quality setting AND detail instructions.
+ * GPT Image 1.5 respects these as hard constraints.
  */
-const COMPLEXITY_ART_STYLE: Record<ComplexityId, string> = {
-    'Very Simple': 'very simple line art, bold thick outlines, minimal details, large shapes',
-    'Simple': 'simple clean line art, clear outlines, easy to color',
-    'Moderate': 'line art with moderate detail, balanced composition',
-    'Intricate': 'detailed pencil sketch, intricate linework, many small sections',
-    'Extreme Detail': 'highly detailed pencil sketch, intricate textures, fine detailed linework, expert level',
+const COMPLEXITY_SPECS: Record<ComplexityId, { quality: 'low' | 'medium' | 'high'; instruction: string }> = {
+    'Very Simple': {
+        quality: 'low',
+        instruction: '3-8 large colorable regions only. Single iconic subject with minimum 10mm region sizes. Zero background elements. Maximum semantic clarity.',
+    },
+    'Simple': {
+        quality: 'medium',
+        instruction: '15-30 large colorable regions. Clear main subject focus with minimum 5mm region sizes. Essential context only in background.',
+    },
+    'Moderate': {
+        quality: 'medium',
+        instruction: '40-80 colorable regions. Complete scene with foreground, midground, and background. Minimum 3mm region sizes. Include 4-6 white space rest areas.',
+    },
+    'Intricate': {
+        quality: 'high',
+        instruction: '80-120 colorable regions. Rich detailed environment throughout. Minimum 2mm region sizes. Patterns rendered as distinct shapes.',
+    },
+    'Extreme Detail': {
+        quality: 'high',
+        instruction: '120-150+ colorable regions. Expert-level complexity with shapes-within-shapes. Minimum 1mm region sizes. 2-3 small rest areas for visual relief.',
+    },
 };
 
 /**
- * Audience adds age-appropriate subject treatment
+ * Audience-appropriate content guidance.
  */
-const AUDIENCE_TREATMENT: Record<AudienceId, string> = {
-    'toddlers': 'friendly and approachable, extra simple shapes',
-    'preschool': 'cute and friendly, chunky shapes',
-    'kids': 'fun and engaging, playful details',
-    'teens': 'cool and stylish, dynamic composition',
-    'adults': 'sophisticated and refined, intricate patterns',
-    'seniors': 'nostalgic and calming, clear distinct sections',
+const AUDIENCE_SPECS: Record<AudienceId, string> = {
+    'toddlers': 'Friendly, recognizable single object with zero background distractions. Extra simple shapes. No scary elements.',
+    'preschool': 'Cute and friendly characters with chunky shapes. Simple scenes with clear definition.',
+    'kids': 'Fun and engaging scenes with playful details. Adventure themes appropriate for ages 6-12.',
+    'teens': 'Cool and stylish with dynamic composition. Appropriate for ages 13-17.',
+    'adults': 'Sophisticated and refined with intricate patterns. Relaxation-focused designs.',
+    'seniors': 'High clarity with distinct sections. Nostalgic themes. Avoid tiny details for dexterity.',
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -235,12 +135,11 @@ interface CharacterDNAFragment {
 }
 
 /**
- * Convert CharacterDNA to a prompt fragment that describes the character
- * This ensures the same character looks consistent across all pages
+ * Convert CharacterDNA to a clear character description.
  */
 const buildCharacterFragment = (dna: CharacterDNAFragment): string => {
     const parts = [];
-    if (dna.name) parts.push(`${dna.name}`);
+    if (dna.name) parts.push(`Character "${dna.name}"`);
     if (dna.face) parts.push(`with ${dna.face}`);
     if (dna.eyes) parts.push(`${dna.eyes} eyes`);
     if (dna.hair) parts.push(`${dna.hair} hair`);
@@ -250,27 +149,21 @@ const buildCharacterFragment = (dna: CharacterDNAFragment): string => {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// PROMPT BUILDER (Research-Optimized for Flux + Coloring Book LoRA)
+// PROMPT BUILDER (Instruction-First Pattern for GPT Image 1.5)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Build a prompt following official HuggingFace examples:
+ * Build a prompt optimized for GPT Image 1.5's instruction-following capability.
  * 
- * Official format: "Coloring Book, A [descriptor] [art style] of [subject], [details]."
+ * KEY INSIGHT: GPT Image 1.5 treats structured instructions as HARD CONSTRAINTS,
+ * unlike diffusion models that "weigh" keywords. This allows for precise control.
  * 
- * Examples from HuggingFace:
- * - "Coloring Book, A black and white drawing of a truck, simple line art, high contrast."
- * - "Coloring Book, A black and white pencil sketch of a fox, detailed textures."
- * 
- * Key insights from research:
- * 1. Trigger word "Coloring Book" (proper case, two words)
- * 2. Natural language full sentences work best
- * 3. "simple line art" vs "detailed pencil sketch" controls complexity
- * 4. Order: Subject → Action → Style → Complexity → Details
- * 5. 30-80 words is optimal length
- * 6. CharacterDNA injection for consistent character across pages
- * 7. EXPLICIT action verbs and specific objects improve adherence
- * 8. Strong negative tail prevents unwanted elements
+ * STRUCTURE:
+ * 1. TASK - Clear directive of what to create
+ * 2. SUBJECT - The scene description (enhanced prompt)
+ * 3. STYLE - Artistic direction
+ * 4. REQUIREMENTS - Hard constraints (treated as mandatory by GPT)
+ * 5. FORBIDDEN - Explicit prohibitions (GPT respects these strongly)
  */
 const buildPrompt = (
     userPrompt: string,
@@ -279,22 +172,77 @@ const buildPrompt = (
     audienceId: AudienceId,
     characterDNA?: CharacterDNAFragment,
 ): string => {
-    const styleDescriptor = STYLE_DESCRIPTORS[styleId] || '';
-    const complexityArtStyle = COMPLEXITY_ART_STYLE[complexityId];
-    const audienceTreatment = AUDIENCE_TREATMENT[audienceId];
+    const styleDescriptor = STYLE_DESCRIPTORS[styleId];
+    const complexitySpec = COMPLEXITY_SPECS[complexityId];
+    const audienceSpec = AUDIENCE_SPECS[audienceId];
 
-    // Inject character DNA if provided (for consistent character across pages)
+    // Inject character DNA if provided
     let subjectDescription = userPrompt;
     if (characterDNA && characterDNA.name) {
         const characterFragment = buildCharacterFragment(characterDNA);
-        // Prepend character description to ensure consistency
-        subjectDescription = `${characterFragment}, ${userPrompt}`;
+        subjectDescription = `${characterFragment}. Scene: ${userPrompt}`;
     }
 
-    // Build natural language sentence following official examples
-    // Format: "Coloring Book, A black and white [art style] of [subject], [style], [audience], [technical], [EXPLICIT NEGATIVES]."
-    // Added: EXPLICIT subject description, centered composition, strong negative tail
-    return `Coloring Book, A black and white ${complexityArtStyle} clearly depicting ${subjectDescription}, ${styleDescriptor}, ${audienceTreatment}, centered composition, high contrast, pure white background, clean closed outlines ready for coloring. ABSOLUTELY NO shading, NO gradients, NO grey tones, NO color, NO photorealistic elements, NO blurry lines.`;
+    // Build instruction-first prompt structure
+    return `TASK: Create a printable black-and-white coloring book page.
+
+SUBJECT: ${subjectDescription}
+
+ARTISTIC STYLE: ${styleDescriptor}
+
+TARGET AUDIENCE: ${audienceSpec}
+
+COMPOSITION: ${complexitySpec.instruction}
+
+═══════════════════════════════════════════════════════════════════════════════
+REQUIREMENTS (MANDATORY - Follow these exactly):
+═══════════════════════════════════════════════════════════════════════════════
+• Pure black lines (#000000) on pure white background (#FFFFFF)
+• Clean, continuous, closed-loop vector-quality lines
+• Every shape must be fully enclosed and ready for coloring
+• Sharp crisp edges with consistent line weight
+• Centered composition with all main elements in the safe 85% zone
+• Do NOT crop heads, feet, or important elements at the edges
+
+═══════════════════════════════════════════════════════════════════════════════
+FORBIDDEN (Do NOT include any of the following):
+═══════════════════════════════════════════════════════════════════════════════
+• NO shading, shadows, gradients, or gray tones of any kind
+• NO colors, tints, or fills
+• NO pencil textures, smudges, or soft edges
+• NO 3D rendering, photorealism, or ambient occlusion
+• NO halftone dots, stippling, or cross-hatching fills
+• NO incomplete, broken, or open line segments
+• NO decorative props or objects not explicitly requested in the subject
+
+FINAL OUTPUT: A clean black-and-white line art illustration suitable for printing and coloring with crayons or markers.`;
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SIZE MAPPING
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Map aspect ratio to GPT Image 1.5 supported sizes.
+ * Supported: 1024x1024, 1024x1536, 1536x1024
+ */
+const getGPTImageSize = (aspectRatio: string): string => {
+    switch (aspectRatio) {
+        case '3:4':
+        case '17:22':
+        case '210:297':
+        case 'portrait':
+        case 'letter':
+        case 'a4':
+            return '1024x1536'; // Portrait/tall
+        case '4:3':
+        case 'landscape':
+            return '1536x1024'; // Landscape/wide
+        case '1:1':
+        case 'square':
+        default:
+            return '1024x1024'; // Square default
+    }
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -302,14 +250,18 @@ const buildPrompt = (
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Generate a coloring book page using Flux + Coloring Book LoRA via Replicate
+ * Generate a coloring book page using GPT Image 1.5 via Replicate.
+ * 
+ * NOTE: This is a "bring-your-own-token" model. The openaiApiKey parameter
+ * is passed to Replicate, which forwards requests to OpenAI. Billing goes
+ * directly to your OpenAI account.
  */
 export const generateColoringPage = async (
     request: GenerateImageRequest,
-    replicateApiToken: string
+    openaiApiKey: string
 ): Promise<GenerateImageResult> => {
     const startTime = Date.now();
-    const requestId = `rep_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const requestId = `gpt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
     const {
         userPrompt,
@@ -326,46 +278,47 @@ export const generateColoringPage = async (
         throw new Error('Aborted');
     }
 
-    // Build prompt with trigger word and optional CharacterDNA
+    // Build instruction-first prompt
     const prompt = buildPrompt(userPrompt, styleId, complexityId, audienceId, request.characterDNA);
 
-    // ALWAYS log prompt for debugging misalignment issues
-    Logger.info('AI', `[${requestId}] 🎯 FLUX PROMPT: "${prompt.substring(0, 120)}..."`);
+    // Map complexity to quality setting
+    const complexitySpec = COMPLEXITY_SPECS[complexityId];
+    const gptSize = getGPTImageSize(aspectRatio);
+
+    // ALWAYS log prompt for debugging
+    Logger.info('AI', `[${requestId}] 🎯 GPT IMAGE PROMPT (${prompt.length} chars): "${prompt.substring(0, 150)}..."`);
     
     if (enableLogging) {
-        Logger.debug('AI', `[${requestId}] Full prompt (${prompt.length} chars)`, { prompt, styleId, complexityId });
+        Logger.debug('AI', `[${requestId}] Full prompt`, { prompt, styleId, complexityId, gptSize, quality: complexitySpec.quality });
     }
 
     try {
-        // Map aspect ratio to Replicate format
-        let replicateAspectRatio = aspectRatio;
-        if (aspectRatio === '17:22' || aspectRatio === '210:297') {
-            replicateAspectRatio = '3:4';
+        // Get Replicate API token from environment
+        const replicateToken = (globalThis as any).process?.env?.REPLICATE_API_TOKEN || 
+                               (typeof import.meta !== 'undefined' ? (import.meta as any).env?.VITE_REPLICATE_API_TOKEN : undefined);
+
+        if (!replicateToken) {
+            throw new Error('REPLICATE_API_TOKEN not configured');
         }
 
-        // Create prediction via Replicate API (Flux Dev LoRA)
+        // Create prediction via Replicate API
         const createResponse = await fetch('https://api.replicate.com/v1/predictions', {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${replicateApiToken}`,
+                'Authorization': `Bearer ${replicateToken}`,
                 'Content-Type': 'application/json',
                 'Prefer': 'wait', // Wait for result instead of polling
-                'X-Request-ID': requestId, // Trace ID for debugging
+                'X-Request-ID': requestId,
             },
             body: JSON.stringify({
                 model: REPLICATE_MODEL,
                 input: {
                     prompt,
-                    hf_lora: COLORING_BOOK_LORA,       // Load coloring book LoRA from HuggingFace
-                    lora_scale: 0.9,                    // Strong style enforcement
-                    aspect_ratio: replicateAspectRatio,
-                    output_format: 'png',
-                    num_outputs: 1,
-                    guidance_scale: 8.5,                // TUNED: Strict prompt adherence (was 4.0)
-                    num_inference_steps: 35,            // TUNED: More steps for quality (was 28)
-                    go_fast: false,                     // TUNED: Disabled for accuracy over speed
-                    // CONSISTENCY: Lock diffusion seed for same visual "world" across pages
-                    ...(request.seed && { seed: request.seed }),
+                    size: gptSize,
+                    quality: complexitySpec.quality,
+                    background: 'opaque', // Always white background for coloring
+                    moderation: 'auto', // Standard safety filtering
+                    openai_api_key: openaiApiKey, // Required for GPT Image 1.5
                 },
             }),
             signal,
@@ -389,7 +342,7 @@ export const generateColoringPage = async (
 
             const pollResponse = await fetch(prediction.urls.get, {
                 headers: {
-                    'Authorization': `Bearer ${replicateApiToken}`,
+                    'Authorization': `Bearer ${replicateToken}`,
                 },
                 signal,
             });
@@ -421,7 +374,7 @@ export const generateColoringPage = async (
                 error: 'No image in response',
                 promptUsed: prompt,
                 durationMs: Date.now() - startTime,
-                metadata: { requestId, model: REPLICATE_MODEL, imageSize, aspectRatio, seed: request.seed },
+                metadata: { requestId, model: REPLICATE_MODEL, imageSize, aspectRatio },
             };
         }
 
@@ -439,7 +392,7 @@ export const generateColoringPage = async (
         const imageUrl = `data:image/png;base64,${base64}`;
 
         if (enableLogging) {
-            Logger.info('AI', `[${requestId}] Replicate: Generated in ${Date.now() - startTime}ms`);
+            Logger.info('AI', `[${requestId}] GPT Image 1.5: Generated in ${Date.now() - startTime}ms`);
         }
 
         return {
@@ -447,7 +400,7 @@ export const generateColoringPage = async (
             imageUrl,
             promptUsed: prompt,
             durationMs: Date.now() - startTime,
-            metadata: { requestId, model: REPLICATE_MODEL, imageSize, aspectRatio, seed: request.seed },
+            metadata: { requestId, model: REPLICATE_MODEL, imageSize, aspectRatio },
         };
 
     } catch (error: any) {
@@ -458,7 +411,7 @@ export const generateColoringPage = async (
         const errorMessage = error.message || 'Unknown error';
 
         if (enableLogging) {
-            Logger.error('AI', `[${requestId}] Replicate: Failed`, { error: errorMessage });
+            Logger.error('AI', `[${requestId}] GPT Image 1.5: Failed`, { error: errorMessage });
         }
 
         return {
@@ -467,7 +420,7 @@ export const generateColoringPage = async (
             error: errorMessage,
             promptUsed: prompt,
             durationMs: Date.now() - startTime,
-            metadata: { requestId, model: REPLICATE_MODEL, imageSize, aspectRatio, seed: request.seed },
+            metadata: { requestId, model: REPLICATE_MODEL, imageSize, aspectRatio },
         };
     }
 };

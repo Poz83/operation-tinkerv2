@@ -32,7 +32,6 @@ import {
 
 import {
     generateColoringPage as generateWithReplicate,
-    enhancePromptForFlux,
     REPLICATE_MODEL,
 } from './replicate-client';
 
@@ -59,7 +58,7 @@ export interface GenerateAndValidateRequest {
     imageSize?: ImageSize;
     /** Gemini API key */
     apiKey: string;
-    /** Replicate API token (required for Swift tier) */
+    /** OpenAI API key (required for Swift tier - GPT Image 1.5) */
     replicateApiToken?: string;
     /** Quality tier (determines which provider to use) */
     tier?: QualityTier;
@@ -71,8 +70,6 @@ export interface GenerateAndValidateRequest {
     config?: Partial<PipelineConfig>;
     /** Style reference images for multimodal style transfer (max 5) */
     styleReferenceImages?: Array<{ base64: string; mimeType: string }>;
-    /** Fixed seed for visual consistency across pages (Flux/Swift tier) */
-    seed?: number;
     /** Character DNA for consistent character rendering */
     characterDNA?: {
         name: string;
@@ -154,7 +151,6 @@ export const generateAndValidate = async (
         userEmail,
         signal,
         styleReferenceImages,
-        seed,
         characterDNA,
     } = request;
 
@@ -192,36 +188,21 @@ export const generateAndValidate = async (
 
     // ─────────────────────────────────────────────────────────────────────────────
     // STEP 1: Enhance prompt (optional)
-    // Use Flux-specific enhancer for Swift tier (shorter, subject-focused)
+    // Uses the same Gemini enhancer for both tiers. GPT Image 1.5 excels at
+    // instruction following so it doesn't need a special enhancer.
     // ─────────────────────────────────────────────────────────────────────────────
     if (config.enableEnhancement) {
         reportProgress('enhancing', 'Enhancing prompt...', 10);
 
         try {
-            let enhanceResult;
-            
-            if (useReplicate) {
-                // Flux LoRA: Use lightweight, subject-focused enhancer
-                log('Using Flux-optimized enhancer (concise output)');
-                enhanceResult = await enhancePromptForFlux({
-                    userPrompt,
-                    styleId,
-                    complexityId,
-                    audienceId,
-                    apiKey,
-                    signal,
-                });
-            } else {
-                // Gemini: Use full verbose enhancer
-                enhanceResult = await enhancePrompt({
-                    userPrompt,
-                    styleId,
-                    complexityId,
-                    audienceId,
-                    apiKey,
-                    signal,
-                });
-            }
+            const enhanceResult = await enhancePrompt({
+                userPrompt,
+                styleId,
+                complexityId,
+                audienceId,
+                apiKey,
+                signal,
+            });
 
             if (enhanceResult.success) {
                 enhancedPrompt = enhanceResult.enhancedPrompt;
@@ -246,8 +227,8 @@ export const generateAndValidate = async (
     // Route to appropriate provider based on tier
     let genResult;
     if (useReplicate && replicateApiToken) {
-        // Swift tier: Use Replicate (Flux Coloring Book LoRA)
-        log(`Using Replicate (Flux Coloring Book LoRA) for Swift tier`);
+        // Swift tier: Use GPT Image 1.5 via Replicate
+        log(`Using GPT Image 1.5 via Replicate for Swift tier`);
         genResult = await generateWithReplicate(
             {
                 userPrompt: currentPrompt,
@@ -256,14 +237,12 @@ export const generateAndValidate = async (
                 audienceId,
                 aspectRatio,
                 imageSize,
-                apiKey, // Not used by Replicate but required by interface
+                apiKey, // Not used by GPT Image 1.5 but required by interface
                 signal,
                 enableLogging: config.enableLogging,
-                // CONSISTENCY: Pass seed and characterDNA for visual coherence
-                seed,
                 characterDNA,
             },
-            replicateApiToken
+            replicateApiToken // This is actually the OpenAI API key
         );
     } else {
         // Studio tier (or fallback): Use Gemini

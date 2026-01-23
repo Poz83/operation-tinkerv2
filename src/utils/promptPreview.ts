@@ -12,6 +12,7 @@ const STYLE_SPECS: Record<string, { styleKeyword: string; positiveDescription: s
     'Kawaii': { styleKeyword: 'kawaii coloring page', positiveDescription: 'adorable rounded characters with large sparkly eyes' },
     'Mandala': { styleKeyword: 'mandala coloring page', positiveDescription: 'intricate radial symmetry with geometric patterns' },
     'Cozy': { styleKeyword: 'cozy coloring page', positiveDescription: 'warm and inviting hygge-inspired scene' },
+    'HandDrawn': { styleKeyword: 'Hand-drawn hygge coloring page', positiveDescription: 'cozy domestic lifestyle with ultra-thick hand-drawn marker lines and empowering characters' },
     'Gothic': { styleKeyword: 'gothic woodcut coloring page', positiveDescription: 'Victorian engraving style with bold dramatic lines' },
     'Fantasy': { styleKeyword: 'fantasy coloring page', positiveDescription: 'epic adventure with magical creatures' },
     'Geometric': { styleKeyword: 'geometric coloring page', positiveDescription: 'low-poly abstract shapes and patterns' },

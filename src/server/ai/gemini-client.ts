@@ -43,6 +43,7 @@ export const NANO_BANANA_PRO = GEMINI_IMAGE_MODEL;
 export type StyleId =
 
   | 'Cozy'
+  | 'HandDrawn'
   | 'Kawaii'
   | 'Whimsical'
   | 'Cartoon'
@@ -54,6 +55,7 @@ export type StyleId =
   | 'StainedGlass'
   | 'Mandala'
   | 'Zentangle';
+
 
 export type ComplexityId =
   | 'Very Simple'
@@ -93,7 +95,7 @@ export interface GenerateImageRequest {
   enableLogging?: boolean;
   /** Style reference images (multimodal input for style transfer) - max 5 */
   styleReferenceImages?: Array<{ base64: string; mimeType: string }>;
-  /** Fixed seed for visual consistency across pages (Flux only) */
+  /** Fixed seed for visual consistency (not used by current models) */
   seed?: number;
   /** Character DNA for consistent character rendering */
   characterDNA?: {
@@ -117,7 +119,7 @@ export interface GenerateImageResult {
     model: string;
     imageSize: ImageSize;
     aspectRatio: string;
-    /** Seed used for generation (Flux only) - save for reproducibility */
+    /** Seed used for generation (legacy, for future use) */
     seed?: number;
   };
 }
@@ -157,17 +159,38 @@ interface StyleSpec {
 const STYLE_SPECS: Record<StyleId, StyleSpec> = {
 
   'Cozy': {
-    styleKeyword: 'Hygge warm inviting coloring page, Scandinavian cozy aesthetic, hand-drawn felt-tip pen style',
-    positiveDescription: 'Warm organic style with soft rounded forms, gentle flowing lines, thick slightly wiggly outlines. Hand-drawn imperfect quality, never vector-clean.',
-    lineWeight: 'variable organic lines (0.8-2mm) mimicking felt-tip pen, natural line variation',
+    styleKeyword: 'Bold and Easy coloring book page, thick uniform black marker outlines, cute simple illustration',
+    positiveDescription: 'Simple rounded forms with EXTREMELY THICK uniform black outlines (2-3mm marker weight). Cute blob-like characters with dot eyes and tiny smiles. LOW complexity with LARGE open coloring areas.',
+    lineWeight: 'EXTREMELY THICK uniform monoline (2-3mm), same weight throughout, NO line variation',
     visualRequirements: [
-      'Role: Scandinavian lifestyle illustrator creating warm, inviting scenes',
-      'Geometry: Organic curves only, NO straight lines, soft rounded shapes',
-      'Textures: Soft flowing textures appropriate to the scene (fabric folds, natural textures)',
-      'Mood: Warm, inviting, peaceful, gentle - apply cozy FEELING to whatever subject the user requests',
-      'Shapes: Every visible area must be enclosed and colorable. Overlapping elements must still form closed areas.',
-      'Negative: NO shading, NO grayscale, NO crosshatching, NO thin details, NO solid black fills',
-      'CRITICAL: Do NOT add props or objects the user did not request. Only draw exactly what is described in the prompt.',
+      'Role: Bold and Easy coloring book illustrator',
+      'Lines: EXTREMELY THICK uniform black outlines like a fat chisel-tip marker. ALL lines exact same weight (2-3mm).',
+      'Complexity: LOW - minimal details. Lots of blank white space.',
+      'Coloring Areas: LARGE open spaces only. No tiny crevices or intricate details.',
+      'Characters: SIMPLE blob-shaped bodies, dot eyes (two dots), tiny curved smile, stubby rounded limbs',
+      'Details: MINIMAL - use simple dots, hearts, or short lines instead of textures. NO fur texture, NO wood grain, NO knit patterns.',
+      'Shapes: Soft rounded forms only, NO sharp angles, every corner is curved',
+      'Background: Keep it SIMPLE. Significant blank white space.',
+      'Negative: NO thin lines, NO line weight variation, NO intricate patterns, NO shading, NO textures',
+      'CRITICAL: Draw EXACTLY what the user describes. Do NOT substitute subjects.',
+    ],
+  },
+  'HandDrawn': {
+    styleKeyword: 'Hand-drawn hygge coloring book, extra-thick felt-tip marker lines, cozy domestic lifestyle illustration',
+    positiveDescription: 'Hand-drawn cozy lifestyle illustration with ULTRA-THICK uniform black marker outlines (2-3mm). Warm domestic scenes featuring empowering characters in peaceful settings. Hygge aesthetic with organic hand-drawn charm.',
+    lineWeight: 'ULTRA-THICK felt-tip marker lines (2-3mm), uniform weight with slight hand-drawn organic wobble, NOT sterile vectors',
+    visualRequirements: [
+      'Role: Hygge lifestyle illustrator creating warmth and comfort',
+      'Lines: ULTRA-THICK uniform felt-tip marker outlines (2-3mm). Hand-drawn organic quality with natural wobble, NOT sterile perfect vectors.',
+      'Complexity: LOW - minimal details. Large open coloring areas. Significant white space.',
+      'Characters: Gentle blob-like forms, dot eyes (two small dots), subtle curved smile, warm approachable poses',
+      'Themes: Cozy domestic moments - reading nooks, warm drinks, pets, peaceful indoor/outdoor scenes. Empowering women in calm settings.',
+      'Objects: Rounded everyday items - teacups, books, comfy chairs, plants, simple food. NO sharp or threatening elements.',
+      'Details: MINIMAL - use simple shapes (hearts, dots, small flowers) for accents. NO detailed textures.',
+      'Mood: Warm, calm, nurturing. "Moments of calm" aesthetic.',
+      'Background: Keep SIMPLE with lots of white space. No busy patterns.',
+      'Negative: NO thin lines, NO sharp angles, NO scary elements, NO complex patterns, NO shading, NO textures',
+      'CRITICAL: Draw EXACTLY what the user describes. Do NOT substitute subjects.',
     ],
   },
   'Kawaii': {
@@ -453,7 +476,12 @@ const buildPrompt = (
 ROLE: ${roleDefinition}
 TASK: Generate a high-quality ${styleSpec.styleKeyword}, ${styleSpec.positiveDescription}. Designed for ${audienceId} audience.
 
-SCENE: ${userPrompt}
+═══════════════════════════════════════════════════════════════════════════════
+SUBJECT (MANDATORY - You MUST draw exactly this, nothing else):
+═══════════════════════════════════════════════════════════════════════════════
+${userPrompt}
+
+WARNING: Do NOT substitute the subject. If the prompt says "sloths", draw SLOTHS, not cats or other animals. Draw EXACTLY what is described above.
 
 AUDIENCE: ${audienceSpec.contentGuidance}
 
@@ -474,7 +502,7 @@ BINARY OUTPUT ONLY:
 - TWO VALUES ONLY: black or white. Nothing else.
 - If in doubt, use WHITE (empty space), not gray
 
-ABSOLUTELY FORBIDDEN (instant failure if present):
+ABSOLUTELY FORBIDDEN (instant rejection if present):
 - NO gray, grey, silver, charcoal, or any shade between black and white
 - NO shading, shadows, gradients, tints, tones, or fills
 - NO pencil strokes, smudges, sketchy marks, or soft edges
@@ -482,13 +510,18 @@ ABSOLUTELY FORBIDDEN (instant failure if present):
 - NO 3D rendering, photorealism, or cinematic lighting
 - NO cross-hatching, stippling, or halftone dots
 - NO colors whatsoever
+- NO objects or props not explicitly requested in the scene description
 
 LINE QUALITY:
 - Clean, continuous, closed-loop vector lines
 - Every shape must be fully enclosed (no gaps)
 - Sharp crisp edges suitable for coloring
 
-FINAL CHECK: Before outputting, verify EVERY pixel is either pure #000000 or pure #FFFFFF.
+SELF-CHECK (before outputting, verify each item):
+□ Every pixel is pure #000000 or #FFFFFF - no exceptions
+□ All shapes are fully enclosed with no gaps
+□ No gray zones, gradient fills, or shaded areas
+□ Only elements from the SCENE description are included
 `.trim();
 
   return { prompt, effectiveComplexity };
