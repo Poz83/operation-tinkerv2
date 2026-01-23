@@ -72,12 +72,10 @@ export const useProject = (
         includeText, pages, visibility, characterDNA, heroPresence, cinematics, styleReferences
     ]);
 
-    const { status: saveStatus, lastSavedAt } = useAutosave({
+    const { status: saveStatus, lastSavedAt, isOnline, isSaving, isDirty } = useAutosave({
         project: currentProjectState,
         onSave: async (proj) => {
-            // [Fix]: Autosave Duplication Logic
-            // If we have a currentProjectId, ensure we use it to overwrite, not create new.
-            // The logic in saveProject handles 'CB'/'HL' updates, but we need to make sure 'proj' has the ID.
+            // Ensure we use existing ID to update, not create duplicates
             const projectToSave = {
                 ...proj,
                 id: currentProjectId || proj.id
@@ -93,18 +91,16 @@ export const useProject = (
             }
 
             // Update pages (populates DB IDs and signed URLs if fresh)
-            if (saved.pages) {
-                // Only update pages if we're not actively generating to avoid race conditions
-                if (!isGenerating) {
-                    setPages(saved.pages);
-                }
+            if (saved.pages && !isGenerating) {
+                setPages(saved.pages);
             }
 
             return saved;
         },
-        // Only enabled if we have content and we are not currently generating (to avoid partial state saves)
-        enabled: !!(projectName || userPrompt) && (pages.length > 0 || !!characterDNA) && !isGenerating,
-        interval: 3000 // 3 seconds debounce
+        // Canva-style: Save as soon as there's meaningful input (name OR prompt)
+        // Disable during generation to avoid partial state saves
+        enabled: !!(projectName || userPrompt) && !isGenerating,
+        interval: 1500 // 1.5s debounce (Canva-style responsive)
     });
 
     // --- Actions ---
@@ -246,6 +242,9 @@ export const useProject = (
         currentProjectId,
         saveStatus,
         lastSavedAt,
+        isOnline,
+        isSaving,
+        isDirty,
 
         handleSaveProject,
         handleLoadProject,

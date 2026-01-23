@@ -213,12 +213,15 @@ async function fetchProjectNetwork(publicId: string): Promise<SavedProject | nul
                 style,
                 audience,
                 complexity,
-                page_count
+                complexity,
+                page_count,
+                settings
             ),
             hero_lab_data (
                 dna,
                 base_image_url,
-                seed
+                seed,
+                settings
             )
         `)
         .eq('public_id', publicId)
@@ -347,7 +350,14 @@ export async function saveProject(project: SavedProject): Promise<SavedProject> 
                         base_image_url: (project as any).baseImageUrl,
                         reference_image_url: (project as any).referenceImageUrl,
                         profile_sheet_url: (project as any).profileSheetUrl,
-                        seed: (project as any).seed
+                        seed: (project as any).seed,
+                        // Persist extra settings in JSONB
+                        settings: {
+                             characterDNA: project.characterDNA,
+                             styleReferences: project.styleReferences,
+                             cinematics: project.cinematics,
+                             heroPresence: project.heroPresence
+                        }
                     });
                 if (heroError) Logger.error('NETWORK', 'Hero data upsert error', heroError);
             } else {
@@ -358,7 +368,14 @@ export async function saveProject(project: SavedProject): Promise<SavedProject> 
                         style: project.visualStyle,
                         audience: project.targetAudienceId,
                         complexity: project.complexity,
-                        page_count: project.pageAmount
+                        page_count: project.pageAmount,
+                        // Persist new features in settings JSONB
+                        settings: {
+                            characterDNA: project.characterDNA,
+                            heroPresence: project.heroPresence,
+                            cinematics: project.cinematics,
+                            styleReferences: project.styleReferences
+                        }
                     });
                 if (coloringError) Logger.error('NETWORK', 'Coloring data upsert error', coloringError);
             }
@@ -481,7 +498,11 @@ async function createNewProjectDbOnly(userId: string, project: SavedProject) {
                 project_id: newProject.id,
                 dna: (project as any).dna || {},
                 base_image_url: (project as any).baseImageUrl,
-                seed: (project as any).seed
+                seed: (project as any).seed,
+                settings: {
+                    characterDNA: project.characterDNA,
+                    styleReferences: project.styleReferences
+                }
             });
     } else {
         // Default to coloring studio if not specified or regular
@@ -492,7 +513,13 @@ async function createNewProjectDbOnly(userId: string, project: SavedProject) {
                 style: project.visualStyle,
                 audience: project.targetAudienceId,
                 complexity: project.complexity,
-                page_count: project.pageAmount
+                page_count: project.pageAmount,
+                settings: {
+                    characterDNA: project.characterDNA,
+                    heroPresence: project.heroPresence,
+                    cinematics: project.cinematics,
+                    styleReferences: project.styleReferences
+                }
             });
     }
 
@@ -723,6 +750,8 @@ function mapDbToSavedProject(record: any): SavedProject {
         } as unknown as SavedProject; // Using unknown to bypass strict type checking for now
     }
 
+    const settings = coloringData?.settings || {};
+
     return {
         ...baseProject,
         pageAmount: coloringData?.page_count || 1,
@@ -730,6 +759,12 @@ function mapDbToSavedProject(record: any): SavedProject {
         visualStyle: coloringData?.style || 'Hand Drawn Bold & Easy',
         complexity: coloringData?.complexity || 'Simple',
         targetAudienceId: coloringData?.audience || 'kids',
+        // Hydrate from settings column
+        characterDNA: settings.characterDNA || undefined,
+        heroPresence: settings.heroPresence || undefined,
+        cinematics: settings.cinematics || 'dynamic',
+        styleReferences: settings.styleReferences || undefined,
+        // Legacy fallbacks
         hasHeroRef: false,
         heroImage: null,
         includeText: false,

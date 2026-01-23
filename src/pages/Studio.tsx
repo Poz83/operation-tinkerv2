@@ -26,6 +26,7 @@ import { DesignersTip } from '../components/DesignersTip';
 import { LogViewer } from '../components/debug/LogViewer';
 import { EnhancePreviewModal } from '../components/EnhancePreviewModal';
 import { FinalPromptPreviewModal } from '../components/FinalPromptPreviewModal';
+import { SaveStatusIndicator } from '../components/SaveStatusIndicator';
 
 import { buildPromptPreview, PromptPreviewData } from '../utils/promptPreview';
 import doodlePattern from '../assets/doodle_pattern_final.png';
@@ -589,6 +590,18 @@ const App: React.FC = () => {
         <div className="flex flex-1 pt-16 overflow-hidden">
           {/* Sidebar */}
           <div className="w-[400px] flex-shrink-0 flex flex-col bg-[hsl(var(--card))]/30 backdrop-blur-xl border-r border-[hsl(var(--border))] z-20 shadow-2xl overflow-hidden text-[hsl(var(--foreground))]">
+
+            {/* Canva-style Save Status Header */}
+            <div className="flex items-center justify-between px-6 py-3 border-b border-[hsl(var(--border))]/50">
+              <span className="text-sm font-medium text-[hsl(var(--foreground))]/70">
+                {project.projectName || 'New Project'}
+              </span>
+              <SaveStatusIndicator
+                status={project.saveStatus}
+                lastSavedAt={project.lastSavedAt}
+                isOnline={project.isOnline}
+              />
+            </div>
 
             <div className="flex-1 overflow-y-auto no-scrollbar relative">
               <Setup
