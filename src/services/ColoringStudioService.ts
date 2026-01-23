@@ -486,6 +486,137 @@ Each description: 20-40 words, SPECIFIC and VISUAL.
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
+    // CLARIFYING QUESTIONS (for "Make it Better" flow)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Generate smart clarifying questions based on the user's prompt.
+     * These help the AI understand the user's creative vision better.
+     */
+    async generateClarifyingQuestions(
+        userPrompt: string,
+        context?: { style?: string; audience?: string }
+    ): Promise<{ id: string; question: string; options: string[]; freeTextPlaceholder?: string }[]> {
+        await this.ensureInitialized();
+
+        // Detect theme categories in the prompt
+        const lower = userPrompt.toLowerCase();
+        
+        // Theme detection
+        const isHumor = lower.includes('funny') || lower.includes('humor') || lower.includes('silly') || 
+                        lower.includes('die') || lower.includes('death') || lower.includes('dumb');
+        const isAction = lower.includes('fight') || lower.includes('battle') || lower.includes('chase') ||
+                         lower.includes('run') || lower.includes('escape');
+        const isNature = lower.includes('forest') || lower.includes('garden') || lower.includes('flower') ||
+                         lower.includes('animal') || lower.includes('wildlife');
+        const isFantasy = lower.includes('dragon') || lower.includes('wizard') || lower.includes('magic') ||
+                          lower.includes('fairy') || lower.includes('castle');
+
+        const questions: { id: string; question: string; options: string[]; freeTextPlaceholder?: string }[] = [];
+
+        // Humor-specific questions
+        if (isHumor) {
+            questions.push({
+                id: 'humor_style',
+                question: "What's the comedic style?",
+                options: ['Ironic (oblivious to danger)', 'Slapstick (exaggerated disaster)', 'Dark/Morbid (gallows humor)', 'Cute/Absurd']
+            });
+            questions.push({
+                id: 'humor_moment',
+                question: 'Show which moment?',
+                options: ['BEFORE disaster (setup)', 'DURING (action)', 'AFTER (aftermath)']
+            });
+        }
+
+        // Action-specific questions
+        if (isAction) {
+            questions.push({
+                id: 'action_intensity',
+                question: 'Action intensity?',
+                options: ['Mild (playful)', 'Medium (dynamic)', 'Intense (epic)']
+            });
+        }
+
+        // Nature-specific questions
+        if (isNature) {
+            questions.push({
+                id: 'nature_mood',
+                question: 'What mood?',
+                options: ['Peaceful/Serene', 'Wild/Untamed', 'Magical/Enchanted', 'Realistic/Scientific']
+            });
+        }
+
+        // Fantasy-specific questions
+        if (isFantasy) {
+            questions.push({
+                id: 'fantasy_tone',
+                question: 'Fantasy tone?',
+                options: ['Heroic/Epic', 'Whimsical/Cute', 'Dark/Mysterious', 'Fairytale/Classic']
+            });
+        }
+
+        // Universal questions if no specific theme detected or to round out
+        if (questions.length < 2) {
+            questions.push({
+                id: 'composition',
+                question: 'Preferred composition?',
+                options: ['Close-up portrait', 'Full scene', 'Pattern/Decorative', 'Action shot']
+            });
+        }
+
+        // Always add a free-text option for specific scenarios
+        questions.push({
+            id: 'specific_details',
+            question: 'Any specific scenarios or details to include?',
+            options: [],
+            freeTextPlaceholder: 'e.g., "poking reactor with screwdriver", "standing on wobbly ladder"...'
+        });
+
+        return questions.slice(0, 3); // Max 3 questions
+    }
+
+    /**
+     * Convert clarifying answers to context string for prompt enhancement
+     */
+    buildContextFromAnswers(answers: Record<string, string[]>): string {
+        const parts: string[] = [];
+        
+        Object.entries(answers).forEach(([questionId, selectedOptions]) => {
+            if (selectedOptions.length > 0) {
+                const optionStr = selectedOptions.join(', ');
+                
+                switch (questionId) {
+                    case 'humor_style':
+                        parts.push(`Comedic style: ${optionStr}`);
+                        break;
+                    case 'humor_moment':
+                        parts.push(`Show the moment: ${optionStr}`);
+                        break;
+                    case 'action_intensity':
+                        parts.push(`Action level: ${optionStr}`);
+                        break;
+                    case 'nature_mood':
+                        parts.push(`Mood: ${optionStr}`);
+                        break;
+                    case 'fantasy_tone':
+                        parts.push(`Tone: ${optionStr}`);
+                        break;
+                    case 'composition':
+                        parts.push(`Composition: ${optionStr}`);
+                        break;
+                    case 'specific_details':
+                        parts.push(`Specific details: ${optionStr}`);
+                        break;
+                    default:
+                        parts.push(optionStr);
+                }
+            }
+        });
+        
+        return parts.join('. ');
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
     // PROMPT BRAINSTORMING
     // ═══════════════════════════════════════════════════════════════════════════
 

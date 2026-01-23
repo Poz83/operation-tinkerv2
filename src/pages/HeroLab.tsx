@@ -418,7 +418,7 @@ export const HeroLab: React.FC = () => {
             {/* Save Status Indicator */}
             {project.saveStatus && project.saveStatus !== 'saved' && (
                 <div className="fixed bottom-4 right-24 px-3 py-1.5 rounded-full text-xs font-medium bg-[hsl(var(--card))]/80 backdrop-blur border border-[hsl(var(--border))] z-50">
-                    {project.saveStatus === 'saving' && '💾 Saving...'}
+                    {/* Saving status hidden for silent autosave */}
                     {project.saveStatus === 'unsaved' && '○ Unsaved changes'}
                     {project.saveStatus === 'error' && '⚠️ Save failed'}
                 </div>

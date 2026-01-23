@@ -26,6 +26,7 @@ import { DesignersTip } from '../components/DesignersTip';
 import { LogViewer } from '../components/debug/LogViewer';
 import { EnhancePreviewModal } from '../components/EnhancePreviewModal';
 import { FinalPromptPreviewModal } from '../components/FinalPromptPreviewModal';
+import { ClarifyVisionModal, ClarifyingQuestion } from '../components/ClarifyVisionModal';
 import { SaveStatusIndicator } from '../components/SaveStatusIndicator';
 
 import { buildPromptPreview, PromptPreviewData } from '../utils/promptPreview';
@@ -204,6 +205,12 @@ const App: React.FC = () => {
   const [showFinalPromptModal, setShowFinalPromptModal] = useState(false);
   const [finalPromptData, setFinalPromptData] = useState<PromptPreviewData | null>(null);
   const [showExportModal, setShowExportModal] = useState(false);
+  
+  // --- Clarify Vision State ---
+  const [showClarifyModal, setShowClarifyModal] = useState(false);
+  const [clarifyQuestions, setClarifyQuestions] = useState<ClarifyingQuestion[]>([]);
+  const [isClarifyLoading, setIsClarifyLoading] = useState(false);
+  const [pendingClarifyContext, setPendingClarifyContext] = useState('');
 
 
   // Smart Export Handler
@@ -471,6 +478,52 @@ const App: React.FC = () => {
   };
 
   const handleEnhance = async () => {
+    // Stage 1: Ask clarifying questions
+    setIsClarifyLoading(true);
+    setShowClarifyModal(true);
+    
+    // Generate questions based on current prompt
+    const service = await import('../services/ColoringStudioService').then(m => m.ColoringStudioService.createWithKey(apiKey || ''));
+    const questions = await service.generateClarifyingQuestions(project.userPrompt);
+    
+    setClarifyQuestions(questions);
+    setIsClarifyLoading(false);
+  };
+
+  const handleClarifySubmit = async (answers: Record<string, string[]>) => {
+    setShowClarifyModal(false);
+    setIsEnhanceLoading(true);
+
+    const service = await import('../services/ColoringStudioService').then(m => m.ColoringStudioService.createWithKey(apiKey || ''));
+    
+    // Build context string from answers
+    const contextStr = service.buildContextFromAnswers(answers);
+    const enrichedPrompt = contextStr ? `${project.userPrompt}\n\n[USER CONTEXT: ${contextStr}]` : project.userPrompt;
+    
+    // Stage 2: Enhance with enriched context
+    const enhanced = await generation.handleEnhancePrompt(
+      enrichedPrompt,
+      project.pageAmount,
+      {
+        style: project.visualStyle,
+        audience: project.targetAudienceId,
+        complexity: project.complexity,
+        heroName: project.characterDNA?.name
+      }
+    );
+
+    setIsEnhanceLoading(false);
+    if (enhanced) {
+      setPendingEnhancedPrompt(enhanced);
+      setShowEnhanceModal(true);
+    }
+  };
+
+  const handleClarifySkip = async () => {
+    setShowClarifyModal(false);
+    setIsEnhanceLoading(true);
+    
+    // Proceed with original prompt
     const enhanced = await generation.handleEnhancePrompt(
       project.userPrompt,
       project.pageAmount,
@@ -481,6 +534,8 @@ const App: React.FC = () => {
         heroName: project.characterDNA?.name
       }
     );
+
+    setIsEnhanceLoading(false);
     if (enhanced) {
       setPendingEnhancedPrompt(enhanced);
       setShowEnhanceModal(true);
@@ -842,6 +897,15 @@ const App: React.FC = () => {
         </div>
 
         <ToastContainer />
+        
+        <ClarifyVisionModal 
+          isOpen={showClarifyModal}
+          questions={clarifyQuestions}
+          isLoading={isClarifyLoading}
+          onSubmit={handleClarifySubmit}
+          onSkip={handleClarifySkip}
+          onCancel={() => setShowClarifyModal(false)}
+        />
 
         {showEditChat && (
           <ImageEditChatPanel

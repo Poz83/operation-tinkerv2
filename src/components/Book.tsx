@@ -255,8 +255,8 @@ export const Book: React.FC<BookProps> = ({ pages, currentSheetIndex, onSheetCli
                                     className={`
                                         group relative flex-shrink-0 rounded-lg overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] snap-center
                                         ${isActive
-                                            ? 'w-16 h-20 opacity-100 ring-2 ring-white/60 shadow-lg shadow-black/30 z-10 scale-110'
-                                            : 'w-12 h-16 opacity-50 hover:opacity-90 hover:scale-105 hover:w-14 hover:ring-2 hover:ring-white/30 grayscale hover:grayscale-0'
+                                            ? `opacity-100 ring-2 ring-white/60 shadow-lg shadow-black/30 z-10 scale-110 ${aspectRatio === 1 ? 'w-16 h-16' : 'w-15 h-20'}`
+                                            : `opacity-50 hover:opacity-90 hover:scale-105 hover:ring-2 hover:ring-white/30 grayscale hover:grayscale-0 ${aspectRatio === 1 ? 'w-12 h-12 hover:w-14' : 'w-12 h-16 hover:w-13'}`
                                         }
                                     `}
                                 >

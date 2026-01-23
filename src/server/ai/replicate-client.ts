@@ -269,6 +269,8 @@ const buildCharacterFragment = (dna: CharacterDNAFragment): string => {
  * 4. Order: Subject → Action → Style → Complexity → Details
  * 5. 30-80 words is optimal length
  * 6. CharacterDNA injection for consistent character across pages
+ * 7. EXPLICIT action verbs and specific objects improve adherence
+ * 8. Strong negative tail prevents unwanted elements
  */
 const buildPrompt = (
     userPrompt: string,
@@ -290,8 +292,9 @@ const buildPrompt = (
     }
 
     // Build natural language sentence following official examples
-    // Format: "Coloring Book, A black and white [art style] of [subject], [style], [audience], [technical]."
-    return `Coloring Book, A black and white ${complexityArtStyle} of ${subjectDescription}, ${styleDescriptor}, ${audienceTreatment}, high contrast, white background, no shading, no grey tones, clean closed outlines ready for coloring.`;
+    // Format: "Coloring Book, A black and white [art style] of [subject], [style], [audience], [technical], [EXPLICIT NEGATIVES]."
+    // Added: EXPLICIT subject description, centered composition, strong negative tail
+    return `Coloring Book, A black and white ${complexityArtStyle} clearly depicting ${subjectDescription}, ${styleDescriptor}, ${audienceTreatment}, centered composition, high contrast, pure white background, clean closed outlines ready for coloring. ABSOLUTELY NO shading, NO gradients, NO grey tones, NO color, NO photorealistic elements, NO blurry lines.`;
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════

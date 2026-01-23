@@ -89,6 +89,8 @@ export const SaveStatusIndicator: React.FC<SaveStatusIndicatorProps> = ({
         }
     };
 
+    if (status === 'saving') return null;
+
     const config = statusConfig[status];
 
     return (
